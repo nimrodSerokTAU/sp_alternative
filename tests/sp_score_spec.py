@@ -1,5 +1,5 @@
 from classes.gap_interval import GapInterval
-from classes.sp_score import SPScore, compute_pairwise_restricted_gap_intervals
+from classes.sp_score import SPScore
 
 
 def test_sp_perfect():
@@ -77,7 +77,7 @@ def test_compute_sp_s_and_sp_ge():  # our function
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
     sp_score_subs: int
     sp_score_gap_e: int
-    sp_score_subs, sp_score_gap_e = sp.compute_sp_s_and_sp_ge(profile, 20)
+    sp_score_subs, sp_score_gap_e = sp.compute_sp_s_and_sp_ge(profile)
     res = {'sp_score_subs': sp_score_subs, 'sp_score_gap_e': sp_score_gap_e}
     assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -40}  # this is correct without gs cost
 
@@ -93,21 +93,21 @@ def test_onl_gap_open_and_ext_cost_same():  # this is not correct...TODO: debug 
     assert res == -6
 
 
-def restricted():  # ?
-    sp: SPScore = SPScore(-1, -5, 0)
-    profile: list[str] = [
-        'ARNDC---HI',
-        'AA-DCQ--AI',
-        'AA--CQEGHI']
-    intervals_list: list[list[GapInterval]] = []
-    res: int = 0
-    for seq in profile:
-        intervals_list.append(sp.compute_gap_intervals(list(seq)))
-    for i in range(len(intervals_list)):
-        for j in range(i + 1, len(intervals_list)):
-            res += compute_pairwise_restricted_gap_intervals(iter(intervals_list[i]), iter(intervals_list[j]),
-                                                             sp.gs_cost, sp.ge_cost)
-    assert res == -10
+# def restricted():  # ?
+#     sp: SPScore = SPScore(-1, -5, 0)
+#     profile: list[str] = [
+#         'ARNDC---HI',
+#         'AA-DCQ--AI',
+#         'AA--CQEGHI']
+#     intervals_list: list[list[GapInterval]] = []
+#     res: int = 0
+#     for seq in profile:
+#         intervals_list.append(sp.compute_gap_intervals(list(seq)))
+#     for i in range(len(intervals_list)):
+#         for j in range(i + 1, len(intervals_list)):
+#             res += compute_pairwise_restricted_gap_intervals(iter(intervals_list[i]), iter(intervals_list[j]),
+#                                                              sp.gs_cost, sp.ge_cost)
+#     assert res == -10
 
-# TODO: create a repo
+
 
