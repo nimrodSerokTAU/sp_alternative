@@ -60,7 +60,8 @@ class SPScore:
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
         return gap_intervals_list
 
-    def compute_sp_s_and_sp_ge(self, profile: list[str], options_count: int) -> tuple[int, int]:
+    def compute_sp_s_and_sp_ge(self, profile: list[str]) -> tuple[int, int]:
+        options_count = len(self.w_matrix[0])
         seq_len: int = len(profile[0])
         sp_score_subs: int = 0
         sp_score_gap_e: int = 0
@@ -87,10 +88,6 @@ class SPScore:
             translate_to_matrix_index(b, self.code_to_index_dict)]
 
     def compute_sp_gap_open(self, profile: list[str]) -> int:
-        """
-        including gap extremities, but not differentiating gaps that are relevant to each pair
-        """
-
         if len(profile) == 0:
             return 0
         seq_len: int = len(profile[0])
@@ -112,7 +109,7 @@ class SPScore:
                 else:
                     sp_gp_open += (n - nb_open_gap[gap_interval.start]) * self.gs_cost
             for gap_interval in gap_closing[i]:
-                for k in range(gap_interval.start, gap_interval.end):
+                for k in range(gap_interval.start, gap_interval.end + 1):
                     nb_open_gap[k] -= 1
         return sp_gp_open
 
