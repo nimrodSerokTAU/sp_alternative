@@ -1,6 +1,6 @@
 from classes.gap_interval import GapInterval
 from classes.sp_score import SPScore
-from utils import translate_profile_hpos, get_column, get_place_hpos
+from utils import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 
 
 def test_sp_perfect():
@@ -117,7 +117,7 @@ def test_translate_profile_hpos():
         'A--ATTAG',
         'A--A-TAG'
         ]
-    res = translate_profile_hpos(profile)
+    res = translate_profile_naming(profile)
     assert res == [
         ['S^1_1', 'S^1_2', 'S^1_3', 'S^1_4', 'S^1_5', 'S^1_6', 'S^1_7', 'G^1_7'],
         ['S^2_1', 'G^2_1', 'G^2_1', 'S^2_2', 'S^2_3', 'S^2_4', 'S^2_5', 'S^2_6'],
@@ -130,7 +130,7 @@ def test_get_specific_hpos():
         'A--ATTAG',
         'A--A-TAG'
     ]
-    trans_prof = translate_profile_hpos(profile)
+    trans_prof = translate_profile_naming(profile)
     res_2 = []
     res_3 = []
     for col_inx in range(len(profile[0])):
@@ -145,3 +145,31 @@ def test_get_specific_hpos():
     assert res_3 == [{'S^1_1', 'S^2_1'}, set(), set(), {'S^1_4', 'S^2_2'}, set(), {'S^2_4', 'S^1_6'}, {'S^2_5', 'S^1_7'}, {'S^2_6', 'G^1_7'}]
 
 
+def test_compute_dpos_distance_for_same():
+    profile_a: list[str] = [
+        'AATATTG-',
+        'A--ATTAG',
+        'A--A-TAG'
+    ]
+    profile_b: list[str] = [
+        'AATATTG-',
+        'A--ATTAG',
+        'A--A-TAG'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert res == 0
+
+
+def test_compute_dpos_distance_for_diff():
+    profile_a: list[str] = [
+        'AATATTG-',
+        'A--ATTAG',
+        'A--A-TAG'
+    ]
+    profile_b: list[str] = [
+        'AATAT-TG',
+        'A-A-TTAG',
+        'A--A-TAG'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert res == 0.425
