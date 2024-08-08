@@ -1,5 +1,6 @@
 from classes.gap_interval import GapInterval
 from classes.sp_score import SPScore
+from utils import translate_profile_hpos, get_column, get_place_hpos
 
 
 def test_sp_perfect():
@@ -109,5 +110,38 @@ def test_onl_gap_open_and_ext_cost_same():  # this is not correct...TODO: debug 
 #                                                              sp.gs_cost, sp.ge_cost)
 #     assert res == -10
 
+
+def test_translate_profile_hpos():
+    profile: list[str] = [
+        'AATATTG-',
+        'A--ATTAG',
+        'A--A-TAG'
+        ]
+    res = translate_profile_hpos(profile)
+    assert res == [
+        ['S^1_1', 'S^1_2', 'S^1_3', 'S^1_4', 'S^1_5', 'S^1_6', 'S^1_7', 'G^1_7'],
+        ['S^2_1', 'G^2_1', 'G^2_1', 'S^2_2', 'S^2_3', 'S^2_4', 'S^2_5', 'S^2_6'],
+        ['S^3_1', 'G^3_1', 'G^3_1', 'S^3_2', 'G^3_2', 'S^3_3', 'S^3_4', 'S^3_5']]
+
+
+def test_get_specific_hpos():
+    profile: list[str] = [
+        'AATATTG-',
+        'A--ATTAG',
+        'A--A-TAG'
+    ]
+    trans_prof = translate_profile_hpos(profile)
+    res_2 = []
+    res_3 = []
+    for col_inx in range(len(profile[0])):
+        col = get_column(trans_prof, col_inx)
+        hpos_2 = get_place_hpos(col, 1)
+        res_2.append(hpos_2)
+        hpos_3 = get_place_hpos(col, 2)
+        res_3.append(hpos_3)
+    print(res_2)
+    print(res_3)
+    assert res_2 == [{'S^3_1', 'S^1_1'}, set(), set(), {'S^3_2', 'S^1_4'}, {'G^3_2', 'S^1_5'}, {'S^3_3', 'S^1_6'}, {'S^1_7', 'S^3_4'}, {'G^1_7', 'S^3_5'}]
+    assert res_3 == [{'S^1_1', 'S^2_1'}, set(), set(), {'S^1_4', 'S^2_2'}, set(), {'S^2_4', 'S^1_6'}, {'S^2_5', 'S^1_7'}, {'S^2_6', 'G^1_7'}]
 
 
