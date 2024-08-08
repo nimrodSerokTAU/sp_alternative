@@ -1,3 +1,4 @@
+from pathlib import Path
 
 
 def read_matching_matrix(file_path: str) -> tuple[list[list[int]], dict[str, int]]:
@@ -93,3 +94,32 @@ def compute_dpos_distance(profile_a: list[str], profile_b: list[str]) -> float:
         return sum(dpos_list) / len(dpos_list)
     return -1
 
+
+def get_msa_from_fas(file_path: Path) -> list[str]:
+    res: list[str] = []
+    with open(file_path, 'r') as in_file:
+        for line in in_file:
+            line = line.strip()
+            if len(line) == 0 or line[0] == '>':
+                continue
+            res.append(line)
+    return res
+
+
+def get_msa_from_aln(file_path: Path) -> list[str]:
+    res: list[str] = []
+    seq: str = ''
+    with open(file_path, 'r') as in_file:
+        for line in in_file:
+            line = line.strip()
+            if len(line) == 0:
+                return res
+            if line[0] == '>':
+                if len(seq) > 0:
+                    res.append(seq)
+                    seq = ''
+            else:
+                seq += line
+    if len(seq) > 0:
+        res.append(seq)
+    return res

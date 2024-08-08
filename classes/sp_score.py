@@ -14,7 +14,7 @@ class SPScore:
     def __init__(self, gs_cost: int, ge_cost: int, gap_ext: int):
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        blosum_file_path = os.path.join(script_dir, '../input_files/Blosum50.txt')
+        blosum_file_path = os.path.join(script_dir, '../input_config_files/Blosum50.txt')
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
@@ -113,100 +113,7 @@ class SPScore:
                     nb_open_gap[k] -= 1
         return sp_gp_open
 
-    def calc_multiple_msa_sp_scores(self, profiles_input):
-        pass
-
-
-# def compute_pairwise_restricted_gap_intervals(LGi: iter(list[GapInterval]), LGj: iter(list[GapInterval]), gs_cost: int,
-#                                               ge_cost: int) -> tuple[list[GapInterval], list[GapInterval]]:
-#     IGi: GapInterval or None = next(LGi, None)
-#     IGj: GapInterval or None = next(LGj, None)
-#     shift: int = 0
-#     LG_t_i: list[GapInterval] = []
-#     LG_t_j: list[GapInterval] = []
-#     IG_t_i = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#     IG_t_j = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#     while IGi is not None and IGj is not None:
-#         if IGi.start == IGj.start:
-#             if IGi.is_equal_to(IGj):  # // both intervals disappear when A is restricted to A|{Si,Sj}
-#                 IGi = next(LGi, None)
-#                 IGj = next(LGj, None)
-#                 IG_t_i = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#                 IG_t_j = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#             elif IGj.is_included_in(IGi):  # IGj disappear during restriction
-#                 IGj = next(LGj, None)
-#                 IG_t_j = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#                 if IG_t_i.is_empty():
-#                     IG_t_i.start = IGi.start - shift
-#             else:  # IGi disappear during restriction
-#                 IGi = next(LGi, None)
-#                 IG_t_i = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#                 if IG_t_j.is_empty():
-#                     IG_t_j.start = IGj.start - shift
-#             shift += gap_interval_intersection_length(IGi, IGj)
-#         elif IGi.start < IGj.start:
-#             if IGj.is_included_in(IGi):  # IGj disappear during restriction, shift increase
-#                 if IG_t_i.is_empty():  # set IG_t_i.start, if not already done, before increasing shift
-#                     IG_t_i.start = IGi.start - shift
-#                 shift += gap_interval_intersection_length(IGi, IGj)
-#                 IGj = next(LGj, None)
-#                 IG_t_j = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#             else:  # IGj start after IGi and is not included in IGi
-#                 if IG_t_i.is_empty():
-#                     IG_t_i.start = IGi.start - shift
-#                 if IGi.intersetion_with(IGj) > 0:  # IG_t_j.start is now known and shift increase
-#                     IG_t_j.start = IGj.start - shift
-#                     shift += gap_interval_intersection_length(IGi, IGj)
-#                 IG_t_i.end = IGi.end - shift
-#                 LG_t_i.append(IG_t_i.copy_me())
-#                 IGi = next(LGi, None)
-#                 IG_t_i = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#         else:  # IGj.start < IGi.start
-#             if IGi.is_included_in(IGj):  # IGi disappear during restriction, shift increase
-#                 if IG_t_j.is_empty():  # set IG_t_j.start, if not already done, before increasing shift
-#                     IG_t_j.start = IGj.start - shift
-#                 shift += gap_interval_intersection_length(IGi, IGj)
-#                 IGi = next(LGi, None)
-#                 IG_t_i = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#             else:  # IGi start after IGi and is not included in IGj
-#                 if IG_t_j.is_empty():
-#                     IG_t_j.start = IGj.start - shift
-#                 if IGj.intersection_with(IGi) > 0:  # IG_t_j.start is now known and shift increase
-#                     IG_t_i.start = IGi.start - shift
-#                     shift += gap_interval_intersection_length(IGi, IGj)
-#                 IG_t_j.end = IGj.end - shift
-#                 LG_t_j.append(IG_t_j.copy_me())
-#                 IGj = next(LGj, None)
-#                 IG_t_j = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#     if IGi is not None:  # handle last gaps in LGi
-#         if IG_t_i.is_empty():
-#             IG_t_i.start = IGi.start - shift
-#         IG_t_i.end = IGi.end - shift
-#         LG_t_i.append(IG_t_i.copy_me())
-#         while (IGi := next(LGi, None)) is not None:
-#             new_interval = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#             new_interval.set_start(IGi.start - shift)
-#             new_interval.set_end(IGi.end - shift)
-#             LG_t_i.append(new_interval)
-#     if IGj is not None:  # handle last gaps in LGi
-#         if IG_t_j.is_empty():
-#             IG_t_j.start = IGj.start - shift
-#         IG_t_j.end = IGj.end - shift
-#         LG_t_j.append(IG_t_j.copy_me())
-#         while (IGj := next(LGj, None)) is not None:
-#             new_interval = GapInterval(gs_cost=gs_cost, ge_cost=ge_cost)
-#             new_interval.set_start(IGj.start - shift)
-#             new_interval.set_end(IGj.end - shift)
-#             LG_t_j.append(new_interval)
-#     return LG_t_i, LG_t_j
-
-
-# def gap_interval_intersection_length(interval_a: GapInterval or None, interval_b: GapInterval or None) -> int:
-#     if interval_a is not None and interval_b is not None:
-#         return interval_a.intersection_with(interval_b)
-#     elif interval_a is not None:
-#         return interval_a.get_len()
-#     elif interval_b is not None:
-#         return interval_b.get_len()
-#     else:
-#         return 0
+    def compute_efficient_sp(self, profile: list[str]) -> int:
+        sp_score_subs, sp_score_gap_e = self.compute_sp_s_and_sp_ge(profile)
+        go_score: int = self.compute_sp_gap_open(profile)
+        return sp_score_subs + sp_score_gap_e + go_score

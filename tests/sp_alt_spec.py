@@ -1,5 +1,6 @@
 from classes.gap_interval import GapInterval
 from classes.sp_score import SPScore
+from main import calc_multiple_msa_sp_scores
 from utils import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 
 
@@ -83,15 +84,24 @@ def test_compute_sp_s_and_sp_ge():  # our function
     assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -40}  # this is correct without gs cost
 
 
-def test_onl_gap_open_and_ext_cost_same():  # this is not correct...TODO: debug this
+def test_onl_gap_open_and_ext_cost_same():
     sp: SPScore = SPScore(-1, -5, -1)
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
         'AA--CQEGHI']
-    # 5 gap openings: 2, 1, 2, 1 ? why not 6 ?
     res: int = sp.compute_sp_gap_open(profile)
     assert res == -6
+
+
+def test_compute_efficient_sp():
+    sp: SPScore = SPScore(-1, -5, -1)
+    profile: list[str] = [
+        'ARNDC---HI',
+        'AA-DCQ--AI',
+        'AA--CQEGHI']
+    res: int = sp.compute_efficient_sp(profile)
+    assert res == 45
 
 
 # def restricted():  # ?
@@ -173,3 +183,7 @@ def test_compute_dpos_distance_for_diff():
     ]
     res = compute_dpos_distance(profile_a, profile_b)
     assert res == 0.425
+
+
+def test_my():
+    calc_multiple_msa_sp_scores(False)
