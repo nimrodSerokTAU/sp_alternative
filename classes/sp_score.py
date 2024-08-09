@@ -8,10 +8,10 @@ class SPScore:
     w_matrix: list[list[int]]
     code_to_index_dict: dict[str, int]
     gs_cost: int
-    ge_cost: int
+    ge_cost: float
     gs_cost_extremities: int
 
-    def __init__(self, gs_cost: int, ge_cost: int, gap_ext: int):
+    def __init__(self, gs_cost: int, ge_cost: float, gap_ext: int):  # Blo 62: https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM62
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
         blosum_file_path = os.path.join(script_dir, '../input_config_files/Blosum50.txt')
@@ -60,7 +60,7 @@ class SPScore:
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
         return gap_intervals_list
 
-    def compute_sp_s_and_sp_ge(self, profile: list[str]) -> tuple[int, int]:
+    def compute_sp_s_and_sp_ge(self, profile: list[str]) -> tuple[int, float]:
         options_count = len(self.w_matrix[0])
         seq_len: int = len(profile[0])
         sp_score_subs: int = 0
@@ -113,7 +113,7 @@ class SPScore:
                     nb_open_gap[k] -= 1
         return sp_gp_open
 
-    def compute_efficient_sp(self, profile: list[str]) -> int:
+    def compute_efficient_sp(self, profile: list[str]) -> float:
         sp_score_subs, sp_score_gap_e = self.compute_sp_s_and_sp_ge(profile)
         go_score: int = self.compute_sp_gap_open(profile)
         return sp_score_subs + sp_score_gap_e + go_score

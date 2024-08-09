@@ -2,9 +2,9 @@ class GapInterval:
     start: int
     end: int
     gs_cost: int
-    ge_cost: int
+    ge_cost: float
 
-    def __init__(self, gs_cost: int, ge_cost: int):
+    def __init__(self, gs_cost: int, ge_cost: float):
         self.gs_cost = gs_cost
         self.ge_cost = ge_cost
 
@@ -17,7 +17,7 @@ class GapInterval:
     def get_len(self) -> int:
         return self.end - self.start + 1
 
-    def g_cost(self) -> int:
+    def g_cost(self) -> float:
         return self.get_len() * self.ge_cost + self.gs_cost
 
     def is_empty(self) -> bool:

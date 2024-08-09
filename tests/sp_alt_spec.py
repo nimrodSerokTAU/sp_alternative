@@ -1,7 +1,7 @@
 from classes.gap_interval import GapInterval
 from classes.sp_score import SPScore
 from main import calc_multiple_msa_sp_scores
-from utils import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
+from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 
 
 def test_sp_perfect():
@@ -100,7 +100,7 @@ def test_compute_efficient_sp():
         'ARNDC---HI',
         'AA-DCQ--AI',
         'AA--CQEGHI']
-    res: int = sp.compute_efficient_sp(profile)
+    res: float = sp.compute_efficient_sp(profile)
     assert res == 45
 
 
@@ -151,8 +151,8 @@ def test_get_specific_hpos():
         res_3.append(hpos_3)
     print(res_2)
     print(res_3)
-    assert res_2 == [{'S^3_1', 'S^1_1'}, set(), set(), {'S^3_2', 'S^1_4'}, {'G^3_2', 'S^1_5'}, {'S^3_3', 'S^1_6'}, {'S^1_7', 'S^3_4'}, {'G^1_7', 'S^3_5'}]
-    assert res_3 == [{'S^1_1', 'S^2_1'}, set(), set(), {'S^1_4', 'S^2_2'}, set(), {'S^2_4', 'S^1_6'}, {'S^2_5', 'S^1_7'}, {'S^2_6', 'G^1_7'}]
+    assert res_2 == [{'S^3_1', 'S^1_1'}, None, None, {'S^1_4', 'S^3_2'}, {'G^3_2', 'S^1_5'}, {'S^3_3', 'S^1_6'}, {'S^1_7', 'S^3_4'}, {'G^1_7', 'S^3_5'}]
+    assert res_3 == [{'S^1_1', 'S^2_1'}, None, None, {'S^1_4', 'S^2_2'}, None, {'S^2_4', 'S^1_6'}, {'S^2_5', 'S^1_7'}, {'S^2_6', 'G^1_7'}]
 
 
 def test_compute_dpos_distance_for_same():
@@ -182,8 +182,23 @@ def test_compute_dpos_distance_for_diff():
         'A--A-TAG'
     ]
     res = compute_dpos_distance(profile_a, profile_b)
-    assert res == 0.425
+    assert round(res, 3) == 0.417
 
 
-def test_my():
+def test_dpos_for_diff_length():
+    profile_a: list[str] = [
+        'AATATTG-',
+        'A--ATTAG',
+        'A--A-TAG'
+    ]
+    profile_b: list[str] = [
+        'A-ATAT-TG',
+        'A-A--TTAG',
+        'A--A-T-AG'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert round(res, 3) == 0.639
+
+
+def test_multi():
     calc_multiple_msa_sp_scores(False)
