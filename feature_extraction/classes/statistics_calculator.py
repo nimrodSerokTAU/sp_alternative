@@ -6,14 +6,10 @@ from typing import Optional, Tuple
 from Bio import Seq
 import os
 import sys
-# from feature_extraction.side_code.basic_trees_manipulation import *
-# from feature_extraction.side_code.MSA_manipulation import get_alignment_data, alignment_list_to_df, get_local_path
-# from feature_extraction.side_code.config import *
 from feature_extraction.pypythia.predictor import DifficultyPredictor
 from feature_extraction.pypythia.prediction import get_all_features
 from feature_extraction.pypythia.raxmlng import RAxMLNG
 from feature_extraction.pypythia.msa import MSA
-# from feature_extraction.features_main import ROOT_DIRECRTORY
 
 ROOT_DIRECRTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(ROOT_DIRECRTORY)

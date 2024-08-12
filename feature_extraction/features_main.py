@@ -1,10 +1,5 @@
-# from feature_extraction.simulation_edit.msa_features import *
-# from feature_extraction.simulation_edit.feature_extraction import *
-# from Bio import Align, AlignIO
-# from project_final_version import statistics_calculator
 from classes.statistics_calculator import Statistics
 import os
-# import pandas as pd
 import csv
 import sys
 
@@ -24,14 +19,13 @@ def main(base_folder):
                    'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
                    'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'msa_path']
 
-    with open(f"{base_folder}/all_features_ALL_NEW.csv", mode='a', newline='') as file:
+    with open(f"{base_folder}/all_features_ALL_NEW_541.csv", mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=columns_all)
         writer.writeheader()
 
         for code in os.listdir(folder):
                 if code.startswith('.DS_Store'):
                     continue
-
                 for msa in os.listdir(f"{folder}/{code}/"):
                     try:
                         statistics_calculator = Statistics(f"{folder}/{code}/{msa}", code)

@@ -3,12 +3,12 @@ from classes import regressor
 
 
 if __name__ == '__main__':
-    model = regressor.Regressor("/Users/kpolonsky/PycharmProjects/SOP/feature_extraction/all_features_ALL_NEW_no_pythia.csv",0.1)
+    model = regressor.Regressor("feature_extraction/all_features_ALL_NEW_541.csv",0.1)
     model.random_forest()
-    model.plot_results("Random Forest Regression")
+    model.plot_results("rf")
     model.gradient_boost()
-    model.plot_results("Gradient Booster Regression")
+    model.plot_results("gbr")
     model.support_vector()
-    model.plot_results("Support Vector Regression")
+    model.plot_results("svr")
     model.k_nearest_neighbors()
-    model.plot_results("K-Nearest Neighbors Regression")
+    model.plot_results("knn-r")
