@@ -14,7 +14,7 @@ class SPScore:
     def __init__(self, gs_cost: int, ge_cost: float, gap_ext: int):  # Blo 62: https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM62
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        blosum_file_path = os.path.join(script_dir, '../input_config_files/Blosum50.txt')
+        blosum_file_path = os.path.join(script_dir, '../input_config_files/Blosum62.txt')
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
