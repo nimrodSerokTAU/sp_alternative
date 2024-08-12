@@ -104,23 +104,6 @@ def test_compute_efficient_sp():
     assert res == 45
 
 
-# def restricted():  # ?
-#     sp: SPScore = SPScore(-1, -5, 0)
-#     profile: list[str] = [
-#         'ARNDC---HI',
-#         'AA-DCQ--AI',
-#         'AA--CQEGHI']
-#     intervals_list: list[list[GapInterval]] = []
-#     res: int = 0
-#     for seq in profile:
-#         intervals_list.append(sp.compute_gap_intervals(list(seq)))
-#     for i in range(len(intervals_list)):
-#         for j in range(i + 1, len(intervals_list)):
-#             res += compute_pairwise_restricted_gap_intervals(iter(intervals_list[i]), iter(intervals_list[j]),
-#                                                              sp.gs_cost, sp.ge_cost)
-#     assert res == -10
-
-
 def test_translate_profile_hpos():
     profile: list[str] = [
         'AATATTG-',
@@ -200,5 +183,39 @@ def test_dpos_for_diff_length():
     assert round(res, 3) == 0.639
 
 
+def test_dpos_for_diff_length_case_b():
+    profile_a: list[str] = [
+        'AAT',
+        '--T',
+        '-CG'
+    ]
+    profile_b: list[str] = [
+        'AAT-',
+        '---T',
+        '--CG'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert round(res, 3) == 0.5
+
+
+def test_dpos_for_diff_length_case_c():
+    profile_a: list[str] = [
+        'ATA',
+        '-T-',
+        'CG-'
+    ]
+    profile_b: list[str] = [
+        'AT-A',
+        '--T-',
+        '-CG-'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert round(res, 3) == 0.5
+
+
 def test_multi():
     calc_multiple_msa_sp_scores(False)
+
+
+# alternatives - 1 data set
+# numpy

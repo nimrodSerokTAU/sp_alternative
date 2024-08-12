@@ -32,9 +32,9 @@ def get_place_hpos(column: list[str], seq_index: int) -> set[str] | None:
     return set(col)
 
 
-def get_place_dpos(set_a: set, set_b: set) -> float:
+def get_place_dpos(set_a: set, set_b: set, two_sets_size: int) -> float:
     symmetric_diff_size = len(set_a.difference(set_b)) + len(set_b.difference(set_a))
-    return symmetric_diff_size / (len(set_a) + len(set_b))
+    return symmetric_diff_size / two_sets_size
 
 
 def create_hpos_table(profile_naming: list[list[str]]) -> list[list[set[str]]]:
@@ -48,8 +48,6 @@ def create_hpos_table(profile_naming: list[list[str]]) -> list[list[set[str]]]:
             hpos = get_place_hpos(col, i)
             if hpos is not None:
                 hpos_table[i].append(hpos)
-                if i == 20 and col_index > 600:
-                    count_20 += 1
     return hpos_table
 
 
@@ -60,12 +58,13 @@ def compute_dpos_distance(profile_a: list[str], profile_b: list[str]) -> float:
     seq_count: int = len(profile_a)
     profile_a_hpos: list[list[set[str]]] = create_hpos_table(profile_a_naming)
     profile_b_hpos: list[list[set[str]]] = create_hpos_table(profile_b_naming)
+    two_sets_size: int = (seq_count - 1) * 2
     for i in range(seq_count):
         for j in range(len(profile_a_hpos[i])):
             hpos_a_i: set[str] = profile_a_hpos[i][j]
             hpos_b_i: set[str] = profile_b_hpos[i][j]
             if len(hpos_a_i) > 0 or len(hpos_b_i) > 0:
-                dpos_i_j = get_place_dpos(hpos_a_i, hpos_b_i)
+                dpos_i_j = get_place_dpos(hpos_a_i, hpos_b_i, two_sets_size)
                 dpos_list.append(dpos_i_j)
     if len(dpos_list) > 0:
         return sum(dpos_list) / len(dpos_list)
