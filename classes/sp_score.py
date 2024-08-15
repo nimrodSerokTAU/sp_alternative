@@ -11,7 +11,8 @@ class SPScore:
     ge_cost: float
     gs_cost_extremities: int
 
-    def __init__(self, gs_cost: int, ge_cost: float, gap_ext: int):  # Blo 62: https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM62
+    def __init__(self, gs_cost: int, ge_cost: float, gap_ext: int):
+        # Blo 62: https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM62
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
         blosum_file_path = os.path.join(script_dir, '../input_config_files/Blosum62.txt')
