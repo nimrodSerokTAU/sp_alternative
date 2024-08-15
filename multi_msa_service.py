@@ -24,7 +24,9 @@ def get_file_names_ordered(file_names: list[str]) -> tuple[str, list[str]]:
 
 
 def print_comparison_file(output_file_path: Path, all_msa_stats: list[MSAStats], pearsonr: float, spearmanr: float,
-                          sop_over_count: float):
+                          sop_over_count: float, dir_name: str = ''):
+    if dir_name != '':
+        output_file_path = Path(f'{str(output_file_path)}_{dir_name}')
     with (open(output_file_path, 'w') as outfile):
         print(f'pearson r:{pearsonr}, spearman r:{spearmanr}, sop over 1 count: {sop_over_count}', file=outfile)
         print('name,sp_score,normalized_sp_score,dpos', file=outfile)
@@ -63,7 +65,8 @@ def calc_multiple_msa_sp_scores(config: Configuration):
         true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
         true_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(true_msa.sequences))
         for inferred_file_name in inferred_file_names:
-            inferred_msa = MSA(dir_name)
+            msa_name = inferred_file_name if config.is_analyze_per_dir else dir_name
+            inferred_msa = MSA(msa_name)
             inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
             if config.sop_clac_type == SopCalcTypes.NAIVE:
                 inferred_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
@@ -74,7 +77,12 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)  # TODO: handle this
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
             all_msa_stats.append(inferred_msa.stats)
-    pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
-    print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count)
+        if config.is_analyze_per_dir:
+            pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
+            print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count, dir_name)
+            all_msa_stats = []
+    if not config.is_analyze_per_dir:
+        pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
+        print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count)
     print('done')
 

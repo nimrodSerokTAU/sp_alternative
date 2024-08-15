@@ -7,8 +7,7 @@ from dpos import translate_profile_naming, get_column, get_place_hpos, compute_d
 
 
 def test_sp_perfect():
-    configuration: Configuration = Configuration(-1, -1, -1, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(-1, -1, -1, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDCQEGHI',
@@ -20,8 +19,7 @@ def test_sp_perfect():
 
 
 def test_sp_no_gaps():
-    configuration: Configuration = Configuration(-1, -5, 0, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(-1, -5, 0, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDCQEGHI',
@@ -34,8 +32,7 @@ def test_sp_no_gaps():
 
 
 def test_sp_local_gaps():
-    configuration: Configuration = Configuration(-1, -5, 0, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(-1, -5, 0, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDCQ-GHI',
@@ -47,8 +44,7 @@ def test_sp_local_gaps():
 
 
 def test_naive_algo_case_a_subs_only():
-    configuration: Configuration = Configuration(0, 0, 0, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(0, 0, 0, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -60,8 +56,7 @@ def test_naive_algo_case_a_subs_only():
 
 
 def test_naive_algo_case_a_subs_and_ge():
-    configuration: Configuration = Configuration(0, -5, 0, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(0, -5, 0, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -73,8 +68,7 @@ def test_naive_algo_case_a_subs_and_ge():
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -85,8 +79,7 @@ def test_naive_algo_case_a_subs_and_ge_and_gs():
 
 
 def test_compute_sp_s_and_sp_ge():  # our function
-    configuration: Configuration = Configuration(0, -5, 0, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(0, -5, 0, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -101,8 +94,7 @@ def test_compute_sp_s_and_sp_ge():  # our function
 
 
 def test_onl_gap_open_and_ext_cost_same():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -113,8 +105,7 @@ def test_onl_gap_open_and_ext_cost_same():
 
 
 def test_compute_efficient_sp():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50', SopCalcTypes.EFFICIENT,
-                                                 None)
+    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -235,15 +226,7 @@ def test_dpos_for_diff_length_case_c():
 
 def test_multi():
     configuration: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
-                                                 SopCalcTypes.EFFICIENT, 'comparison_files')
+                                                 SopCalcTypes.EFFICIENT, 'tests/comparison_files',
+                                                 False)
     calc_multiple_msa_sp_scores(configuration)
 
-
-def test_multi_b():
-    configuration: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
-                                                 SopCalcTypes.EFFICIENT, 'tests/comparison_files')
-    calc_multiple_msa_sp_scores(configuration)
-
-
-# alternatives - 1 data set
-# numpy
