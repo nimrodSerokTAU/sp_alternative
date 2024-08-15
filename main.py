@@ -1,76 +1,9 @@
-import os
-from pathlib import Path
-import numpy as np
-import pandas as pd
-import scipy.stats
+from classes.config import Configuration
+from enums import SopCalcTypes
+from multi_msa_service import calc_multiple_msa_sp_scores
 
-from classes.msa import MSA, MSAStats
-from classes.sp_score import SPScore
-from dpos import compute_dpos_distance
+configuration: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                             SopCalcTypes.EFFICIENT, 'comparison_files')
 
-
-def get_file_names_ordered(file_names: list[str]) -> tuple[str, list[str]]:
-    true_file_name: str
-    other_file_names: list[str] = []
-    for file_name in file_names:
-        ext: str = file_name.split('.')[-1]
-        if ext == 'fas':  # TODO: define identification
-            true_file_name = file_name
-        else:
-            other_file_names.append(file_name)
-    return true_file_name, other_file_names  # TODO: can protect
-
-
-def print_comparison_file(output_file_path: Path, all_msa_stats: list[MSAStats], pearsonr: float, spearmanr: float,
-                          sop_over_count: float):
-    with (open(output_file_path, 'w') as outfile):
-        print(f'pearson r:{pearsonr}, spearman r:{spearmanr}, sop over 1 count: {sop_over_count}', file=outfile)
-        print('name,sp_score,normalized_sp_score,dpos', file=outfile)
-        for msa_stats in all_msa_stats:
-            print(msa_stats.get_my_features(), file=outfile)
-
-
-def analyze_msa_stats(all_msa_stats: list[MSAStats]) -> tuple[float, float, int]:
-    data: list[list] = []
-    sop_over_count: int = 0
-    for msa_stats in all_msa_stats:
-        data.append(msa_stats.get_my_features_as_list())
-        if msa_stats.normalised_sop_score > 1:
-            sop_over_count += 1
-    df: pd.DataFrame = pd.DataFrame(data, columns=['name', 'sop_score', 'normalised_sop_score', 'dpos_dist_from_true'])
-    x = df['normalised_sop_score']
-    y = df['dpos_dist_from_true']
-    pearsonr: float = scipy.stats.pearsonr(x, y)
-    spearmanr: float = scipy.stats.spearmanr(x, y)
-    return pearsonr.statistic, spearmanr.statistic, sop_over_count
-
-
-def calc_multiple_msa_sp_scores(is_naive: bool):
-    all_msa_stats: list[MSAStats] = []
-    project_path: Path = Path(os.path.dirname(os.path.realpath(__file__)))
-    # project_path: Path = script_path.parent.absolute()
-    comparison_dir: Path = Path(os.path.join(str(project_path), 'comparison_files'))
-    sp: SPScore = SPScore(-10, -0.5, 0)  # TODO: get default values
-    output_file_path = Path(os.path.join(str(project_path), 'output/comparison_results.csv'))
-    for dir_name in os.listdir(comparison_dir):
-        dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
-        true_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
-        true_msa = MSA(dir_name)
-        true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
-        true_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(true_msa.sequences))
-        for inferred_file_name in inferred_file_names:
-            inferred_msa = MSA(dir_name)
-            inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
-            if is_naive:
-                inferred_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
-            else:
-                inferred_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
-            inferred_msa.stats.set_my_normalised_sop(true_msa.stats.sop_score)
-            inferred_msa.order_sequences(true_msa.seq_names)
-            dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)  # TODO: handle this
-            inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
-            all_msa_stats.append(inferred_msa.stats)
-    pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
-    print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count)
-    print('done')
-
+if __name__ == '__main__':
+    calc_multiple_msa_sp_scores(configuration)

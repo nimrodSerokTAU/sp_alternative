@@ -1,5 +1,6 @@
 import os
 
+from classes.config import Configuration
 from classes.gap_interval import GapInterval
 from utils import read_matching_matrix, translate_to_matrix_index
 
@@ -11,17 +12,17 @@ class SPScore:
     ge_cost: float
     gs_cost_extremities: int
 
-    def __init__(self, gs_cost: int, ge_cost: float, gap_ext: int):
-        # Blo 62: https://www.ncbi.nlm.nih.gov/IEB/ToolBox/C_DOC/lxr/source/data/BLOSUM62
+    def __init__(self, configuration: Configuration):
+
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        blosum_file_path = os.path.join(script_dir, '../input_config_files/Blosum62.txt')
+        blosum_file_path = os.path.join(script_dir, f'../input_config_files/{configuration.blosum_file_name}.txt')
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
-        self.gs_cost = gs_cost
-        self.ge_cost = ge_cost
-        self.gs_cost_extremities = gap_ext
+        self.gs_cost = configuration.gs_cost
+        self.ge_cost = configuration.ge_cost
+        self.gs_cost_extremities = configuration.gs_cost_extremities
 
     def compute_naive_sp_score(self, profile: list[str]) -> int:
         if len(profile) == 0:
@@ -42,20 +43,20 @@ class SPScore:
                     if seq_i[k] != '-' and seq_j[k] != '-':
                         sp_score_subs += self.subst(seq_i[k], seq_j[k])  # Nimrod: bug on pseudo code
                 for gap_interval in (self.compute_gap_intervals(clean_seq_i) + self.compute_gap_intervals(clean_seq_j)):
-                    sp_score_gaps += gap_interval.g_cost()
+                    sp_score_gaps += gap_interval.g_cost(self.gs_cost, self.ge_cost)
         return sp_score_subs + sp_score_gaps
 
     def compute_gap_intervals(self, seq_i: list[str]) -> list[GapInterval]:
         seq_len: int = len(seq_i)
         gap_intervals_list: list[GapInterval] = []
-        gap_interval = GapInterval(gs_cost=self.gs_cost, ge_cost=self.ge_cost)
+        gap_interval = GapInterval()
         for k in range(seq_len):
             if seq_i[k] == '-' and gap_interval.is_empty():  # start a new gap interval
                 gap_interval.set_start(start=k)
             if seq_i[k] != '-' and not gap_interval.is_empty():  # the current gap interval finish at previous position
                 gap_interval.end = k - 1
                 gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
-                gap_interval = GapInterval(gs_cost=self.gs_cost, ge_cost=self.ge_cost)
+                gap_interval = GapInterval()
         if not gap_interval.is_empty():  # handle terminal gap if any
             gap_interval.end = seq_len
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
