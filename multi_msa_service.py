@@ -59,6 +59,7 @@ def calc_multiple_msa_sp_scores(config: Configuration):
     comparison_dir: Path = Path(os.path.join(str(project_path), config.input_files_dir_name))
     sp: SPScore = SPScore(config)
     output_file_path = Path(os.path.join(str(project_path), 'output/comparison_results.csv'))
+    pearsonr = spearmanr = sop_over_count = 0
     for dir_name in os.listdir(comparison_dir):
         dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
         true_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
@@ -67,6 +68,7 @@ def calc_multiple_msa_sp_scores(config: Configuration):
         true_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(true_msa.sequences))
         for inferred_file_name in inferred_file_names:
             msa_name = inferred_file_name if config.is_analyze_per_dir else dir_name
+            print(msa_name)
             inferred_msa = MSA(msa_name)
             inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
             if config.sop_clac_type == SopCalcTypes.NAIVE:
@@ -80,11 +82,13 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             inferred_msa.stats.set_my_alignment_features(inferred_msa.sequences)
             all_msa_stats.append(inferred_msa.stats)
         if config.is_analyze_per_dir:
-            pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
+            if config.is_compute_correlation:
+                pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
             print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count, dir_name)
             all_msa_stats = []
     if not config.is_analyze_per_dir:
-        pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
+        if config.is_compute_correlation:
+            pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
         print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count)
     print('done')
 
