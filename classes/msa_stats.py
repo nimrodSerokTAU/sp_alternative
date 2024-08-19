@@ -115,6 +115,7 @@ class MSAStats:
         self.set_length(aln)
         self.set_taxa_num(aln)
         self.set_values(aln)
+        self.calc_entropy(aln)
 
     def get_my_features(self) -> str:
         values = self.get_my_features_as_list()
@@ -180,7 +181,7 @@ class MSAStats:
         self.gaps_len_three_plus = sum(count for length, count in total_gaps_count.items() if
                                        length > 3)  # double counts the "same" gap in different sequences
 
-        # Noa's part incorporated
+    def calc_entropy(self, aln: list[str]):  # Noa's part
         alignment_df, alignment_df_fixed, alignment_df_unique = get_alignment_df(aln)
         counts_per_position = [dict(alignment_df_fixed[col].value_counts(dropna=True)) for col in list(alignment_df)]
         probabilities = [
@@ -297,4 +298,5 @@ def alignment_list_to_df(alignment_data: list[str]) -> pd.DataFrame:
 
 
 def calc_percentile(values, percentile: int) -> float:
+    a = 3
     return float(np.percentile(values, percentile))
