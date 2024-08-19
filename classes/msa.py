@@ -1,29 +1,6 @@
 from pathlib import Path
 
-
-class MSAStats:
-    dataset_name: str
-    sop_score: float
-    normalised_sop_score: float
-    dpos_dist_from_true: float
-
-    def __init__(self, dataset_name: str):
-        self.dataset_name = dataset_name
-
-    def set_my_sop_score(self, sop_score: float):
-        self.sop_score = sop_score
-
-    def set_my_normalised_sop(self, true_sop: float):
-        self.normalised_sop_score = self.sop_score / true_sop
-
-    def set_my_dpos_dist_from_true(self, dpos: float):
-        self.dpos_dist_from_true = dpos
-
-    def get_my_features(self) -> str:
-        return f'{self.dataset_name},{self.sop_score},{round(self.normalised_sop_score, 4)},{round(self.dpos_dist_from_true, 4)}'
-
-    def get_my_features_as_list(self) -> list:
-        return [self.dataset_name, self.sop_score, self.normalised_sop_score, self.dpos_dist_from_true]
+from classes.msa_stats import MSAStats
 
 
 class MSA:

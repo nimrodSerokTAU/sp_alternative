@@ -29,7 +29,7 @@ def print_comparison_file(output_file_path: Path, all_msa_stats: list[MSAStats],
         output_file_path = Path(f'{str(output_file_path)}_{dir_name}')
     with (open(output_file_path, 'w') as outfile):
         print(f'pearson r:{pearsonr}, spearman r:{spearmanr}, sop over 1 count: {sop_over_count}', file=outfile)
-        print('name,sp_score,normalized_sp_score,dpos', file=outfile)
+        print(','.join(all_msa_stats[0].ordered_col_names), file=outfile)
         for msa_stats in all_msa_stats:
             print(msa_stats.get_my_features(), file=outfile)
 
@@ -43,7 +43,8 @@ def analyze_msa_stats(all_msa_stats: list[MSAStats]) -> tuple[float, float, int]
         data.append(msa_stats.get_my_features_as_list())
         if msa_stats.normalised_sop_score > 1:
             sop_over_count += 1
-    df: pd.DataFrame = pd.DataFrame(data, columns=['name', 'sop_score', 'normalised_sop_score', 'dpos_dist_from_true'])
+
+    df: pd.DataFrame = pd.DataFrame(data, columns=all_msa_stats[0].get_ordered_col_names())
     x = df['normalised_sop_score']
     y = df['dpos_dist_from_true']
     pearsonr: float = scipy.stats.pearsonr(x, y)
@@ -76,6 +77,7 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             inferred_msa.order_sequences(true_msa.seq_names)
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)  # TODO: handle this
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+            inferred_msa.stats.set_my_alignment_features(inferred_msa.sequences)
             all_msa_stats.append(inferred_msa.stats)
         if config.is_analyze_per_dir:
             pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
