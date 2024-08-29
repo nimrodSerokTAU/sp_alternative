@@ -25,3 +25,19 @@ def read_matching_matrix(file_path: str) -> tuple[list[list[int]], dict[str, int
 def translate_to_matrix_index(letter: str, code_to_index_dict: dict[str, int]) -> int:
     return code_to_index_dict[letter] if letter in code_to_index_dict else code_to_index_dict['*']
 
+
+def get_keys_list(keys_structure: list) -> list[str]:
+    res: list[str] = []
+    add_children_to_list(keys_structure, res)
+    return res
+
+
+def add_children_to_list(keys_structure: list, res: list[str]):
+    if type(keys_structure) is list:
+        for item in keys_structure:
+            if type(item) is list:
+                add_children_to_list(item, res)
+            else:
+                res.append(item)
+                print(len(res))
+                print(item)

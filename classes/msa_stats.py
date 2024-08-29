@@ -47,6 +47,13 @@ class MSAStats:
     num_cols_2_gaps: int
     num_cols_all_gaps_except1: int
     ordered_col_names: list[str]
+    sp_score_subs_norm: float
+    sp_go_score_norm: float
+    sp_score_gap_e_norm: float
+    sp_match_ratio: float
+    sp_missmatch_ratio: float
+    single_char_count: int
+    double_char_count: int
 
     def __init__(self, code: str):
         self.code = code
@@ -91,6 +98,13 @@ class MSAStats:
         self.num_cols_1_gap = 0
         self.num_cols_2_gaps = 0
         self.num_cols_all_gaps_except1 = 0
+        self.sp_score_subs_norm = 0
+        self.sp_go_score_norm = 0
+        self.sp_score_gap_e_norm = 0
+        self.sp_match_ratio = 0
+        self.sp_missmatch_ratio = 0
+        self.single_char_count = 0
+        self.double_char_count = 0
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -100,13 +114,23 @@ class MSAStats:
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
             'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
-            'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1']
+            'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
+            'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm',
+            'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count']
 
     def set_my_sop_score(self, sop_score: float):
         self.sop_score = sop_score
 
-    def set_my_normalised_sop(self, true_sop: float):
-        self.normalised_sop_score = self.sop_score / true_sop
+    def set_my_sop_score_parts(self, seqs_count: int, alignment_length: int, sp_score_subs: float, go_score: float,
+                               sp_score_gap_e: float, sp_match_count: int, sp_missmatch_count: int):
+        number_of_pairs = seqs_count * (seqs_count - 1) / 2 * alignment_length
+        self.sop_score = sp_score_subs + go_score + sp_score_gap_e
+        self.normalised_sop_score = self.sop_score / number_of_pairs
+        self.sp_score_subs_norm = sp_score_subs / number_of_pairs
+        self.sp_go_score_norm = go_score / number_of_pairs
+        self.sp_score_gap_e_norm = sp_score_gap_e / number_of_pairs
+        self.sp_match_ratio = sp_match_count / number_of_pairs
+        self.sp_missmatch_ratio = sp_missmatch_count / number_of_pairs
 
     def set_my_dpos_dist_from_true(self, dpos: float):
         self.dpos_dist_from_true = dpos
@@ -143,19 +167,17 @@ class MSAStats:
         min_length = 1000000000
         max_length = -1
         total_gap_char = 0
-        i = 0
         gap_positions = {}
-        total_gaps_count = defaultdict(int)
+        gaps_length_histogram = defaultdict(int)
         #
         for seq_index, record in enumerate(aln):
-            i += 1
             total_gap_char += str(record).count('-')
             len_no_gaps = len(str(record).replace('-', ''))
             if len_no_gaps < min_length:
                 min_length = len_no_gaps
             if len_no_gaps > max_length:
                 max_length = len_no_gaps
-            self.record_gap_lengths(record, seq_index, gap_positions, total_gaps_count)
+            self.record_gap_lengths(record, seq_index, gap_positions, gaps_length_histogram)
         self.calculate_counts(gap_positions)
 
         # per column
@@ -175,10 +197,10 @@ class MSAStats:
                 self.num_cols_all_gaps_except1 += 1
         self.seq_min_len = min_length
         self.seq_max_len = max_length
-        self.gaps_len_one = total_gaps_count[1]  # double counts the "same" gap in different sequences
-        self.gaps_len_two = total_gaps_count[2]  # double counts the "same" gap in different sequences
-        self.gaps_len_three = total_gaps_count[3]  # double counts the "same" gap in different sequences
-        self.gaps_len_three_plus = sum(count for length, count in total_gaps_count.items() if
+        self.gaps_len_one = gaps_length_histogram[1]  # double counts the "same" gap in different sequences
+        self.gaps_len_two = gaps_length_histogram[2]  # double counts the "same" gap in different sequences
+        self.gaps_len_three = gaps_length_histogram[3]  # double counts the "same" gap in different sequences
+        self.gaps_len_three_plus = sum(count for length, count in gaps_length_histogram.items() if
                                        length > 3)  # double counts the "same" gap in different sequences
 
     def calc_entropy(self, aln: list[str]):  # Noa's part
@@ -209,14 +231,20 @@ class MSAStats:
     def get_max_len(self) -> int:
         return int(self.seq_max_len)
 
-    def record_gap_lengths(self, sequence: str, seq_index: int, gap_positions: dict, total_gaps_count) -> None:
+    def record_gap_lengths(self, sequence: str, seq_index: int, gap_positions: dict, gaps_length_histogram) -> None:
+        start_index = 0
         current_length = 0
-        start_index = None
-
+        last_gap_index = 0
+        single_char_count = 0
+        double_char_count = 0
         for i, char in enumerate(sequence):
             if char == '-':
                 if current_length == 0:
                     start_index = i
+                    if start_index == last_gap_index + 2:
+                        single_char_count += 1
+                    elif start_index == last_gap_index + 3:
+                        double_char_count += 1
                 current_length += 1
             else:
                 if current_length > 0:
@@ -225,7 +253,8 @@ class MSAStats:
                         gap_positions[(current_length, start_index)].append(seq_index)
                     else:
                         gap_positions[(current_length, start_index)] = [seq_index]
-                    total_gaps_count[current_length] += 1
+                    gaps_length_histogram[current_length] += 1
+                    last_gap_index = max(i - 1, 0)
                 current_length = 0
 
         # Record if the sequence ends with gaps
@@ -235,9 +264,17 @@ class MSAStats:
                 gap_positions[(current_length, start_index)].append(seq_index)
             else:
                 gap_positions[(current_length, start_index)] = [seq_index]
-            total_gaps_count[current_length] += 1
+            gaps_length_histogram[current_length] += 1
+        else:
+            current_index = len(sequence)
+            if current_index == last_gap_index + 2:
+                single_char_count += 1
+            elif current_index == last_gap_index + 3:
+                double_char_count += 1
 
-        self.total_gaps = sum(count for length, count in total_gaps_count.items())
+        self.total_gaps = sum(count for length, count in gaps_length_histogram.items())
+        self.single_char_count += single_char_count
+        self.double_char_count += double_char_count
 
     def calculate_counts(self, gap_positions: dict) -> None:
         length_count = {1: Counter(), 2: Counter(), 3: Counter()}

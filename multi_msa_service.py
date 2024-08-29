@@ -7,20 +7,24 @@ import scipy.stats
 from classes.msa import MSA, MSAStats
 from classes.config import Configuration
 from classes.sp_score import SPScore
+from classes.unrooted_tree import UnrootedTree
 from dpos import compute_dpos_distance
 from enums import SopCalcTypes
 
 
-def get_file_names_ordered(file_names: list[str]) -> tuple[str, list[str]]:
-    true_file_name: str
+def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | None, list[str]]:
+    true_file_name: str | None = None
+    true_tree_file_name: str | None = None
     other_file_names: list[str] = []
     for file_name in file_names:
         ext: str = file_name.split('.')[-1]
         if ext == 'fas':  # TODO: define identification
             true_file_name = file_name
+        elif ext == 'txt':  # TODO: define identification
+            true_tree_file_name = file_name
         else:
             other_file_names.append(file_name)
-    return true_file_name, other_file_names  # TODO: can protect
+    return true_file_name, true_tree_file_name, other_file_names  # TODO: can protect
 
 
 def print_comparison_file(output_file_path: Path, all_msa_stats: list[MSAStats], pearsonr: float, spearmanr: float,
@@ -62,10 +66,13 @@ def calc_multiple_msa_sp_scores(config: Configuration):
     pearsonr = spearmanr = sop_over_count = 0
     for dir_name in os.listdir(comparison_dir):
         dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
-        true_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
+        true_file_name, true_tree_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
         true_msa = MSA(dir_name)
-        true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
-        true_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(true_msa.sequences))
+        if true_tree_file_name:
+            true_msa.set_true_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
+        if true_file_name:
+            true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
+        true_msa.stats.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
         for inferred_file_name in inferred_file_names:
             msa_name = inferred_file_name if config.is_analyze_per_dir else dir_name
             print(msa_name)
@@ -74,8 +81,9 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             if config.sop_clac_type == SopCalcTypes.NAIVE:
                 inferred_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
             else:
-                inferred_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
-            inferred_msa.stats.set_my_normalised_sop(true_msa.stats.sop_score)
+                sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
+                inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
+                                                    sp_missmatch_count)
             inferred_msa.order_sequences(true_msa.seq_names)
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)  # TODO: handle this
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
