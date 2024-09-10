@@ -106,8 +106,6 @@ class SPScore:
             gap_intervals_list = self.compute_gap_intervals(list(seq_i))
             for gap_interval in gap_intervals_list:
                 for k in range(gap_interval.start, gap_interval.end + 1):
-                    if k > 621:
-                        stop = True
                     nb_open_gap[k] += 1
                 gap_closing[gap_interval.end].append(gap_interval)
         sp_gp_open = 0  # part of the SP score related to gap opening costs

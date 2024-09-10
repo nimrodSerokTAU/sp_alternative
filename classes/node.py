@@ -1,14 +1,16 @@
 from typing import Self
+import copy
 
 
 class Node:
     id: int
-    keys: list[str]
+    keys: set[str]
     father: Self
     branch_length: float
     children: list[Self]
+    newick_part: str
 
-    def __init__(self, node_id: int, keys: list[str], children: list[Self] | None, branch_length: float = 0):
+    def __init__(self, node_id: int, keys: set[str], children: list[Self], branch_length: float = 0):
         self.id = node_id
         self.keys = keys
         self.father = None
@@ -17,33 +19,42 @@ class Node:
 
     @classmethod
     def create_from_children(cls, children_list: list[Self], inx: int | None):
-        keys: list[str] = []
+        keys: set[str] = set()
         for child in children_list:
-            keys += child.keys
+            keys = keys.union(child.keys)
         return cls(node_id=inx,
                    keys=keys,
                    children=children_list)
 
-    def get_internal_edges_set(self) -> set[str]:
-        return set(self.keys)
-
-    def calc_rf(self, other_tree):
-        return len(self.get_internal_edges_set() ^ other_tree.get_internal_edges_set())
-
     def add_child_to_me(self, child_node):
         self.children.append(child_node)
         child_node.set_a_father(self)
-
-    def align_down(self):
-        current_inx = 0
-        for child in self.children:
-            current_inx += len(child.keys)
-        for child in self.children:
-            if hasattr(child, 'children'):
-                child.align_down()
 
     def set_a_father(self, other_node: 'Node'):
         self.father = other_node
 
     def set_branch_length(self, branch_length: float):
         self.branch_length = branch_length
+
+    def get_keys_rooted_string(self) -> str:
+        sorted_keys = list(self.keys)
+        sorted_keys.sort()
+        return ','.join(sorted_keys)
+
+    def get_keys_unrooted_string(self, tree_keys: set[str], differentiator_key: str) -> str | None:
+        other_side = tree_keys.difference(self.keys)
+        if len(self.keys) > len(other_side) or (len(self.keys) == len(other_side) and differentiator_key in other_side):
+            sorted_keys = list(other_side)
+        else:
+            sorted_keys = list(self.keys)
+        if len(sorted_keys) < 2:
+            return None
+        sorted_keys.sort()
+        return ','.join(sorted_keys)
+
+    def fill_newick(self):
+        if len(self.children) == 0:
+            self.newick_part = f'{list(self.keys)[0]}:{self.branch_length}'
+        elif len(self.children) == 2:
+            self.newick_part = f'({self.children[0].newick_part},{self.children[1].newick_part}):{self.branch_length}'
+

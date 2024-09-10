@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict, Counter
 
+from classes.unrooted_tree import UnrootedTree
+
 
 class MSAStats:
     code: str
@@ -54,6 +56,7 @@ class MSAStats:
     sp_missmatch_ratio: float
     single_char_count: int
     double_char_count: int
+    rf_from_true: int
 
     def __init__(self, code: str):
         self.code = code
@@ -105,8 +108,9 @@ class MSAStats:
         self.sp_missmatch_ratio = 0
         self.single_char_count = 0
         self.double_char_count = 0
+        self.rf_from_true = -1
         self.ordered_col_names = [
-            'code', 'sop_score', 'normalised_sop_score', 'dpos_dist_from_true', 'taxa_num',
+            'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
             'entropy_median', 'entropy_var', 'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max',
             'av_gaps', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two',
@@ -317,6 +321,9 @@ class MSAStats:
 
     def get_ordered_col_names(self) -> list[str]:
         return self.ordered_col_names
+
+    def set_rf_from_true(self, my_tree: UnrootedTree, true_tree: UnrootedTree):
+        self.rf_from_true = my_tree.calc_rf(true_tree)
 
 
 def get_alignment_df(data: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:

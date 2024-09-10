@@ -63,18 +63,22 @@ class MSA:
                                           sp_score_subs=sp_score_subs, go_score=go_score, sp_score_gap_e=sp_score_gap_e,
                                           sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count)
 
-    def build_nj_tree(self, sp_score: SPScore) -> UnrootedTree:
+    def build_nj_tree(self, sp_score: SPScore):
         distance_matrix: list[list[float]] = [[0] * len(self.sequences) for i in range(len(self.sequences))]
         nodes: list[Node] = []
         for i in range(len(self.sequences)):
-            node = Node(i, [self.seq_names[i]], '', None, None)
+            node = Node(i, {self.seq_names[i]}, [], 0)
+            node.fill_newick()
             nodes.append(node)
             for j in range(i, len(self.sequences)):
                 sop = sp_score.compute_efficient_sp(profile=[self.sequences[i], self.sequences[j]])
                 distance_matrix[i][j] = sop
                 distance_matrix[j][i] = sop
         nj = NeighborJoining(distance_matrix, nodes)
-        return nj.unrooted_nodes
+        self.tree = nj.tree_res
 
-    def set_true_tree(self, tree: UnrootedTree):
+    def set_tree(self, tree: UnrootedTree):
         self.tree = tree
+
+    def set_rf_from_true(self, true_tree: UnrootedTree):
+        self.stats.set_rf_from_true(self.tree, true_tree)

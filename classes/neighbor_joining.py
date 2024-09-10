@@ -10,12 +10,14 @@ class NeighborJoining:
     distance_matrix: List[List[float]]
     nodes: List[Node]
     q_matrix: List[List[float]]
-    unrooted_nodes: UnrootedTree
+    all_nodes: List[Node]
+    tree_res: UnrootedTree
 
     def __init__(self, distanceMatrix: List[List[float]], nodes: List[Node]):
         self.distance_matrix = copy.deepcopy(distanceMatrix)
         self.nodes = nodes
-        self.unrooted_nodes = self.build_tree()
+        self.all_nodes = nodes.copy()
+        self.tree_res = self.build_tree()
 
     def calc_q_matrix(self) -> List[List[int]]:
         number_of_seq = len(self.nodes)
@@ -60,7 +62,9 @@ class NeighborJoining:
         self.distance_matrix = matrix
         self.nodes[f_inx].set_branch_length(delta_f)
         self.nodes[s_inx].set_branch_length(delta_s)
-        new_node = Node.create_from_children([self.nodes[f_inx], self.nodes[s_inx]], None)
+        new_node = Node.create_from_children([self.nodes[f_inx], self.nodes[s_inx]], len(self.all_nodes))
+        new_node.fill_newick()  # TODO: remove later for test only
+        self.all_nodes.append(new_node)
         self.nodes[f_inx].set_a_father(new_node)
         self.nodes[s_inx].set_a_father(new_node)
         self.nodes[f_inx] = new_node
@@ -74,12 +78,24 @@ class NeighborJoining:
         delta_s = self.distance_matrix[f_inx][s_inx] - delta_f
         return delta_f, delta_s
 
+    def merge_last_three(self) -> Node:
+        delta_f, delta_s = self.find_delta(0, 1)
+        delta_t = self.distance_matrix[0][2] - delta_f
+        deltas = [delta_f, delta_s, delta_t]
+        new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], None)
+        self.all_nodes.append(new_node)
+        for i in range(3):
+            self.nodes[i].set_branch_length(deltas[i])
+            self.nodes[i].set_a_father(new_node)
+        return new_node
+
     def build_tree(self) -> UnrootedTree:
         while len(self.nodes) > 3:
             self.q_matrix = self.calc_q_matrix()
             self.merge_two_clusters()
         self.q_matrix = self.calc_q_matrix()
-        return UnrootedTree([self.nodes[0], self.nodes[1], self.nodes[2]])
+        root = self.merge_last_three()
+        return UnrootedTree(root, self.all_nodes)
 
 
 

@@ -1,11 +1,29 @@
+from pathlib import Path
+
 from classes.config import Configuration
 from classes.gap_interval import GapInterval
+from classes.msa import MSA
+from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
 from classes.sp_score import SPScore
-from classes.unrooted_tree import create_a_tree_from_newick
+from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
 from enums import SopCalcTypes
 from multi_msa_service import calc_multiple_msa_sp_scores
 from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
+from ete3 import Tree, TreeNode
+
+newick_of_AATF = (
+    '((((Macropus:0.051803,Monodelphis:0.066021):0.016682,Sarcophilus:0.068964):0.114355,((Echinops:0.104144,'
+    '(Loxodonta:0.076474,Procavia:0.076193):0.011550):0.013015,((Choloepus:0.056091,Dasypus:0.040600):0.013681,'
+    '(((((Callithrix:0.032131,((((Gorilla:0.007042,(Homo:0.002445,Pan:0.002450):0.001237):0.003689,Pongo:0.007508):0.002384,'
+    'Nomascus:0.015696):0.004674,Macaca:0.013752):0.012205):0.029730,((Microcebus:0.037066,Otolemur:0.050935):0.008091,'
+    'Tarsius:0.064938):0.007305):0.003377,Tupaia:0.090946):0.000699,(((Cavia:0.116826,(Dipodomys:0.080386,(Mus:0.040313,'
+    'Rattus:0.033872):0.122329):0.013314):0.000298,Ictidomys:0.062932):0.011064,(Ochotona:0.087746,Oryctolagus:0.057769)'
+    ':0.035947):0.002130):0.006931,(Erinaceus:0.094727,(((((Bos:0.062659,Tursiops:0.024374):0.009782,Sus:0.064336)'
+    ':0.006134,Vicugna:0.049961):0.021643,Equus:0.046559):0.002728,(Sorex:0.126677,((Myotis:0.050452,Pteropus:0.047740)'
+    ':0.006495,(Felis:0.042414,(Canis:0.036675,(Mustela:0.027691,Ailuropoda:0.037553):0.004251):0.008141):0.019485)'
+    ':0.000485):0.003533):0.000528):0.005645):0.012900):0.002853):0.133251):0.019558,Ornithorhynchus:0.195576);'
+)
 
 
 def test_sp_perfect():
@@ -229,130 +247,116 @@ def test_dpos_for_diff_length_case_c():
 
 
 def test_tree_from_newick():
-    newick = ('((((Macropus:0.051803,Monodelphis:0.066021):0.016682,Sarcophilus:0.068964):0.114355,'
-              '((Echinops:0.104144,(Loxodonta:0.076474,Procavia:0.076193):0.011550):0.013015,((Choloepus:0.056091,'
-              'Dasypus:0.040600):0.013681,(((((Callithrix:0.032131,((((Gorilla:0.007042,(Homo:0.002445,'
-              'Pan:0.002450):0.001237):0.003689,Pongo:0.007508):0.002384,Nomascus:0.015696):0.004674,'
-              'Macaca:0.013752):0.012205):0.029730,((Microcebus:0.037066,Otolemur:0.050935):0.008091,'
-              'Tarsius:0.064938):0.007305):0.003377,Tupaia:0.090946):0.000699,(((Cavia:0.116826,(Dipodomys:0.080386,'
-              '(Mus:0.040313,Rattus:0.033872):0.122329):0.013314):0.000298,Ictidomys:0.062932):0.011064,'
-              '(Ochotona:0.087746,Oryctolagus:0.057769):0.035947):0.002130):0.006931,(Erinaceus:0.094727,'
-              '(((((Bos:0.062659,Tursiops:0.024374):0.009782,Sus:0.064336):0.006134,Vicugna:0.049961):0.021643,'
-              'Equus:0.046559):0.002728,(Sorex:0.126677,((Myotis:0.050452,Pteropus:0.047740):0.006495,'
-              '(Felis:0.042414,(Canis:0.036675,(Mustela:0.027691,'
-              'Ailuropoda:0.037553):0.004251):0.008141):0.019485):0.000485):0.003533):0.000528):0.005645):0.012900):0'
-              '.002853):0.133251):0.019558,Ornithorhynchus:0.195576);')
-    roots = create_a_tree_from_newick(newick)
-    assert add_nodes_recursively_to_list(roots) == [
-        {'children_ids': [], 'id': 77, 'keys': ['Ornithorhynchus']},
-        {'children_ids': [4, 75], 'id': 76,
-         'keys': ['Macropus', 'Monodelphis', 'Sarcophilus', 'Echinops', 'Loxodonta', 'Procavia', 'Choloepus', 'Dasypus',
-                  'Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca', 'Microcebus', 'Otolemur',
-                  'Tarsius', 'Tupaia', 'Cavia', 'Dipodomys', 'Mus', 'Rattus', 'Ictidomys', 'Ochotona', 'Oryctolagus',
-                  'Erinaceus', 'Bos', 'Tursiops', 'Sus', 'Vicugna', 'Equus',
-                  'Sorex', 'Myotis', 'Pteropus', 'Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [9, 74], 'id': 75,
-         'keys': ['Echinops', 'Loxodonta', 'Procavia', 'Choloepus', 'Dasypus', 'Callithrix', 'Gorilla', 'Homo', 'Pan',
-                  'Pongo', 'Nomascus', 'Macaca', 'Microcebus', 'Otolemur', 'Tarsius', 'Tupaia', 'Cavia',
-                  'Dipodomys', 'Mus', 'Rattus', 'Ictidomys', 'Ochotona', 'Oryctolagus', 'Erinaceus', 'Bos',
-                  'Tursiops', 'Sus', 'Vicugna', 'Equus', 'Sorex', 'Myotis', 'Pteropus', 'Felis',
-                  'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [12, 73], 'id': 74,
-         'keys': ['Choloepus', 'Dasypus', 'Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca',
-                  'Microcebus', 'Otolemur', 'Tarsius', 'Tupaia', 'Cavia', 'Dipodomys', 'Mus', 'Rattus',
-                  'Ictidomys', 'Ochotona', 'Oryctolagus', 'Erinaceus', 'Bos', 'Tursiops', 'Sus', 'Vicugna',
-                  'Equus', 'Sorex', 'Myotis', 'Pteropus', 'Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [47, 72], 'id': 73,
-         'keys': ['Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca', 'Microcebus', 'Otolemur',
-                  'Tarsius', 'Tupaia', 'Cavia', 'Dipodomys', 'Mus', 'Rattus', 'Ictidomys', 'Ochotona',
-                  'Oryctolagus', 'Erinaceus', 'Bos', 'Tursiops', 'Sus', 'Vicugna', 'Equus',
-                  'Sorex', 'Myotis', 'Pteropus', 'Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [48, 71], 'id': 72,
-         'keys': ['Erinaceus', 'Bos', 'Tursiops', 'Sus', 'Vicugna', 'Equus', 'Sorex', 'Myotis', 'Pteropus',
-                  'Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [57, 70], 'id': 71,
-         'keys': ['Bos', 'Tursiops', 'Sus', 'Vicugna', 'Equus', 'Sorex', 'Myotis', 'Pteropus', 'Felis', 'Canis',
-                  'Mustela', 'Ailuropoda']},
-        {'children_ids': [58, 69], 'id': 70,
-         'keys': ['Sorex', 'Myotis', 'Pteropus', 'Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [61, 68], 'id': 69, 'keys': ['Myotis', 'Pteropus', 'Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [62, 67], 'id': 68, 'keys': ['Felis', 'Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [63, 66], 'id': 67, 'keys': ['Canis', 'Mustela', 'Ailuropoda']},
-        {'children_ids': [64, 65], 'id': 66, 'keys': ['Mustela', 'Ailuropoda']},
-        {'children_ids': [], 'id': 65, 'keys': ['Ailuropoda']},
-        {'children_ids': [], 'id': 64, 'keys': ['Mustela']},
-        {'children_ids': [], 'id': 63, 'keys': ['Canis']},
-        {'children_ids': [], 'id': 62, 'keys': ['Felis']},
-        {'children_ids': [59, 60], 'id': 61, 'keys': ['Myotis', 'Pteropus']},
-        {'children_ids': [], 'id': 60, 'keys': ['Pteropus']},
-        {'children_ids': [], 'id': 59, 'keys': ['Myotis']},
-        {'children_ids': [], 'id': 58, 'keys': ['Sorex']},
-        {'children_ids': [55, 56], 'id': 57, 'keys': ['Bos', 'Tursiops', 'Sus', 'Vicugna', 'Equus']},
-        {'children_ids': [], 'id': 56, 'keys': ['Equus']},
-        {'children_ids': [53, 54], 'id': 55, 'keys': ['Bos', 'Tursiops', 'Sus', 'Vicugna']},
-        {'children_ids': [], 'id': 54, 'keys': ['Vicugna']},
-        {'children_ids': [51, 52], 'id': 53, 'keys': ['Bos', 'Tursiops', 'Sus']},
-        {'children_ids': [], 'id': 52, 'keys': ['Sus']},
-        {'children_ids': [49, 50], 'id': 51, 'keys': ['Bos', 'Tursiops']},
-        {'children_ids': [], 'id': 50, 'keys': ['Tursiops']},
-        {'children_ids': [], 'id': 49, 'keys': ['Bos']},
-        {'children_ids': [], 'id': 48, 'keys': ['Erinaceus']},
-        {'children_ids': [33, 46], 'id': 47,
-         'keys': ['Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca', 'Microcebus', 'Otolemur',
-                  'Tarsius', 'Tupaia', 'Cavia', 'Dipodomys', 'Mus', 'Rattus', 'Ictidomys', 'Ochotona', 'Oryctolagus']},
-        {'children_ids': [42, 45], 'id': 46,
-         'keys': ['Cavia', 'Dipodomys', 'Mus', 'Rattus', 'Ictidomys', 'Ochotona', 'Oryctolagus']},
-        {'children_ids': [43, 44], 'id': 45, 'keys': ['Ochotona', 'Oryctolagus']},
-        {'children_ids': [], 'id': 44, 'keys': ['Oryctolagus']},
-        {'children_ids': [], 'id': 43, 'keys': ['Ochotona']},
-        {'children_ids': [40, 41], 'id': 42, 'keys': ['Cavia', 'Dipodomys', 'Mus', 'Rattus', 'Ictidomys']},
-        {'children_ids': [], 'id': 41, 'keys': ['Ictidomys']},
-        {'children_ids': [34, 39], 'id': 40, 'keys': ['Cavia', 'Dipodomys', 'Mus', 'Rattus']},
-        {'children_ids': [35, 38], 'id': 39, 'keys': ['Dipodomys', 'Mus', 'Rattus']},
-        {'children_ids': [36, 37], 'id': 38, 'keys': ['Mus', 'Rattus']},
-        {'children_ids': [], 'id': 37, 'keys': ['Rattus']},
-        {'children_ids': [], 'id': 36, 'keys': ['Mus']},
-        {'children_ids': [], 'id': 35, 'keys': ['Dipodomys']},
-        {'children_ids': [], 'id': 34, 'keys': ['Cavia']},
-        {'children_ids': [31, 32], 'id': 33,
-         'keys': ['Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus',
-                  'Macaca', 'Microcebus', 'Otolemur', 'Tarsius', 'Tupaia']},
-        {'children_ids': [], 'id': 32, 'keys': ['Tupaia']},
-        {'children_ids': [25, 30], 'id': 31,
-         'keys': ['Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca', 'Microcebus', 'Otolemur',
-                  'Tarsius']},
-        {'children_ids': [28, 29], 'id': 30, 'keys': ['Microcebus', 'Otolemur', 'Tarsius']},
-        {'children_ids': [], 'id': 29, 'keys': ['Tarsius']},
-        {'children_ids': [26, 27], 'id': 28, 'keys': ['Microcebus', 'Otolemur']},
-        {'children_ids': [], 'id': 27, 'keys': ['Otolemur']},
-        {'children_ids': [], 'id': 26, 'keys': ['Microcebus']},
-        {'children_ids': [13, 24], 'id': 25,
-         'keys': ['Callithrix', 'Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca']},
-        {'children_ids': [22, 23], 'id': 24, 'keys': ['Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus', 'Macaca']},
-        {'children_ids': [], 'id': 23, 'keys': ['Macaca']},
-        {'children_ids': [20, 21], 'id': 22, 'keys': ['Gorilla', 'Homo', 'Pan', 'Pongo', 'Nomascus']},
-        {'children_ids': [], 'id': 21, 'keys': ['Nomascus']},
-        {'children_ids': [18, 19], 'id': 20, 'keys': ['Gorilla', 'Homo', 'Pan', 'Pongo']},
-        {'children_ids': [], 'id': 19, 'keys': ['Pongo']},
-        {'children_ids': [14, 17], 'id': 18, 'keys': ['Gorilla', 'Homo', 'Pan']},
-        {'children_ids': [15, 16], 'id': 17, 'keys': ['Homo', 'Pan']},
-        {'children_ids': [], 'id': 16, 'keys': ['Pan']},
-        {'children_ids': [], 'id': 15, 'keys': ['Homo']},
-        {'children_ids': [], 'id': 14, 'keys': ['Gorilla']},
-        {'children_ids': [], 'id': 13, 'keys': ['Callithrix']},
-        {'children_ids': [10, 11], 'id': 12, 'keys': ['Choloepus', 'Dasypus']},
-        {'children_ids': [], 'id': 11, 'keys': ['Dasypus']},
-        {'children_ids': [], 'id': 10, 'keys': ['Choloepus']},
-        {'children_ids': [5, 8], 'id': 9, 'keys': ['Echinops', 'Loxodonta', 'Procavia']},
-        {'children_ids': [6, 7], 'id': 8, 'keys': ['Loxodonta', 'Procavia']},
-        {'children_ids': [], 'id': 7, 'keys': ['Procavia']},
-        {'children_ids': [], 'id': 6, 'keys': ['Loxodonta']},
-        {'children_ids': [], 'id': 5, 'keys': ['Echinops']},
-        {'children_ids': [2, 3], 'id': 4, 'keys': ['Macropus', 'Monodelphis', 'Sarcophilus']},
-        {'children_ids': [], 'id': 3, 'keys': ['Sarcophilus']},
-        {'children_ids': [0, 1], 'id': 2, 'keys': ['Macropus', 'Monodelphis']},
-        {'children_ids': [], 'id': 1, 'keys': ['Monodelphis']},
-        {'children_ids': [], 'id': 0, 'keys': ['Macropus']}]
+    roots, all_nodes = create_a_tree_from_newick(newick_of_AATF)
+    assert add_nodes_dto_to_list(all_nodes) == [
+        {'children_ids': [4, 75], 'id': 76, 'keys': {
+            'Ailuropoda', 'Bos', 'Callithrix', 'Canis', 'Cavia', 'Choloepus', 'Dasypus', 'Dipodomys', 'Echinops',
+            'Equus', 'Erinaceus', 'Felis', 'Gorilla', 'Homo', 'Ictidomys', 'Loxodonta', 'Macaca', 'Macropus',
+            'Microcebus', 'Monodelphis', 'Mus', 'Mustela', 'Myotis', 'Nomascus', 'Ochotona', 'Oryctolagus', 'Otolemur',
+            'Pan', 'Pongo', 'Procavia', 'Pteropus', 'Rattus', 'Sarcophilus', 'Sorex', 'Sus', 'Tarsius', 'Tupaia',
+            'Tursiops', 'Vicugna'}},
+        {'children_ids': [9, 74], 'id': 75, 'keys': {
+            'Ailuropoda', 'Bos', 'Callithrix', 'Canis', 'Cavia', 'Choloepus', 'Dasypus', 'Dipodomys', 'Echinops',
+            'Equus', 'Erinaceus', 'Felis', 'Gorilla', 'Homo', 'Ictidomys', 'Loxodonta', 'Macaca', 'Microcebus',
+            'Mus', 'Mustela', 'Myotis', 'Nomascus', 'Ochotona', 'Oryctolagus', 'Otolemur', 'Pan', 'Pongo', 'Procavia',
+            'Pteropus', 'Rattus', 'Sorex', 'Sus', 'Tarsius', 'Tupaia', 'Tursiops', 'Vicugna'}},
+        {'children_ids': [12, 73], 'id': 74, 'keys': {
+            'Ailuropoda', 'Bos', 'Callithrix', 'Canis', 'Cavia', 'Choloepus', 'Dasypus', 'Dipodomys', 'Equus',
+            'Erinaceus', 'Felis', 'Gorilla', 'Homo', 'Ictidomys', 'Macaca', 'Microcebus', 'Mus', 'Mustela', 'Myotis',
+            'Nomascus', 'Ochotona', 'Oryctolagus', 'Otolemur', 'Pan', 'Pongo', 'Pteropus', 'Rattus', 'Sorex', 'Sus',
+            'Tarsius', 'Tupaia', 'Tursiops', 'Vicugna'}},
+        {'children_ids': [47, 72], 'id': 73, 'keys': {
+            'Ailuropoda', 'Bos', 'Callithrix', 'Canis', 'Cavia', 'Dipodomys', 'Equus', 'Erinaceus', 'Felis', 'Gorilla',
+            'Homo', 'Ictidomys', 'Macaca', 'Microcebus', 'Mus', 'Mustela', 'Myotis', 'Nomascus', 'Ochotona',
+            'Oryctolagus', 'Otolemur', 'Pan', 'Pongo', 'Pteropus', 'Rattus', 'Sorex', 'Sus', 'Tarsius', 'Tupaia',
+            'Tursiops', 'Vicugna'}},
+        {'children_ids': [33, 46], 'id': 47, 'keys': {
+            'Callithrix', 'Cavia', 'Dipodomys', 'Gorilla', 'Homo', 'Ictidomys', 'Macaca', 'Microcebus', 'Mus',
+            'Nomascus', 'Ochotona', 'Oryctolagus', 'Otolemur', 'Pan', 'Pongo', 'Rattus', 'Tarsius', 'Tupaia'}},
+        {'children_ids': [48, 71], 'id': 72, 'keys': {
+            'Ailuropoda', 'Bos', 'Canis', 'Equus', 'Erinaceus', 'Felis', 'Mustela', 'Myotis', 'Pteropus', 'Sorex',
+            'Sus', 'Tursiops', 'Vicugna'}},
+        {'children_ids': [57, 70], 'id': 71, 'keys': {
+            'Ailuropoda', 'Bos', 'Canis', 'Equus', 'Felis', 'Mustela', 'Myotis', 'Pteropus', 'Sorex', 'Sus', 'Tursiops',
+            'Vicugna'}},
+        {'children_ids': [31, 32], 'id': 33, 'keys': {
+            'Callithrix', 'Gorilla', 'Homo', 'Macaca', 'Microcebus', 'Nomascus', 'Otolemur', 'Pan', 'Pongo', 'Tarsius',
+            'Tupaia'}},
+        {'children_ids': [25, 30], 'id': 31, 'keys': {
+            'Callithrix', 'Gorilla', 'Homo', 'Macaca', 'Microcebus', 'Nomascus', 'Otolemur', 'Pan', 'Pongo',
+            'Tarsius'}},
+        {'children_ids': [58, 69], 'id': 70, 'keys': {
+            'Ailuropoda', 'Canis', 'Felis', 'Mustela', 'Myotis', 'Pteropus', 'Sorex'}},
+        {'children_ids': [42, 45], 'id': 46, 'keys': {
+            'Cavia', 'Dipodomys', 'Ictidomys', 'Mus', 'Ochotona', 'Oryctolagus', 'Rattus'}},
+        {'children_ids': [13, 24], 'id': 25, 'keys': {
+            'Callithrix', 'Gorilla', 'Homo', 'Macaca', 'Nomascus', 'Pan', 'Pongo'}},
+        {'children_ids': [61, 68], 'id': 69, 'keys': {'Pteropus', 'Mustela', 'Canis', 'Felis', 'Ailuropoda', 'Myotis'}},
+        {'children_ids': [22, 23], 'id': 24, 'keys': {'Pan', 'Gorilla', 'Macaca', 'Homo', 'Pongo', 'Nomascus'}},
+        {'children_ids': [55, 56], 'id': 57, 'keys': {'Vicugna', 'Sus', 'Equus', 'Bos', 'Tursiops'}},
+        {'children_ids': [40, 41], 'id': 42, 'keys': {'Cavia', 'Mus', 'Dipodomys', 'Ictidomys', 'Rattus'}},
+        {'children_ids': [20, 21], 'id': 22, 'keys': {'Pan', 'Gorilla', 'Homo', 'Pongo', 'Nomascus'}},
+        {'children_ids': [62, 67], 'id': 68, 'keys': {'Canis', 'Felis', 'Mustela', 'Ailuropoda'}},
+        {'children_ids': [53, 54], 'id': 55, 'keys': {'Sus', 'Vicugna', 'Bos', 'Tursiops'}},
+        {'children_ids': [34, 39], 'id': 40, 'keys': {'Dipodomys', 'Cavia', 'Rattus', 'Mus'}},
+        {'children_ids': [18, 19], 'id': 20, 'keys': {'Homo', 'Pongo', 'Pan', 'Gorilla'}},
+        {'children_ids': [63, 66], 'id': 67, 'keys': {'Canis', 'Mustela', 'Ailuropoda'}},
+        {'children_ids': [51, 52], 'id': 53, 'keys': {'Sus', 'Bos', 'Tursiops'}},
+        {'children_ids': [35, 38], 'id': 39, 'keys': {'Dipodomys', 'Rattus', 'Mus'}},
+        {'children_ids': [28, 29], 'id': 30, 'keys': {'Microcebus', 'Otolemur', 'Tarsius'}},
+        {'children_ids': [14, 17], 'id': 18, 'keys': {'Homo', 'Pan', 'Gorilla'}},
+        {'children_ids': [5, 8], 'id': 9, 'keys': {'Procavia', 'Loxodonta', 'Echinops'}},
+        {'children_ids': [2, 3], 'id': 4, 'keys': {'Monodelphis', 'Macropus', 'Sarcophilus'}},
+        {'children_ids': [64, 65], 'id': 66, 'keys': {'Mustela', 'Ailuropoda'}},
+        {'children_ids': [59, 60], 'id': 61, 'keys': {'Pteropus', 'Myotis'}},
+        {'children_ids': [49, 50], 'id': 51, 'keys': {'Bos', 'Tursiops'}},
+        {'children_ids': [43, 44], 'id': 45, 'keys': {'Oryctolagus', 'Ochotona'}},
+        {'children_ids': [36, 37], 'id': 38, 'keys': {'Rattus', 'Mus'}},
+        {'children_ids': [26, 27], 'id': 28, 'keys': {'Microcebus', 'Otolemur'}},
+        {'children_ids': [15, 16], 'id': 17, 'keys': {'Homo', 'Pan'}},
+        {'children_ids': [10, 11], 'id': 12, 'keys': {'Dasypus', 'Choloepus'}},
+        {'children_ids': [6, 7], 'id': 8, 'keys': {'Procavia', 'Loxodonta'}},
+        {'children_ids': [0, 1], 'id': 2, 'keys': {'Monodelphis', 'Macropus'}},
+        {'children_ids': [], 'id': 77, 'keys': {'Ornithorhynchus'}},
+        {'children_ids': [], 'id': 65, 'keys': {'Ailuropoda'}},
+        {'children_ids': [], 'id': 64, 'keys': {'Mustela'}},
+        {'children_ids': [], 'id': 63, 'keys': {'Canis'}},
+        {'children_ids': [], 'id': 62, 'keys': {'Felis'}},
+        {'children_ids': [], 'id': 60, 'keys': {'Pteropus'}},
+        {'children_ids': [], 'id': 59, 'keys': {'Myotis'}},
+        {'children_ids': [], 'id': 58, 'keys': {'Sorex'}},
+        {'children_ids': [], 'id': 56, 'keys': {'Equus'}},
+        {'children_ids': [], 'id': 54, 'keys': {'Vicugna'}},
+        {'children_ids': [], 'id': 52, 'keys': {'Sus'}},
+        {'children_ids': [], 'id': 50, 'keys': {'Tursiops'}},
+        {'children_ids': [], 'id': 49, 'keys': {'Bos'}},
+        {'children_ids': [], 'id': 48, 'keys': {'Erinaceus'}},
+        {'children_ids': [], 'id': 44, 'keys': {'Oryctolagus'}},
+        {'children_ids': [], 'id': 43, 'keys': {'Ochotona'}},
+        {'children_ids': [], 'id': 41, 'keys': {'Ictidomys'}},
+        {'children_ids': [], 'id': 37, 'keys': {'Rattus'}},
+        {'children_ids': [], 'id': 36, 'keys': {'Mus'}},
+        {'children_ids': [], 'id': 35, 'keys': {'Dipodomys'}},
+        {'children_ids': [], 'id': 34, 'keys': {'Cavia'}},
+        {'children_ids': [], 'id': 32, 'keys': {'Tupaia'}},
+        {'children_ids': [], 'id': 29, 'keys': {'Tarsius'}},
+        {'children_ids': [], 'id': 27, 'keys': {'Otolemur'}},
+        {'children_ids': [], 'id': 26, 'keys': {'Microcebus'}},
+        {'children_ids': [], 'id': 23, 'keys': {'Macaca'}},
+        {'children_ids': [], 'id': 21, 'keys': {'Nomascus'}},
+        {'children_ids': [], 'id': 19, 'keys': {'Pongo'}},
+        {'children_ids': [], 'id': 16, 'keys': {'Pan'}},
+        {'children_ids': [], 'id': 15, 'keys': {'Homo'}},
+        {'children_ids': [], 'id': 14, 'keys': {'Gorilla'}},
+        {'children_ids': [], 'id': 13, 'keys': {'Callithrix'}},
+        {'children_ids': [], 'id': 11, 'keys': {'Dasypus'}},
+        {'children_ids': [], 'id': 10, 'keys': {'Choloepus'}},
+        {'children_ids': [], 'id': 7, 'keys': {'Procavia'}},
+        {'children_ids': [], 'id': 6, 'keys': {'Loxodonta'}},
+        {'children_ids': [], 'id': 5, 'keys': {'Echinops'}},
+        {'children_ids': [], 'id': 3, 'keys': {'Sarcophilus'}},
+        {'children_ids': [], 'id': 1, 'keys': {'Monodelphis'}},
+        {'children_ids': [], 'id': 0, 'keys': {'Macropus'}}]
 
 
 def test_multi():
@@ -369,3 +373,123 @@ def add_nodes_recursively_to_list(nodes_to_add: list[Node]) -> list:
         all_nodes.append({'id': node.id, 'children_ids': [x.id for x in node.children], 'keys': node.keys})
         nodes_to_add += node.children
     return all_nodes
+
+
+def add_nodes_dto_to_list(nodes_list: list[Node]) -> list:
+    all_nodes_dto: list = []
+    while len(nodes_list) > 0:
+        node = nodes_list.pop()
+        all_nodes_dto.append({'id': node.id, 'children_ids': [x.id for x in node.children], 'keys': node.keys})
+    all_nodes_dto.sort(key=lambda x: x['id'], reverse=True)
+    all_nodes_dto.sort(key=lambda x: len(x['keys']), reverse=True)
+    return all_nodes_dto
+
+
+def test_unrooting_and_tree_from_ours():
+    tree_from_newick = Tree(newick_of_AATF)
+    tree_from_newick.unroot()
+    # unrooted_newick_ete = tree_from_newick.write()
+    our_unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
+    tree_from_ours = build_e_tree_from_ours(our_unrooted_tree)
+    rf, max_parts, common_attrs, edges1, edges2, discard_t1, discard_t2 = tree_from_newick.robinson_foulds(
+        t2=tree_from_ours,
+        unrooted_trees=True)
+    assert rf == 0
+
+
+def test_tree_comparison_case_a():
+    tree_from_newick = Tree(newick_of_AATF)
+    leaf_names: list[str] = tree_from_newick.get_leaf_names()
+    tree_from_newick.unroot()
+    branches_a: list[str] = map_branches_of_tree(tree_from_newick, set(leaf_names), sorted(leaf_names)[0])
+    print_branches_ordered_list(branches_a)
+    our_unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
+    branches_b: list[str] = list(our_unrooted_tree.get_internal_edges_set())
+    print_branches_ordered_list(branches_b)
+
+
+def test_rf_for_nj_using_ours():
+    unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
+    msa = MSA('AATF')
+    msa.read_me_from_fasta(Path('./comparison_files/AATF/MSA.MAFFT.aln.With_Names'))
+    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                          SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+    sp_score: SPScore = SPScore(config)
+    msa.build_nj_tree(sp_score)
+    nj_unrooted_tree = msa.tree
+    rf = unrooted_tree.calc_rf(nj_unrooted_tree)
+    assert rf == 74
+
+
+def test_rf_for_nj_using_newick():
+    tree_from_newick = Tree(newick_of_AATF)
+    tree_from_newick.unroot()
+    nj_newick = (
+        '(((((((Macropus:0,Nomascus:0):0,(Choloepus:0,Myotis:0):0):0,(Tarsius:0,Erinaceus:0):0):0,(Callithrix:0,Mustela:0):0):0,'
+        '((((Monodelphis:0,Gorilla:0):0,(Oryctolagus:0,Tursiops:0):0):0,(Cavia:0,Ailuropoda:0):0):0,((Echinops:0,Microcebus:0):0,'
+        '((Pan:0,Sorex:0):0,(Rattus:0,Canis:0):0):0):0):0):0,(((Macaca:0,Ornithorhynchus:0):0,(Ictidomys:0,Equus:0):0):0,(Ochotona:0,Sus:0):0):0):0,'
+        '((((Sarcophilus:0,Homo:0):0,(Mus:0,Pteropus:0):0):0,(Tupaia:0,Felis:0):0):0,((Procavia:0,Dasypus:0):0,(Pongo:0,'
+        'Bos:0):0):0):0,'
+        '((Loxodonta:0,Otolemur:0):0,(Dipodomys:0,Vicugna:0):0):0);')
+    nj_tree_from_newick = Tree(nj_newick)
+    rf, max_parts, common_attrs, edges1, edges2, discard_t1, discard_t2 = tree_from_newick.robinson_foulds(
+        t2=nj_tree_from_newick,
+        unrooted_trees=True)
+    print("RF distance is %s over a total of %s" % (rf, max_parts))
+    print("Partitions in tree2 that were not found in tree1:", edges1 - edges2)
+    print("Partitions in tree1 that were not found in tree2:", edges2 - edges1)
+    a = 1
+    assert rf == 74
+
+
+def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
+    new_tree_root = Tree()
+    add_child_to_tree(new_tree_root, tree.anchor)
+    return new_tree_root
+
+
+def add_child_to_tree(father: TreeNode, our_node: Node):
+    if len(our_node.children) == 0:
+        name = list(our_node.keys)[0]
+        father.add_child(name=name)
+    else:
+        child = father.add_child(name=str(our_node.id))
+        for our_child in our_node.children:
+            add_child_to_tree(child, our_child)
+
+
+def map_branches_of_tree(tree: Tree, tree_keys: set[str], differentiator_key: str) -> list[str]:
+    branches: list[str] = []
+    for n in tree.traverse("preorder"):
+        if len(n.children) > 0:
+            keys: set[str] = set()
+            leaves: list[TreeNode] = n.get_leaves()
+            for leaf in leaves:
+                keys.add(leaf.name)
+            other_side = tree_keys.difference(keys)
+            if len(keys) > len(other_side) or (len(keys) == len(other_side) and differentiator_key in other_side):
+                keys = other_side
+            if len(keys) > 0:
+                keys_list = list(keys)
+                keys_list.sort()
+                branches.append(','.join(keys_list))
+    return branches
+
+
+def map_branches_of_our_tree(tree: UnrootedTree) -> list[str]:
+    branches: list[str] = []
+    branches_set = tree.get_internal_edges_set()
+    for b in list(branches_set):
+        keys_list = list(b)
+        keys_list.sort()
+        branches.append(','.join(keys_list))
+    return branches
+
+
+def print_branches_ordered_list(branches: list[str]):
+    branches.sort(key=lambda x: x[0])
+    branches.sort(key=lambda x: len(x), reverse=True)
+    print('branches:')
+    for b in branches:
+        print(b)
+

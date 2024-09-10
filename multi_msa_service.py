@@ -69,7 +69,7 @@ def calc_multiple_msa_sp_scores(config: Configuration):
         true_file_name, true_tree_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
         true_msa = MSA(dir_name)
         if true_tree_file_name:
-            true_msa.set_true_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
+            true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
         if true_file_name:
             true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
         true_msa.stats.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
@@ -88,6 +88,8 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)  # TODO: handle this
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
             inferred_msa.stats.set_my_alignment_features(inferred_msa.sequences)
+            inferred_msa.build_nj_tree(sp)
+            inferred_msa.set_rf_from_true(true_msa.tree)
             all_msa_stats.append(inferred_msa.stats)
         if config.is_analyze_per_dir:
             if config.is_compute_correlation:

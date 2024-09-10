@@ -3,27 +3,56 @@ from classes.node import Node
 
 
 class UnrootedTree:
-    top_nodes: [Node, Node, Node]
-    newick: str
+    anchor: Node
+    all_nodes: list[Node]
+    keys: set[str]
+    differentiator_key: str
 
-    def __init__(self, unrooted_nodes: [Node, Node, Node]):
-        self.top_nodes = unrooted_nodes
-        # self.newick = newick
+    def __init__(self, anchor: Node, all_nodes: list[Node]):
+        self.anchor = anchor
+        self.all_nodes = all_nodes
+        self.keys = set()
+        self.keys = set(anchor.keys)
+        self.differentiator_key = sorted(list(self.keys))[0]
 
     @classmethod
     def create_from_newick_file(cls, path: Path):
         newick_str: str = read_newick_from_file(path)
-        roots: list[Node] = create_a_tree_from_newick(newick_str)
-        if len(roots) == 3:
-            return cls(unrooted_nodes=roots)
-        if len(roots) == 2:
-            res: list[Node] = []
-            roots.sort(key=lambda x: x.branch_length)
-            roots.sort(key=lambda x: len(x.children), reverse=True)
-            if len(roots[0].children) == 2:
-                res += roots[0].children
-                res.append(roots[1])
-                return cls(unrooted_nodes=res)
+        anchor, all_nodes = root_from_newick_str(newick_str)
+        return cls(anchor=anchor, all_nodes=all_nodes)
+
+    @classmethod
+    def create_from_newick_str(cls, newick_str: str):
+        anchor, all_nodes = root_from_newick_str(newick_str)
+        return cls(anchor=anchor, all_nodes=all_nodes)
+
+    def get_internal_edges_set(self) -> set[str]:
+        edges: set[str] = set()
+        for n in self.all_nodes:
+            if len(n.children) > 0:
+                edges_str: str | None = n.get_keys_unrooted_string(self.keys, self.differentiator_key)
+                if edges_str is not None:
+                    edges.add(edges_str)
+        return edges
+
+    def calc_rf(self, other_tree: 'UnrootedTree'):
+        return len(self.get_internal_edges_set() ^ other_tree.get_internal_edges_set())
+
+
+def root_from_newick_str(newick_str: str) -> tuple[Node, list[Node]]:
+    root, all_nodes = create_a_tree_from_newick(newick_str)
+    if len(root.children) == 3:
+        return root, all_nodes
+    if len(root.children) == 2:
+        res: list[Node] = []
+        root.children.sort(key=lambda x: x.branch_length)
+        root.children.sort(key=lambda x: len(x.children), reverse=True)
+        if len(root.children[0].children) == 2:
+            res += root.children[0].children
+            res.append(root.children[1])
+            anchor = Node.create_from_children(children_list=res, inx=len(all_nodes))
+            all_nodes.append(anchor)
+            return anchor, all_nodes
 
 
 def read_newick_from_file(input_file_path: Path) -> str:
@@ -32,46 +61,60 @@ def read_newick_from_file(input_file_path: Path) -> str:
             return line.strip()
 
 
-def create_a_tree_from_newick(newick: str) -> list[Node]:
+def create_a_tree_from_newick(newick: str) -> tuple[Node, list[Node]]:
     all_nodes: list[Node] = []
     open_nodes_per_level: dict[int, list[Node]] = {}
-    level = 0
-    current_key = ''
-    branch_length = ''
-    is_reading_br_len = False
-    for c in newick:
-        if c == '(':
-            current_key = ''
+    level: int = 0
+    current_key: str = ''
+    branch_length: str = ''
+    i: int = 0
+    while i < len(newick):
+        if newick[i] == '(':
             level += 1
             if level not in open_nodes_per_level:
                 open_nodes_per_level[level] = []
-        elif c == ':':
-            is_reading_br_len = True
-        elif c == ')' or c == ',':
-            if is_reading_br_len:
-                if len(current_key) > 0:
-                    current_node = Node(node_id=len(all_nodes), keys=[current_key], children=[],
-                                        branch_length=float(branch_length))
-                else:
-                    node_keys = []
-                    for child in open_nodes_per_level[level + 1]:
-                        node_keys += child.keys
-                    current_node = Node(node_id=len(all_nodes), keys=node_keys, children=open_nodes_per_level[level + 1].copy(),
-                                        branch_length=float(branch_length))
-                    for child in open_nodes_per_level[level + 1]:
-                        child.set_a_father(current_node)
-                    open_nodes_per_level[level + 1] = []
+            i += 1
+        elif newick[i] == ':':
+            branch_length = ''
+            i += 1
+            while newick[i] != ')' and newick[i] != ',':
+                branch_length += newick[i]
+                i += 1
+        elif newick[i] == ',' or newick[i] == ')':
+            if len(current_key) > 0:
+                current_node = Node(node_id=len(all_nodes), keys={current_key}, children=[],
+                                    branch_length=float(branch_length))
                 open_nodes_per_level[level].append(current_node)
-                all_nodes.append(current_node)
-                is_reading_br_len = False
                 current_key = ''
-                branch_length = ''
-            if c == ')':
+            else:
+                current_node = create_node_from_children(open_nodes_per_level, level, float(branch_length),
+                                                         len(all_nodes))
+                open_nodes_per_level[level + 1] = []
+                open_nodes_per_level[level].append(current_node)
+            all_nodes.append(current_node)
+            if newick[i] == ')':
                 level -= 1
-        elif c == ';':
-            return open_nodes_per_level[1]
+            i += 1
+        elif newick[i] == ';':
+            current_node = create_node_from_children(open_nodes_per_level, 0, float(branch_length),
+                                                     len(all_nodes))
+            return current_node, all_nodes
         else:
-            if is_reading_br_len:
-                branch_length += c
-                continue
-            current_key += c
+            current_key = ''
+            while newick[i] != ')' and newick[i] != ',' and newick[i] != ':':
+                current_key += newick[i]
+                i += 1
+
+
+def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level: int, branch_length: float,
+                              node_inx: int) -> Node:
+    node_keys = set()
+    for child in open_nodes_per_level[level + 1]:
+        node_keys = node_keys.union(child.keys)
+    current_node = Node(node_id=node_inx, keys=node_keys, children=open_nodes_per_level[level + 1].copy(),
+                        branch_length=float(branch_length))
+    for child in open_nodes_per_level[level + 1]:
+        child.set_a_father(current_node)
+    return current_node
+
+
