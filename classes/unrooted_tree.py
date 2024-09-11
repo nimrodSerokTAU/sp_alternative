@@ -1,6 +1,8 @@
 from pathlib import Path
 from classes.node import Node
 
+EPSILON = 0.001
+
 
 class UnrootedTree:
     anchor: Node
@@ -37,6 +39,13 @@ class UnrootedTree:
 
     def calc_rf(self, other_tree: 'UnrootedTree'):
         return len(self.get_internal_edges_set() ^ other_tree.get_internal_edges_set())
+
+    def get_branches_lengths_list(self) -> list[float]:
+        bl_list: list[float] = []
+        for n in self.all_nodes:
+            if n.father is not None:
+                bl_list.append(max(n.branch_length, EPSILON))
+        return bl_list
 
 
 def root_from_newick_str(newick_str: str) -> tuple[Node, list[Node]]:

@@ -3,6 +3,7 @@ from pathlib import Path
 from classes.config import Configuration
 from classes.gap_interval import GapInterval
 from classes.msa import MSA
+from classes.msa_stats import calc_parsimony
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
 from classes.sp_score import SPScore
@@ -24,6 +25,15 @@ newick_of_AATF = (
     ':0.006495,(Felis:0.042414,(Canis:0.036675,(Mustela:0.027691,Ailuropoda:0.037553):0.004251):0.008141):0.019485)'
     ':0.000485):0.003533):0.000528):0.005645):0.012900):0.002853):0.133251):0.019558,Ornithorhynchus:0.195576);'
 )
+
+matrix_case_nj: list[list[float]] = [
+        [0, 5, 9, 9, 8],
+        [5, 0, 10, 10, 9],
+        [9, 10, 0, 8, 7],
+        [9, 10, 8, 0, 3],
+        [8, 9, 7, 3, 0],
+    ]
+keys_case_nj = ['a', 'b', 'c', 'd', 'e']
 
 
 def test_sp_perfect():
@@ -440,6 +450,38 @@ def test_rf_for_nj_using_newick():
     print("Partitions in tree1 that were not found in tree2:", edges2 - edges1)
     a = 1
     assert rf == 74
+
+
+def test_neighbor_joining():
+    nodes: list[Node] = []
+    for key in keys_case_nj:
+        nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1))
+    tree_calculation: UnrootedTree = NeighborJoining(matrix_case_nj, nodes).tree_res
+    bl_list: list[float] = tree_calculation.get_branches_lengths_list()
+    bl_list.sort()
+    assert bl_list == [1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0]
+
+
+def test_parsimony():  # TODO: continue from here
+    n_a: Node = Node(node_id=0, keys={'a'}, children=[])
+    n_b: Node = Node(node_id=1, keys={'b'}, children=[])
+    n_c: Node = Node(node_id=2, keys={'c'}, children=[])
+    n_d: Node = Node(node_id=3, keys={'d'}, children=[])
+    n_e: Node = Node(node_id=4, keys={'e'}, children=[])
+    n_a_b: Node = Node.create_from_children([n_a, n_b], 5)
+    n_a_b_c: Node = Node.create_from_children([n_a_b, n_c], 6)
+    anchor: Node = Node.create_from_children([n_a_b_c, n_d, n_e], 7)
+    all_nodes: list[Node] = [n_a, n_b, n_c, n_d, n_e, n_a_b, n_a_b_c, anchor]
+    aln: list[str] = [
+        'AYCDDDW',
+        'AVVDDDW',
+        'AYCDDDW',
+        'AVVDDDW',
+        'APVDDDW'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    res = calc_parsimony(UnrootedTree(anchor=anchor, all_nodes=all_nodes), aln, names)
+    assert res == [0, 3, 2, 0, 0, 0, 0]
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:

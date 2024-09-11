@@ -9,6 +9,7 @@ class Node:
     branch_length: float
     children: list[Self]
     newick_part: str
+    parsimony_set: set[str]
 
     def __init__(self, node_id: int, keys: set[str], children: list[Self], branch_length: float = 0):
         self.id = node_id
@@ -16,6 +17,7 @@ class Node:
         self.father = None
         self.branch_length = branch_length
         self.children = children
+        self.parsimony_set = set()
 
     @classmethod
     def create_from_children(cls, children_list: list[Self], inx: int | None):
@@ -57,4 +59,7 @@ class Node:
             self.newick_part = f'{list(self.keys)[0]}:{self.branch_length}'
         elif len(self.children) == 2:
             self.newick_part = f'({self.children[0].newick_part},{self.children[1].newick_part}):{self.branch_length}'
+
+    def set_parsimony_set(self, new_set: set[str]):
+        self.parsimony_set = new_set
 

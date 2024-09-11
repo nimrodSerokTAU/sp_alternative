@@ -41,3 +41,9 @@ def add_children_to_list(keys_structure: list, res: list[str]):
                 res.append(item)
                 print(len(res))
                 print(item)
+
+
+def calc_variance(test_list: []) -> float:
+    mean = sum(test_list) / len(test_list)
+    return sum((i - mean) ** 2 for i in test_list) / len(test_list)
+

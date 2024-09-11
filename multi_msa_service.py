@@ -85,9 +85,9 @@ def calc_multiple_msa_sp_scores(config: Configuration):
                 inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
                                                     sp_missmatch_count)
             inferred_msa.order_sequences(true_msa.seq_names)
-            dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)  # TODO: handle this
+            dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
-            inferred_msa.stats.set_my_alignment_features(inferred_msa.sequences)
+            inferred_msa.set_my_alignment_features()
             inferred_msa.build_nj_tree(sp)
             inferred_msa.set_rf_from_true(true_msa.tree)
             all_msa_stats.append(inferred_msa.stats)

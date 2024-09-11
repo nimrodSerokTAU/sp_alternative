@@ -1,8 +1,11 @@
 import numpy as np
+from scipy.stats import skew, kurtosis
 import pandas as pd
 from collections import defaultdict, Counter
 
+from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
+from utils import calc_variance
 
 
 class MSAStats:
@@ -57,6 +60,18 @@ class MSAStats:
     single_char_count: int
     double_char_count: int
     rf_from_true: int
+    median_bl: float
+    bl_25_pct: float
+    bl_75_pct: float
+    var_bl: float
+    skew_bl: float
+    kurtosis_bl: float
+    bl_std: float
+    bl_max: float
+    bl_min: float
+    bl_sum: float
+    nj_parsimony_score: int
+    nj_parsimony_sd: int
 
     def __init__(self, code: str):
         self.code = code
@@ -109,6 +124,18 @@ class MSAStats:
         self.single_char_count = 0
         self.double_char_count = 0
         self.rf_from_true = -1
+        self.median_bl = -1
+        self.bl_25_pct = -1
+        self.bl_75_pct = -1
+        self.var_bl = -1
+        self.skew_bl = -1
+        self.kurtosis_bl = -1
+        self.bl_std = -1
+        self.bl_max = -1
+        self.bl_min = -1
+        self.bl_sum = -1
+        self.nj_parsimony_score = -1
+        self.nj_parsimony_sd = -1
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -120,7 +147,9 @@ class MSAStats:
             'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
             'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
             'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm',
-            'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count']
+            'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count',
+            'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
+            'bl_sum']
 
     def set_my_sop_score(self, sop_score: float):
         self.sop_score = sop_score
@@ -325,6 +354,22 @@ class MSAStats:
     def set_rf_from_true(self, my_tree: UnrootedTree, true_tree: UnrootedTree):
         self.rf_from_true = my_tree.calc_rf(true_tree)
 
+    def set_tree_stats(self, bl_list: list[float], tree: UnrootedTree, aln: list[str], names: list[str]):
+        self.median_bl = float(np.median(bl_list))
+        self.bl_25_pct = calc_percentile(bl_list, 25)
+        self.bl_75_pct = calc_percentile(bl_list, 75)
+        self.var_bl = calc_variance(bl_list)
+        self.skew_bl = float(skew(bl_list))
+        self.kurtosis_bl = kurtosis(bl_list)
+        self.bl_std = float(np.std(bl_list))
+        self.bl_max = max(bl_list)
+        self.bl_min = min(bl_list)
+        self.bl_sum = sum(bl_list)
+        parsimony_score_list: list[int] = calc_parsimony(tree, aln, names)
+        self.nj_parsimony_score = sum(parsimony_score_list)
+        self.nj_parsimony_sd = np.std(parsimony_score_list)
+        # self.nj_parsimony_ci = np.ci(parsimony_score_list)
+
 
 def get_alignment_df(data: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     original_alignment_df = alignment_list_to_df(data)
@@ -342,5 +387,37 @@ def alignment_list_to_df(alignment_data: list[str]) -> pd.DataFrame:
 
 
 def calc_percentile(values, percentile: int) -> float:
-    a = 3
     return float(np.percentile(values, percentile))
+
+
+def calc_parsimony(unrooted_tree: UnrootedTree, aln: list[str], names: list[str]) -> list[int]:
+    parsimony_per_col: list[int] = []
+    new_node: Node = Node.create_from_children([unrooted_tree.anchor.children[0], unrooted_tree.anchor.children[1]], -1)
+    new_root: Node = Node.create_from_children([new_node, unrooted_tree.anchor.children[2]], -2)
+    nodes_order: list[Node] = unrooted_tree.all_nodes[:-1]
+    nodes_order.sort(key=lambda x: x.id)
+    nodes_order.append(new_node)
+    nodes_order.append(new_root)
+
+    seq_name_to_index_dict: dict[str, int] = {}
+    for i, name in enumerate(names):
+        seq_name_to_index_dict[name] = i
+
+    for col_index in range(len(aln[0])):
+        col_counter = 0
+        for n in nodes_order:
+            if len(n.children) == 0:
+                seq_index = seq_name_to_index_dict[list(n.keys)[0]]
+                char = aln[seq_index][col_index]
+                n.set_parsimony_set({char})
+            else:
+                set_a = n.children[0].parsimony_set
+                set_b = n.children[1].parsimony_set
+                intersection_set = set_a.intersection(set_b)
+                if len(intersection_set) > 0:
+                    n.set_parsimony_set(intersection_set)
+                else:
+                    n.set_parsimony_set(set_a.union(set_b))
+                    col_counter += 1
+        parsimony_per_col.append(col_counter)
+    return parsimony_per_col

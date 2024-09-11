@@ -82,3 +82,9 @@ class MSA:
 
     def set_rf_from_true(self, true_tree: UnrootedTree):
         self.stats.set_rf_from_true(self.tree, true_tree)
+
+    def set_tree_stats(self):
+        self.stats.set_tree_stats(self.tree.get_branches_lengths_list())
+
+    def set_my_alignment_features(self):
+        self.stats.set_my_alignment_features(self.sequences)
