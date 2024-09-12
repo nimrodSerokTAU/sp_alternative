@@ -72,14 +72,14 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
         if true_file_name:
             true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
-        true_msa.stats.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
+        true_msa.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
         for inferred_file_name in inferred_file_names:
             msa_name = inferred_file_name if config.is_analyze_per_dir else dir_name
             print(msa_name)
             inferred_msa = MSA(msa_name)
             inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
             if config.sop_clac_type == SopCalcTypes.NAIVE:
-                inferred_msa.stats.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
+                inferred_msa.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
             else:
                 sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
                 inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,

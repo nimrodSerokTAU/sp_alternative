@@ -63,6 +63,9 @@ class MSA:
                                           sp_score_subs=sp_score_subs, go_score=go_score, sp_score_gap_e=sp_score_gap_e,
                                           sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count)
 
+    def set_my_sop_score(self, sop_score: float):
+        self.stats.set_my_sop_score(sop_score)
+
     def build_nj_tree(self, sp_score: SPScore):
         distance_matrix: list[list[float]] = [[0] * len(self.sequences) for i in range(len(self.sequences))]
         nodes: list[Node] = []
@@ -76,6 +79,7 @@ class MSA:
                 distance_matrix[j][i] = sop
         nj = NeighborJoining(distance_matrix, nodes)
         self.tree = nj.tree_res
+        self.stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
 
     def set_tree(self, tree: UnrootedTree):
         self.tree = tree

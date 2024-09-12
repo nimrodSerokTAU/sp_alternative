@@ -3,7 +3,7 @@ from pathlib import Path
 from classes.config import Configuration
 from classes.gap_interval import GapInterval
 from classes.msa import MSA
-from classes.msa_stats import calc_parsimony
+from classes.msa_stats import calc_parsimony, MSAStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
 from classes.sp_score import SPScore
@@ -27,12 +27,12 @@ newick_of_AATF = (
 )
 
 matrix_case_nj: list[list[float]] = [
-        [0, 5, 9, 9, 8],
-        [5, 0, 10, 10, 9],
-        [9, 10, 0, 8, 7],
-        [9, 10, 8, 0, 3],
-        [8, 9, 7, 3, 0],
-    ]
+    [0, 5, 9, 9, 8],
+    [5, 0, 10, 10, 9],
+    [9, 10, 0, 8, 7],
+    [9, 10, 8, 0, 3],
+    [8, 9, 7, 3, 0],
+]
 keys_case_nj = ['a', 'b', 'c', 'd', 'e']
 
 
@@ -484,6 +484,46 @@ def test_parsimony():  # TODO: continue from here
     assert res == [0, 3, 2, 0, 0, 0, 0]
 
 
+def test_msa_stats():
+    aln: list[str] = [
+        'AT-CGC-GGT',
+        'ACATG-T-GA',
+        'AT-CG--GGT',
+        'ATC-GA-GGA',
+        'TTATGCTGGA'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    true_aln: list[str] = [
+        'AT-CGC-GGT',
+        'ACATG-TG-A',
+        'AT-CG--GGT',
+        'AT-CGA-GGA',
+        'TTATGCTGGA'
+    ]
+    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                          SopCalcTypes.EFFICIENT, 'comparison_files',
+                                          False, False)
+    true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+
+    sp: SPScore = SPScore(config)
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_efficient_sp_parts(
+        inferred_msa.sequences)
+    inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
+                                        sp_missmatch_count)
+    inferred_msa.order_sequences(true_msa.seq_names)
+    dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
+    inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+    inferred_msa.set_my_alignment_features()
+    inferred_msa.build_nj_tree(sp)
+    true_msa.build_nj_tree(sp)
+    inferred_msa.set_rf_from_true(true_msa.tree)
+    assert inferred_msa.stats.get_my_features() == (
+        'inferred,-3.5,-0.035,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,'
+        '0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.045,-0.045,0.47,0.22,1,5,'
+        '0.001,0.001,8.125,25.244,0.563,-1.3256582913972033,5.024,12.875,0.001,29.129,')
+
+
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
     new_tree_root = Tree()
     add_child_to_tree(new_tree_root, tree.anchor)
@@ -535,3 +575,9 @@ def print_branches_ordered_list(branches: list[str]):
     for b in branches:
         print(b)
 
+
+def create_msa_from_seqs_and_names(data_name: str, seqs: list[str], names: list[str]) -> MSA:
+    msa = MSA(data_name)
+    for i in range(len(seqs)):
+        msa.add_sequence_to_me(seqs[i], names[i])
+    return msa

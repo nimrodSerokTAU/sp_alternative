@@ -265,9 +265,9 @@ class MSAStats:
         return int(self.seq_max_len)
 
     def record_gap_lengths(self, sequence: str, seq_index: int, gap_positions: dict, gaps_length_histogram) -> None:
-        start_index = 0
+        start_index = -1
         current_length = 0
-        last_gap_index = 0
+        last_gap_index = -1
         single_char_count = 0
         double_char_count = 0
         for i, char in enumerate(sequence):
