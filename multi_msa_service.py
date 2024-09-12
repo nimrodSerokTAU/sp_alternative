@@ -88,7 +88,7 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
             inferred_msa.set_my_alignment_features()
-            inferred_msa.build_nj_tree(sp)
+            inferred_msa.build_nj_tree()
             inferred_msa.set_rf_from_true(true_msa.tree)
             all_msa_stats.append(inferred_msa.stats)
         if config.is_analyze_per_dir:

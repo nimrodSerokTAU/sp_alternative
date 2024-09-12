@@ -5,6 +5,7 @@ from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
+from utils import calc_kimura_distance_from_other
 
 
 class MSA:
@@ -66,7 +67,7 @@ class MSA:
     def set_my_sop_score(self, sop_score: float):
         self.stats.set_my_sop_score(sop_score)
 
-    def build_nj_tree(self, sp_score: SPScore):
+    def build_nj_tree(self):
         distance_matrix: list[list[float]] = [[0] * len(self.sequences) for i in range(len(self.sequences))]
         nodes: list[Node] = []
         for i in range(len(self.sequences)):
@@ -74,9 +75,9 @@ class MSA:
             node.fill_newick()
             nodes.append(node)
             for j in range(i, len(self.sequences)):
-                sop = sp_score.compute_efficient_sp(profile=[self.sequences[i], self.sequences[j]])
-                distance_matrix[i][j] = sop
-                distance_matrix[j][i] = sop
+                kimura_distance: float = calc_kimura_distance_from_other(self.sequences[i], self.sequences[j])
+                distance_matrix[i][j] = kimura_distance
+                distance_matrix[j][i] = kimura_distance
         nj = NeighborJoining(distance_matrix, nodes)
         self.tree = nj.tree_res
         self.stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)

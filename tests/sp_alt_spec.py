@@ -425,7 +425,7 @@ def test_rf_for_nj_using_ours():
     config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
     sp_score: SPScore = SPScore(config)
-    msa.build_nj_tree(sp_score)
+    msa.build_nj_tree()
     nj_unrooted_tree = msa.tree
     rf = unrooted_tree.calc_rf(nj_unrooted_tree)
     assert rf == 74
@@ -515,13 +515,13 @@ def test_msa_stats():
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
     inferred_msa.set_my_alignment_features()
-    inferred_msa.build_nj_tree(sp)
-    true_msa.build_nj_tree(sp)
+    inferred_msa.build_nj_tree()
+    true_msa.build_nj_tree()
     inferred_msa.set_rf_from_true(true_msa.tree)
     assert inferred_msa.stats.get_my_features() == (
-        'inferred,-3.5,-0.035,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,'
-        '0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.045,-0.045,0.47,0.22,1,5,'
-        '29.129,0.001,0.001,8.125,25.244,0.563,-1.3256582913972033,5.024,12.875,0.001,1,1,1.0,0.0,1,1,1,1,1.0,0.0,1,1,')
+        'inferred,-3.5,-0.035,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
+        '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.045,-0.045,0.47,0.22,1,5,1.676,0.183,0.086,0.399,0.031,0.323,'
+        '-1.544351155944117,0.176,0.491,0.033,1,1.0,0.0,1,1,1,1.0,0.0,1,1,')
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:

@@ -1,3 +1,4 @@
+import math
 from pathlib import Path
 
 
@@ -43,7 +44,15 @@ def add_children_to_list(keys_structure: list, res: list[str]):
                 print(item)
 
 
-# def calc_variance(test_list: []) -> float:
-#     mean = sum(test_list) / len(test_list)
-#     return sum((i - mean) ** 2 for i in test_list) / len(test_list)
+def calc_p_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> float:
+    changes_count = 0
+    for i in range(len(aligned_seq)):
+        if aligned_seq[i] != other_aligned_seq[i]:
+            changes_count += 1
+    return changes_count / len(aligned_seq)
+
+
+def calc_kimura_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> float:
+    fractional_identity: float = calc_p_distance_from_other(aligned_seq, other_aligned_seq)
+    return -math.log((1 - fractional_identity - fractional_identity * fractional_identity / 5), math.e)
 
