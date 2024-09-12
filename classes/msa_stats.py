@@ -5,7 +5,6 @@ from collections import defaultdict, Counter
 
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
-from utils import calc_variance
 
 
 class MSAStats:
@@ -72,6 +71,18 @@ class MSAStats:
     bl_sum: float
     nj_parsimony_score: int
     nj_parsimony_sd: int
+    k_mer_10_max: int
+    k_mer_10_min: int
+    k_mer_10_mean: float
+    k_mer_10_var: float
+    k_mer_10_pct_25: int
+    k_mer_10_pct_75: int
+    k_mer_20_max: int
+    k_mer_20_min: int
+    k_mer_20_mean: float
+    k_mer_20_var: float
+    k_mer_20_pct_25: int
+    k_mer_20_pct_75: int
 
     def __init__(self, code: str):
         self.code = code
@@ -136,6 +147,18 @@ class MSAStats:
         self.bl_sum = -1
         self.nj_parsimony_score = -1
         self.nj_parsimony_sd = -1
+        self.k_mer_10_max = 0
+        self.k_mer_10_min = 0
+        self.k_mer_10_mean = 0
+        self.k_mer_10_var = 0
+        self.k_mer_10_pct_25 = 0
+        self.k_mer_10_pct_75 = 0
+        self.k_mer_20_max = 0
+        self.k_mer_20_min = 0
+        self.k_mer_20_mean = 0
+        self.k_mer_20_var = 0
+        self.k_mer_20_pct_25 = 0
+        self.k_mer_20_pct_75 = 0
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -147,9 +170,10 @@ class MSAStats:
             'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
             'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
             'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm',
-            'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count',
+            'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count', 'bl_sum',
             'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
-            'bl_sum']
+            'k_mer_10_max', 'k_mer_10_min', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_25', 'k_mer_10_pct_75',
+            'k_mer_20_max', 'k_mer_20_min', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_25', 'k_mer_20_pct_75']
 
     def set_my_sop_score(self, sop_score: float):
         self.sop_score = sop_score
@@ -173,6 +197,7 @@ class MSAStats:
         self.set_taxa_num(aln)
         self.set_values(aln)
         self.calc_entropy(aln)
+        self.set_k_mer_features(aln)
 
     def get_my_features(self) -> str:
         values = self.get_my_features_as_list()
@@ -358,7 +383,7 @@ class MSAStats:
         self.median_bl = float(np.median(bl_list))
         self.bl_25_pct = calc_percentile(bl_list, 25)
         self.bl_75_pct = calc_percentile(bl_list, 75)
-        self.var_bl = calc_variance(bl_list)
+        self.var_bl = float(np.var(bl_list))
         self.skew_bl = float(skew(bl_list))
         self.kurtosis_bl = kurtosis(bl_list)
         self.bl_std = float(np.std(bl_list))
@@ -369,6 +394,23 @@ class MSAStats:
         self.nj_parsimony_score = sum(parsimony_score_list)
         self.nj_parsimony_sd = np.std(parsimony_score_list)
         # self.nj_parsimony_ci = np.ci(parsimony_score_list)
+
+    def set_k_mer_features(self, aln: list[str]):
+        histo: list[int] = calc_kmer_histo(aln, min(10, len(aln[0]) - 1))
+        self.k_mer_10_max = int(np.max(histo))
+        self.k_mer_10_min = int(np.min(histo))
+        self.k_mer_10_mean = float(np.mean(histo))
+        self.k_mer_10_var = float(np.var(histo))
+        self.k_mer_10_pct_25 = int(calc_percentile(histo, 25))
+        self.k_mer_10_pct_75 = int(calc_percentile(histo, 75))
+
+        histo_b: list[int] = calc_kmer_histo(aln, min(20, len(aln[0]) - 1))
+        self.k_mer_20_max = int(np.max(histo_b))
+        self.k_mer_20_min = int(np.min(histo_b))
+        self.k_mer_20_mean = float(np.mean(histo_b))
+        self.k_mer_20_var = float(np.var(histo_b))
+        self.k_mer_20_pct_25 = int(calc_percentile(histo_b, 25))
+        self.k_mer_20_pct_75 = int(calc_percentile(histo_b, 75))
 
 
 def get_alignment_df(data: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -421,3 +463,14 @@ def calc_parsimony(unrooted_tree: UnrootedTree, aln: list[str], names: list[str]
                     col_counter += 1
         parsimony_per_col.append(col_counter)
     return parsimony_per_col
+
+
+def calc_kmer_histo(aln: list[str], k: int) -> list[int]:
+    histo: dict[str, int] = {}
+    for seq in aln:
+        for i in range(len(seq) - k):
+            k_mer = seq[i:i+k]
+            if k_mer not in histo:
+                histo[k_mer] = 0
+            histo[k_mer] += 1
+    return list(histo.values())
