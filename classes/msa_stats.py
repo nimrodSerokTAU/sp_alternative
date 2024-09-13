@@ -76,11 +76,15 @@ class MSAStats:
     k_mer_10_var: float
     k_mer_10_pct_95: int
     k_mer_10_pct_90: int
+    k_mer_10_top_10_norm: float
+    k_mer_10_norm: float
     k_mer_20_max: int
     k_mer_20_mean: float
     k_mer_20_var: float
     k_mer_20_pct_95: int
     k_mer_20_pct_90: int
+    k_mer_20_top_10_norm: float
+    k_mer_20_norm: float
 
     def __init__(self, code: str):
         self.code = code
@@ -150,11 +154,15 @@ class MSAStats:
         self.k_mer_10_var = 0
         self.k_mer_10_pct_95 = 0
         self.k_mer_10_pct_90 = 0
+        self.k_mer_10_top_10_norm = 0
+        self.k_mer_10_norm = 0
         self.k_mer_20_max = 0
         self.k_mer_20_mean = 0
         self.k_mer_20_var = 0
         self.k_mer_20_pct_95 = 0
         self.k_mer_20_pct_90 = 0
+        self.k_mer_20_top_10_norm = 0
+        self.k_mer_20_norm = 0
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -168,8 +176,9 @@ class MSAStats:
             'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm',
             'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count', 'bl_sum',
             'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
-            'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90']
+            'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm'
+        ]
 
     def set_my_sop_score(self, sop_score: float):
         self.sop_score = sop_score
@@ -392,19 +401,30 @@ class MSAStats:
         # self.nj_parsimony_ci = np.ci(parsimony_score_list)
 
     def set_k_mer_features(self, aln: list[str]):
-        histo: list[int] = calc_kmer_histo(aln, min(10, len(aln[0]) - 1))
-        self.k_mer_10_max = int(np.max(histo))
-        self.k_mer_10_mean = float(np.mean(histo))
-        self.k_mer_10_var = float(np.var(histo))
-        self.k_mer_10_pct_95 = int(calc_percentile(histo, 95))
-        self.k_mer_10_pct_90 = int(calc_percentile(histo, 90))
+        seq_num: int = len(aln)
+        seq_len: int = len(aln[0])
+        k: int = 10
+        histo: list[int] = calc_kmer_histo(aln, min(k, len(aln[0]) - 1))
+        if len(histo) > 0:
+            self.k_mer_10_max = int(np.max(histo))
+            self.k_mer_10_mean = float(np.mean(histo))
+            self.k_mer_10_var = float(np.var(histo))
+            self.k_mer_10_pct_95 = int(calc_percentile(histo, 95))
+            self.k_mer_10_pct_90 = int(calc_percentile(histo, 90))
+            histo.sort(reverse=True)
+            self.k_mer_10_top_10_norm = sum(histo[0:10]) / seq_num / seq_len
+            self.k_mer_10_norm = sum(histo) / seq_num / seq_len
 
-        histo_b: list[int] = calc_kmer_histo(aln, min(20, len(aln[0]) - 1))
-        self.k_mer_20_max = int(np.max(histo_b))
-        self.k_mer_20_mean = float(np.mean(histo_b))
-        self.k_mer_20_var = float(np.var(histo_b))
-        self.k_mer_20_pct_95 = int(calc_percentile(histo_b, 95))
-        self.k_mer_20_pct_90 = int(calc_percentile(histo_b, 90))
+        k = 20
+        histo_b: list[int] = calc_kmer_histo(aln, min(k, len(aln[0]) - 1))
+        if len(histo_b) > 0:
+            self.k_mer_20_max = int(np.max(histo_b))
+            self.k_mer_20_mean = float(np.mean(histo_b))
+            self.k_mer_20_var = float(np.var(histo_b))
+            self.k_mer_20_pct_95 = int(calc_percentile(histo_b, 95))
+            self.k_mer_20_pct_90 = int(calc_percentile(histo_b, 90))
+            self.k_mer_20_top_10_norm = sum(histo_b[0:10]) / seq_num / seq_len
+            self.k_mer_20_norm = sum(histo_b) / seq_num / seq_len
 
 
 def get_alignment_df(data: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -468,4 +488,4 @@ def calc_kmer_histo(aln: list[str], k: int) -> list[int]:
             if k_mer not in histo:
                 histo[k_mer] = 0
             histo[k_mer] += 1
-    return list(histo.values())
+    return list(filter(lambda x: x > 1, histo.values()))
