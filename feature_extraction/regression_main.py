@@ -6,12 +6,12 @@ if __name__ == '__main__':
 
     mse_values = []
     for i in range(5):
-        model = Regressor("/Users/kpolonsky/Downloads/TEST/combined_results_400k_features.csv", 0.2, mode=1)
+        regressor = Regressor("/Users/kpolonsky/Downloads/TEST/500k_features.csv", 0.2, mode=1)
         # mse = model.random_forest(i=i)
-        mse = model.deep_learning(i=i, epochs=30)
+        mse = regressor.deep_learning(i=i, epochs=30)
         mse_values.append(mse)
         # model.plot_results("rf")
-        model.plot_results("dl")
+        regressor.plot_results("dl", mse)
     print(mse_values)
     mean_mse = np.mean(mse_values)
     std_mse = np.std(mse_values, ddof=1)
