@@ -141,26 +141,42 @@ class PickMeGame:
         n = df.shape[0]
         # Calculate the percentage of True values for each condition
         percentages = {
-            'min_true_equals_min_predicted': (df['min_true_equals_min_predicted'].mean() * 100),
-            'min_predicted_le_default_mafft': (df['min_predicted_le_default_mafft'].mean() * 100),
-            'min_predicted_le_default_prank': (df['min_predicted_le_default_prank'].mean() * 100),
-            'min_predicted_le_default_muscle': (df['min_predicted_le_default_muscle'].mean() * 100),
-            'min_predicted_le_min_mafft': (df['min_predicted_le_min_mafft'].mean() * 100),
-            'min_predicted_le_min_prank': (df['min_predicted_le_min_prank'].mean() * 100),
-            'min_predicted_le_min_muscle': (df['min_predicted_le_min_muscle'].mean() * 100),
-            'min_true_in_top20_min_predicted': (df['min_true_in_top20_min_predicted'].mean() * 100)
+            'Did we find the minimum?': (df['min_true_equals_min_predicted'].mean() * 100),
+            'Are we better or equal to the default MAFFT?': (df['min_predicted_le_default_mafft'].mean() * 100),
+            'Are we better or equal to the default PRANK?': (df['min_predicted_le_default_prank'].mean() * 100),
+            'Are we better or equal to default MUSCLE?': (df['min_predicted_le_default_muscle'].mean() * 100),
+            'Are we better than the best out of all MAFFT Alternatives?': (df['min_predicted_le_min_mafft'].mean() * 100),
+            'Are we better than the best out of all PRANK Alternatives?': (df['min_predicted_le_min_prank'].mean() * 100),
+            'Are we better than the best out of all MUSCLE Alternatives?': (df['min_predicted_le_min_muscle'].mean() * 100),
+            'Was the real minimum among our (predicted) top 20?': (df['min_true_in_top20_min_predicted'].mean() * 100)
         }
 
-        # Create a DataFrame for plotting
         percentages_df = pd.DataFrame(list(percentages.items()), columns=['Condition', 'Percentage'])
 
-        # Plot the results
-        plt.figure(figsize=(12, 8))
-        plt.bar(percentages_df['Condition'], percentages_df['Percentage'], color='skyblue')
-        plt.xlabel('Comparison')
-        plt.ylabel('Percentage (%)')
-        plt.title(f'Percentage of True Values for Each Pick-Me Comparison, n={n}, error = {self.error}')
-        plt.xticks(rotation=45, ha='right')
-        plt.tight_layout()
+        # Sort by 'Percentage'
+        # percentages_df = percentages_df.sort_values(by='Percentage', ascending=True)
+
+        fig, ax = plt.subplots(figsize=(12, 8))
+        bars = ax.barh(percentages_df['Condition'], percentages_df['Percentage'], color='skyblue')
+
+        ax.set_xlabel('Percentage (%)', fontsize=14)
+        ax.set_ylabel('Comparison', fontsize=14)
+        fig.suptitle(f'Percentage of True Value Answers for Each Pick-Me Question, n={n}, error = {self.error}',
+                     fontsize=16)
+
+        ax.tick_params(axis='y', labelsize=16)
+        ax.tick_params(axis='x', labelsize=12)
+
+        # Add %
+        for bar in bars:
+            width = bar.get_width()
+            label = f'{width:.2f}%'
+            ax.text(width, bar.get_y() + bar.get_height() / 2, label,
+                    va='center', ha='left', fontsize=12, color='black')
+
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust rect to make room for the suptitle
+
+        plt.savefig(fname=plotname, format='png')
         plt.show()
-        plt.savefig(fname = plotname, format='png')
+        plt.close()
+
