@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from sklearn.svm import SVR
 from typing import Literal
 from scipy.stats import pearsonr
+import visualkeras
 
 import pydot
 import tensorflow as tf
@@ -140,7 +141,7 @@ class Regressor:
         })
 
         # Save the DataFrame to a CSV file
-        df_res.to_csv(f'/Users/kpolonsky/Downloads/TEST/Features/prediction_{i}.csv', index=False)
+        df_res.to_csv(f'./out/prediction_{i}.csv', index=False)
 
 
         # Evaluate the model
@@ -196,6 +197,8 @@ class Regressor:
         #first hidden
         model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
         model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+        # model.add(ELU(alpha=1.0))
+        # model.add(tf.keras.layers.Activation('swish'))  # Swish activation
         model.add(BatchNormalization())
         model.add(Dropout(0.2))  # Dropout for regularization
 
@@ -205,8 +208,16 @@ class Regressor:
         model.add(BatchNormalization())
         model.add(Dropout(0.2))  # Dropout for regularization
 
+        # third hidden
+        model.add(Dense(18, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+        model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+        # model.add(ELU(alpha=1.0))
+        # model.add(tf.keras.layers.Activation('swish'))  # Swish activation
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))  # Dropout for regularization
 
-        model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
+        # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
+        model.add(Dense(1, activation='softplus'))  # exponential ensures no negative values
 
         optimizer = Adam(learning_rate=0.0012)
         model.compile(optimizer=optimizer, loss='mean_squared_error')
@@ -239,7 +250,11 @@ class Regressor:
         plt.show()
 
         # visualize model architecture
-        plot_model(model, to_file=f'/Users/kpolonsky/Downloads/TEST/Features/model_architecture_{i}.png', show_shapes=True, show_layer_names=True, show_layer_activations=True)
+        plot_model(model, to_file=f'./out/model_architecture_{i}.png', show_shapes=True, show_layer_names=True, show_layer_activations=True)
+        model.save(f'./out/msa_score_regressor_model_{i}.h5')
+        # Save the model architecture as a Dot file
+        plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+        # visualkeras.layered_view(model, to_file='./out/output.png',legend=True, draw_funnel=False, show_dimension=True).show()
 
         # Evaluate the model
         loss = model.evaluate(self.X_test_scaled, self.y_test)
@@ -256,7 +271,7 @@ class Regressor:
         })
 
         # Save the DataFrame to a CSV file
-        df_res.to_csv(f'/Users/kpolonsky/Downloads/TEST/Features/prediction_DL_{i}.csv', index=False)
+        df_res.to_csv(f'./out/prediction_DL_{i}.csv', index=False)
 
         # Evaluate the model
         mse = mean_squared_error(self.y_test, self.y_pred)

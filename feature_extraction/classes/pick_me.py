@@ -86,7 +86,9 @@ class PickMeGame:
             min_predicted_filename = min_predicted_score_row['code']
             min_predicted_true_score = min_predicted_score_row[self.true_score]
             min_predicted_score = min_predicted_score_row[self.predicted_score]
-            # temp_df =
+            sorted_temp_df = code_df.sort_values(by=self.predicted_score, ascending=True)
+            top_20_rows = sorted_temp_df.head(20)
+            top_20_filenames = top_20_rows['code'].tolist()
 
             # Calculate boolean fields
             min_true_equals_min_predicted = (min_true_score_value == (min_predicted_score + error))
@@ -96,6 +98,7 @@ class PickMeGame:
             min_predicted_le_min_mafft = (min_predicted_true_score <= (min_mafft_true_score + error))
             min_predicted_le_min_prank = (min_predicted_true_score <= (min_prank_true_score + error))
             min_predicted_le_min_muscle = (min_predicted_true_score <= (min_muscle_true_score + error))
+            min_true_in_top20_min_predicted = (min_true_score_code_filename in top_20_filenames)
 
             # Append results for the current code
             results.append({
@@ -120,7 +123,8 @@ class PickMeGame:
                 'min_predicted_le_default_muscle': min_predicted_le_default_muscle,
                 'min_predicted_le_min_mafft': min_predicted_le_min_mafft,
                 'min_predicted_le_min_prank': min_predicted_le_min_prank,
-                'min_predicted_le_min_muscle': min_predicted_le_min_muscle
+                'min_predicted_le_min_muscle': min_predicted_le_min_muscle,
+                'min_true_in_top20_min_predicted': min_true_in_top20_min_predicted
             })
 
         # Create a DataFrame from the results
@@ -128,11 +132,11 @@ class PickMeGame:
         self.pickme_df = results_df
 
     def save_to_csv(self, i: int):
-        filename = f'/Users/kpolonsky/Downloads/TEST/pick_me_v{i}.csv'
+        filename = f'./out/pick_me_v{i}.csv'
         self.pickme_df.to_csv(filename, index=False)
 
     def plot_results(self, i: int):
-        plotname = f'/Users/kpolonsky/Downloads/TEST/pick_me_plot_v{i}.png'
+        plotname = f'./out/pick_me_plot_v{i}.png'
         df = self.pickme_df
         n = df.shape[0]
         # Calculate the percentage of True values for each condition
@@ -143,7 +147,8 @@ class PickMeGame:
             'min_predicted_le_default_muscle': (df['min_predicted_le_default_muscle'].mean() * 100),
             'min_predicted_le_min_mafft': (df['min_predicted_le_min_mafft'].mean() * 100),
             'min_predicted_le_min_prank': (df['min_predicted_le_min_prank'].mean() * 100),
-            'min_predicted_le_min_muscle': (df['min_predicted_le_min_muscle'].mean() * 100)
+            'min_predicted_le_min_muscle': (df['min_predicted_le_min_muscle'].mean() * 100),
+            'min_true_in_top20_min_predicted': (df['min_true_in_top20_min_predicted'].mean() * 100)
         }
 
         # Create a DataFrame for plotting
