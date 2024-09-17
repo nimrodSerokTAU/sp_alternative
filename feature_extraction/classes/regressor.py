@@ -8,22 +8,28 @@ import matplotlib.pyplot as plt
 from sklearn.svm import SVR
 from typing import Literal
 from scipy.stats import pearsonr
+import visualkeras
+
+import pydot
 import tensorflow as tf
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LeakyReLU
+from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.initializers import GlorotUniform
 from tensorflow.keras.regularizers import l2
+from tensorflow.keras.utils import plot_model
 
 class Regressor:
     '''
     features_file: file with all features and labels
     test_size: portion of the codes to be separated into a test set; all MSAs for that specific code would be on the same side of the train-test split
     mode: 1 is all features, 2 is all except SoP features, 3 is only 2 SoP features'''
-    def __init__(self, features_file: str, test_size: float, mode: int = 1) -> None:
+    def __init__(self, features_file: str, test_size: float, mode: int = 1, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance') -> None:
         self.features_file = features_file
         self.test_size = test_size
+        self.predicted_measure = predicted_measure
         # self.num_estimators = n_estimators
         self.X_train, self.X_test, self.y_train, self.y_test = None, None, None, None
         self.X, self.y, self.y_pred = None, None, None
@@ -44,20 +50,23 @@ class Regressor:
         # Example: Filling missing values with the mean (for numerical columns)
         # df['orig_tree_ll'] = df['orig_tree_ll'].fillna(df['orig_tree_ll'].mean())
 
+        if self.predicted_measure == 'msa_distance':
+            true_score_name = "dpos_dist_from_true"
+        elif self.predicted_measure == 'tree_distance':
+            true_score_name = "rf_from_true"
+
+        self.y = df[true_score_name]
 
         # all features
         if mode == 1:
-            self.y = df["dpos_dist_from_true"]
-            self.X = df.drop(columns=['dpos_dist_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty'])
 
         # all features except 2 features of SoP
         if mode == 2:
-            self.y = df["dpos_dist_from_true"]
-            self.X = df.drop(columns=['dpos_dist_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
 
         # only 2 features of SoP
         if mode == 3:
-            self.y = df["dpos_dist_from_true"]
             self.X = df[['sop_score', 'normalised_sop_score']]
 
 
@@ -75,20 +84,20 @@ class Regressor:
         train_df = df[df['code1'].isin(train_code1)]
         test_df = df[df['code1'].isin(test_code1)]
 
-        scaler = StandardScaler()
+        scaler = MinMaxScaler()
         # all features
         if mode == 1:
             self.X_train = train_df.drop(
-                columns=['dpos_dist_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty'])
             self.X_test = test_df.drop(
-                columns=['dpos_dist_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty'])
 
         # all features except 2 sop
         if mode == 2:
             self.X_train = train_df.drop(
-                columns=['dpos_dist_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
             self.X_test = test_df.drop(
-                columns=['dpos_dist_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'code', 'code1', 'taxa_num', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
 
         # 2 sop features
         if mode == 3:
@@ -107,8 +116,10 @@ class Regressor:
               f"P-value of non-correlation: {p_value1:.4f}\n")
 
         # Set train and test Labels
-        self.y_train = train_df["dpos_dist_from_true"]
-        self.y_test = test_df["dpos_dist_from_true"]
+        # self.y_train = train_df["dpos_dist_from_true"]
+        # self.y_test = test_df["dpos_dist_from_true"]
+        self.y_train = train_df[true_score_name]
+        self.y_test = test_df[true_score_name]
 
         # Check the size of each set
         print(f"Training set size: {train_df.shape}")
@@ -130,7 +141,7 @@ class Regressor:
         })
 
         # Save the DataFrame to a CSV file
-        df_res.to_csv(f'/Users/kpolonsky/Downloads/TEST/Features/prediction_{i}.csv', index=False)
+        df_res.to_csv(f'./out/prediction_{i}.csv', index=False)
 
 
         # Evaluate the model
@@ -180,58 +191,70 @@ class Regressor:
         return mse
 
     def deep_learning(self, i, epochs=50, batch_size=16, validation_split=0.1, verbose=1):
-        # model = Sequential()
-
-        # model.add(Dense(64, input_dim=self.X_train_scaled.shape[1], activation='relu'))  # input layer, hidden layer with 64 units and ReLU activation
-        # model.add(
-        #     Dense(32, activation='relu'))  # hidden layer with 32 units and ReLU activation
-
-        # model.add(Dense(64, input_dim=self.X_train_scaled.shape[1], activation='relu', kernel_regularizer=l2(0.01))) #input layer, hidden layer with 64 units and ReLU activation
-        # model.add(Dense(32, activation='relu', kernel_regularizer=l2(0.01))) #hidden layer with 32 units and ReLU activation
-
-
-        # works very well but LEAKE RELU is unusually places not as an activation...
-        # model.add(Dense(64, input_dim=self.X_train_scaled.shape[1],
-        #                 activation='relu'))  # input layer, hidden layer with 64 units and ReLU activation
-        # model.add(
-        #     Dense(32, activation='relu'))  # hidden layer with 32 units and ReLU activation
-        # model.add(LeakyReLU(alpha=0.01))
-        # model.add(Dense(1)) #output layer / single unit for regression task
-
         model = Sequential()
-        model.add(Dense(64, input_dim=self.X_train_scaled.shape[1])) #Dense Layer (fully connected layer with 64 neurons), input dimension = number of features
-        model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU activation
-        model.add(Dropout(0.2))  # Dropout layer, 20% of the neurons in this layer are randomly set to zero during each training epoch
-        model.add(Dense(32)) # fully connected layer with 32 neurons
-        model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU activation
-        model.add(Dropout(0.2))  # Dropout layer, 20% of the neurons in this layer are randomly set to zero during each training epoch
-        model.add(Dense(1))  # Output layer for regression
+        model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
-        # model = Sequential()
-        # model.add(Dense(128, input_dim=self.X_train_scaled.shape[1], activation='relu',
-        #                 kernel_regularizer=l2(0.01)))  # increased layer size
-        # model.add(Dropout(0.5))  # added dropout
-        # model.add(Dense(64, activation='relu', kernel_regularizer=l2(0.01)))
-        # model.add(Dropout(0.5))  # added dropout
-        # model.add(Dense(1))  # output layer
+        #first hidden
+        model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+        model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+        # model.add(ELU(alpha=1.0))
+        # model.add(tf.keras.layers.Activation('swish'))  # Swish activation
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))  # Dropout for regularization
 
-        # Optimizer
-        optimizer = Adam(learning_rate=0.001) # Use a learning rate
+        # second hidden
+        model.add(Dense(32, kernel_initializer=GlorotUniform(),kernel_regularizer=l2(1e-4)))
+        model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))  # Dropout for regularization
+
+        # third hidden
+        model.add(Dense(18, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+        model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+        # model.add(ELU(alpha=1.0))
+        # model.add(tf.keras.layers.Activation('swish'))  # Swish activation
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))  # Dropout for regularization
+
+        # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
+        model.add(Dense(1, activation='softplus'))  # exponential ensures no negative values
+
+        optimizer = Adam(learning_rate=0.0012)
         model.compile(optimizer=optimizer, loss='mean_squared_error')
-        # model.compile(optimizer='adam', loss='mean_squared_error')
 
-        # Implement early stopping
-        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+        #set call-backs
+        # 1. Implement early stopping
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        # 2. learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(
+            monitor='val_loss',  # Metric to monitor
+            patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
+            verbose=1,  # Print messages when learning rate is reduced
+            factor=0.7,  # Factor by which the learning rate will be reduced
+            min_lr=1e-4  # Lower bound on the learning rate
+        )
 
-        history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping])
+        history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler])
 
         # Plotting training and validation loss
         plt.plot(history.history['loss'], label='Training Loss')
         plt.plot(history.history['val_loss'], label='Validation Loss')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
+
+        # Set integer ticks on the x-axis
+        epochs = range(1, len(history.history['loss']) + 1)  # Integer epoch numbers
+        plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
+
         plt.legend()
         plt.show()
+
+        # visualize model architecture
+        plot_model(model, to_file=f'./out/model_architecture_{i}.png', show_shapes=True, show_layer_names=True, show_layer_activations=True)
+        model.save(f'./out/msa_score_regressor_model_{i}.h5')
+        # Save the model architecture as a Dot file
+        plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+        # visualkeras.layered_view(model, to_file='./out/output.png',legend=True, draw_funnel=False, show_dimension=True).show()
 
         # Evaluate the model
         loss = model.evaluate(self.X_test_scaled, self.y_test)
@@ -239,16 +262,16 @@ class Regressor:
 
         # Make predictions
         self.y_pred = model.predict(self.X_test_scaled)
-        self.y_pred = np.ravel(self.y_pred)
+        self.y_pred = np.ravel(self.y_pred) #flatten multi-dimensional array into one-dimensional
         # Create a DataFrame
         df_res = pd.DataFrame({
-            'Code': self.main_codes_test,
-            'File': self.file_codes_test,
-            'PredictedValue': self.y_pred
+            'code1': self.main_codes_test,
+            'code': self.file_codes_test,
+            'predicted_score': self.y_pred
         })
 
         # Save the DataFrame to a CSV file
-        df_res.to_csv(f'/Users/kpolonsky/Downloads/TEST/Features/prediction_DL_{i}.csv', index=False)
+        df_res.to_csv(f'./out/prediction_DL_{i}.csv', index=False)
 
         # Evaluate the model
         mse = mean_squared_error(self.y_test, self.y_pred)
@@ -258,7 +281,7 @@ class Regressor:
         return mse
 
 
-    def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"]) -> None:
+    def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float) -> None:
         # Plot results for many features
         plt.figure(figsize=(10, 6))
         plt.scatter(self.y_test, self.y_pred, color='blue', edgecolor='k', alpha=0.7)
@@ -266,7 +289,7 @@ class Regressor:
         corr_coefficient, _ = pearsonr(self.y_test, self.y_pred)
         plt.text(
             0.05, 0.95,  # Coordinates in relative figure coordinates (0 to 1)
-            f'Pearson Correlation: {corr_coefficient:.2f}',  # Text with the coefficient
+            f'Pearson Correlation: {corr_coefficient:.2f}, MSE: {mse:.6f}',  # Text with the coefficient
             transform=plt.gca().transAxes,  # Use axes coordinate system
             fontsize=12,
             verticalalignment='top'
