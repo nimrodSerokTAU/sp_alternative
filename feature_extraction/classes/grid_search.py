@@ -1,11 +1,6 @@
 import itertools
-
 import numpy as np
 import pandas as pd
-
-# import tensorflow as tf
-# print(tf.__version__)
-
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU
 # from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
@@ -18,11 +13,10 @@ from tensorflow.keras.initializers import GlorotUniform
 from tensorflow.keras.regularizers import l2
 from regressor import Regressor
 
-
 regressor = Regressor("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/500K_features.csv", 0.2, mode=1, predicted_measure='msa_distance')
 
 # Define a function to create the model
-def create_model(optimizer='adam', dropout_rate=0.2, neurons=[64,32,16], kernel_init=GlorotUniform(), kernel_reg=l2(1e-4),activations=['relu', 'relu', 'relu']):
+def create_model(optimizer='adam', dropout_rate=0.2, neurons=[64,32,16], kernel_init=GlorotUniform(), kernel_reg=l2(1e-4),activations=['leaky_relu', 'leaky_relu', 'leaky_relu']):
     model = Sequential()
     model.add(Input(shape=(regressor.X_train_scaled.shape[1],)))
 
@@ -55,7 +49,7 @@ def create_model(optimizer='adam', dropout_rate=0.2, neurons=[64,32,16], kernel_
     model.add(Dense(neurons[2], kernel_initializer=kernel_init, kernel_regularizer=kernel_reg))
 
     if activations[2] == 'leaky_relu':
-        model.add(LeakyReLU(alpha=0.01))
+        model.add(LeakyReLU(negative_slope=0.01))
     elif activations[2] == 'elu':
         model.add(ELU())
     else:
@@ -70,28 +64,7 @@ def create_model(optimizer='adam', dropout_rate=0.2, neurons=[64,32,16], kernel_
     return model
 
 # Define possible activation functions
-activation_functions = ['relu', 'leaky_relu', 'elu']
-# Create all combinations for three hidden layers
-activation_combinations = list(itertools.product(activation_functions, repeat=3))
-
-
-# Wrap the model into KerasClassifier/KerasRegressor
-# model = KerasRegressor(build_fn=create_model, verbose=0)
-#
-# # Create and fit the GridSearchCV
-# grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=3, scoring='neg_mean_squared_error')
-# grid_result = grid.fit(regressor.X_train_scaled, regressor.y_train)
-#
-# # Print the best parameters and the best score
-# print(f"Best: {grid_result.best_score_} using {grid_result.best_params_}")
-#
-# # Optionally, you can evaluate the best model on the test set
-# best_model = grid_result.best_estimator_
-# test_score = best_model.score(regressor.X_test_scaled, regressor.y_test)
-# print(f"Test Score: {test_score}")
-
-# Define possible activation functions
-activation_functions = ['relu', 'leaky_relu', 'elu']
+activation_functions = ['leaky_relu', 'relu', 'elu']
 activation_combinations = list(itertools.product(activation_functions, repeat=3))
 
 # Define possible activation functions
@@ -100,11 +73,11 @@ neuron_combinations = list(itertools.product(neurons, repeat=3))
 
 # Define the grid of hyperparameters
 param_grid = {
-    'activations':activation_combinations,
+    'activations': activation_combinations,
     'batch_size': [8, 16, 32],
-    'epochs': [20,30,50],
+    'epochs': [30, 50],
     'optimizer': ['adam', 'rmsprop'],
-    'dropout_rate': [0.0, 0.2, 0.4],
+    'dropout_rate': [0.2, 0.4],
     'neurons': neuron_combinations
 }
 
@@ -117,21 +90,27 @@ for activation_combo in activation_combinations:
         for epochs in param_grid['epochs']:
             for dropout_rate in param_grid['dropout_rate']:
                 for neurons_combo in param_grid['neurons']:
-                    model = create_model(optimizer='adam', dropout_rate=dropout_rate, neurons=neurons_combo, kernel_init=GlorotUniform(), kernel_reg=l2(1e-4),activations=activation_combo)
+                    try:
 
-                    model.fit(regressor.X_train_scaled, regressor.y_train, batch_size=batch_size, epochs=epochs, verbose=1)
-                    score = model.evaluate(regressor.X_test_scaled, regressor.y_test, verbose=0)
-                    print(
-                        f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons}, Score: {score}")
+                        model = create_model(optimizer='adam', dropout_rate=dropout_rate, neurons=neurons_combo, kernel_init=GlorotUniform(), kernel_reg=l2(1e-4),activations=activation_combo)
+                        model.fit(regressor.X_train_scaled, regressor.y_train, batch_size=batch_size, epochs=epochs, verbose=1)
+                        score = model.evaluate(regressor.X_test_scaled, regressor.y_test, verbose=0)
+                        print(
+                            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}")
 
-                    if score < best_score:
-                        best_score = score
-                        best_params = {
-                            'activation': activation_combo,
-                            'batch_size': batch_size,
-                            'epochs': epochs,
-                            'dropout_rate': dropout_rate,
-                            'neurons': neurons_combo
-                        }
+                        with open('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt', 'a') as f:
+                            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}")
+
+                        if score < best_score:
+                            best_score = score
+                            best_params = {
+                                'activation': activation_combo,
+                                'batch_size': batch_size,
+                                'epochs': epochs,
+                                'dropout_rate': dropout_rate,
+                                'neurons': neurons_combo
+                            }
+                    except:
+                        print(f'failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}')
 
 print(f"Best Score: {best_score} using {best_params}")

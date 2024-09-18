@@ -208,7 +208,7 @@ class Regressor:
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
             #first hidden
-            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+            model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
@@ -220,7 +220,7 @@ class Regressor:
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
-            model.add(Dense(18, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
@@ -228,22 +228,22 @@ class Regressor:
             # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
             model.add(Dense(1, activation='softplus'))  # exponential ensures no negative values
 
-            optimizer = Adam(learning_rate=0.0012)
+            optimizer = Adam(learning_rate=0.001)
             model.compile(optimizer=optimizer, loss='mean_squared_error')
 
             #set call-backs
             # 1. Implement early stopping
             early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
             # 2. learning rate scheduler
-            lr_scheduler = ReduceLROnPlateau(
-                monitor='val_loss',  # Metric to monitor
-                patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
-                verbose=1,  # Print messages when learning rate is reduced
-                factor=0.7,  # Factor by which the learning rate will be reduced
-                min_lr=1e-5  # Lower bound on the learning rate
-            )
+            # lr_scheduler = ReduceLROnPlateau(
+            #     monitor='val_loss',  # Metric to monitor
+            #     patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
+            #     verbose=1,  # Print messages when learning rate is reduced
+            #     factor=0.7,  # Factor by which the learning rate will be reduced
+            #     min_lr=1e-5  # Lower bound on the learning rate
+            # )
 
-            history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler])
+            history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping])
 
         # mode for non-negative regression tree_distance task
         elif self.predicted_measure == 'tree_distance':
@@ -257,13 +257,13 @@ class Regressor:
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # second hidden
-            model.add(Dense(32, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
+            model.add(Dense(64, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
-            model.add(Dense(18, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
+            model.add(Dense(32, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
             model.add(ELU(alpha=0.25))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
