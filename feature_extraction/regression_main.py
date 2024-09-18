@@ -7,11 +7,11 @@ if __name__ == '__main__':
     mse_values = []
     for i in range(5):
         regressor = Regressor("./out/500k_features.csv", 0.2, mode=2, predicted_measure='msa_distance')
-        mse = regressor.random_forest(i=i)
-        # mse = regressor.deep_learning(i=i)
+        # mse = regressor.random_forest(i=i)
+        mse = regressor.deep_learning(i=i)
         mse_values.append(mse)
-        regressor.plot_results("rf", mse, i)
-        # regressor.plot_results("dl", mse, i)
+        # regressor.plot_results("rf", mse, i)
+        regressor.plot_results("dl", mse, i)
     print(mse_values)
     mean_mse = np.mean(mse_values)
     std_mse = np.std(mse_values, ddof=1)

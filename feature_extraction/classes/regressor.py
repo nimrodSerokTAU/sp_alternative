@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, accuracy_score
 import matplotlib.pyplot as plt
 from sklearn.svm import SVR
 from typing import Literal
@@ -133,7 +133,14 @@ class Regressor:
         self.regressor.fit(self.X_train, self.y_train)
 
         # Make predictions
+        y_train_pred = self.regressor.predict(self.X_train)
         self.y_pred = self.regressor.predict(self.X_test)
+
+        # Calculate accuracy
+        train_accuracy = accuracy_score(self.y_train, y_train_pred)
+        test_accuracy = accuracy_score(self.y_test, self.y_pred)
+        print(f"Training Accuracy: {train_accuracy:.4f}")
+        print(f"Test Accuracy: {test_accuracy:.4f}")
 
         # Create a DataFrame
         df_res = pd.DataFrame({
@@ -197,7 +204,6 @@ class Regressor:
 
         # mode for non-negative regression msa_distance task
         if self.predicted_measure == 'msa_distance':
-            # epochs = 30
             model = Sequential()
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
@@ -241,7 +247,6 @@ class Regressor:
 
         # mode for non-negative regression tree_distance task
         elif self.predicted_measure == 'tree_distance':
-            # epochs = 50
             model = Sequential()
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
@@ -252,13 +257,13 @@ class Regressor:
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # second hidden
-            model.add(Dense(128, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
+            model.add(Dense(32, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
-            model.add(Dense(64, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
+            model.add(Dense(18, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
             model.add(ELU(alpha=0.25))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization

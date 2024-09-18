@@ -159,8 +159,8 @@ class PickMeGame:
         fig, ax = plt.subplots(figsize=(12, 8))
         bars = ax.barh(percentages_df['Condition'], percentages_df['Percentage'], color='skyblue')
 
-        ax.set_xlabel('Percentage (%)', fontsize=14)
-        ax.set_ylabel('Comparison', fontsize=14)
+        ax.set_xlabel('Percentage of YES answers (%)', fontsize=14)
+        ax.set_ylabel('Question', fontsize=14)
         fig.suptitle(f'Percentage of True Value Answers for Each Pick-Me Question, n={n}, error = {self.error}',
                      fontsize=16)
 
