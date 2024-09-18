@@ -78,7 +78,8 @@ param_grid = {
     'epochs': [30, 50],
     'optimizer': ['adam', 'rmsprop'],
     'dropout_rate': [0.2, 0.4],
-    'neurons': neuron_combinations
+    'neurons': neuron_combinations,
+    'validation_split': 0.2
 }
 
 # Manual hyperparameter tuning
@@ -93,13 +94,14 @@ for activation_combo in activation_combinations:
                     try:
 
                         model = create_model(optimizer='adam', dropout_rate=dropout_rate, neurons=neurons_combo, kernel_init=GlorotUniform(), kernel_reg=l2(1e-4),activations=activation_combo)
-                        model.fit(regressor.X_train_scaled, regressor.y_train, batch_size=batch_size, epochs=epochs, verbose=1)
+                        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+                        model.fit(regressor.X_train_scaled, regressor.y_train, validation_split=param_grid['validation_split'], batch_size=batch_size, epochs=epochs, verbose=1, callbacks=[early_stopping])
                         score = model.evaluate(regressor.X_test_scaled, regressor.y_test, verbose=0)
                         print(
-                            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}")
+                            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, , Validation split: {param_grid['validation_split']}, Score: {score}")
 
                         with open('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt', 'a') as f:
-                            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}\n")
+                            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, , Validation split: {param_grid['validation_split']}, Score: {score}\n")
 
                         if score < best_score:
                             best_score = score

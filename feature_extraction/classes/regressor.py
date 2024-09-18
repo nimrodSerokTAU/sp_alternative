@@ -199,7 +199,7 @@ class Regressor:
         print(f"Mean Squared Error: {mse:.4f}")
         return mse
 
-    def deep_learning(self, i, epochs=50, batch_size=16, validation_split=0.1, verbose=1):
+    def deep_learning(self, i, epochs=50, batch_size=16, validation_split=0.2, verbose=1):
         history = None
 
         # mode for non-negative regression msa_distance task
@@ -233,7 +233,7 @@ class Regressor:
 
             #set call-backs
             # 1. Implement early stopping
-            early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
             # 2. learning rate scheduler
             # lr_scheduler = ReduceLROnPlateau(
             #     monitor='val_loss',  # Metric to monitor
@@ -288,7 +288,7 @@ class Regressor:
 
             history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
                                 validation_split=validation_split, verbose=verbose,
-                                callbacks=[early_stopping,lr_scheduler])
+                                callbacks=[early_stopping])
 
         # Plotting training and validation loss
         plt.plot(history.history['loss'], label='Training Loss')
