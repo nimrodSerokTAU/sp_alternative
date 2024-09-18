@@ -99,7 +99,7 @@ for activation_combo in activation_combinations:
                             f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}")
 
                         with open('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt', 'a') as f:
-                            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}")
+                            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}\n")
 
                         if score < best_score:
                             best_score = score
@@ -110,7 +110,7 @@ for activation_combo in activation_combinations:
                                 'dropout_rate': dropout_rate,
                                 'neurons': neurons_combo
                             }
-                    except:
-                        print(f'failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Score: {score}')
+                    except Exception as e:
+                        print(f'Failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}. Error: {e}')
 
 print(f"Best Score: {best_score} using {best_params}")
