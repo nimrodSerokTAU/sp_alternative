@@ -54,8 +54,8 @@ class Regressor:
         if self.predicted_measure == 'msa_distance':
             true_score_name = "dpos_dist_from_true"
         elif self.predicted_measure == 'tree_distance':
-            # true_score_name = "rf_from_true"
-            true_score_name = 'normalized_rf'
+            true_score_name = "rf_from_true"
+            # true_score_name = 'normalized_rf'
 
         self.y = df[true_score_name]
 
@@ -136,9 +136,12 @@ class Regressor:
         y_train_pred = self.regressor.predict(self.X_train)
         self.y_pred = self.regressor.predict(self.X_test)
 
+        if self.predicted_measure == "tree_distance":
+            self.y_pred = np.round(self.y_pred).astype(int)
+
         # Calculate accuracy
-        train_accuracy = accuracy_score(self.y_train, y_train_pred)
-        test_accuracy = accuracy_score(self.y_test, self.y_pred)
+        train_accuracy = mean_squared_error(self.y_train, y_train_pred)
+        test_accuracy = mean_squared_error(self.y_test, self.y_pred)
         print(f"Training Accuracy: {train_accuracy:.4f}")
         print(f"Test Accuracy: {test_accuracy:.4f}")
 
@@ -199,7 +202,7 @@ class Regressor:
         print(f"Mean Squared Error: {mse:.4f}")
         return mse
 
-    def deep_learning(self, i, epochs=50, batch_size=16, validation_split=0.2, verbose=1):
+    def deep_learning(self, i, epochs=30, batch_size=8, validation_split=0.2, verbose=1):
         history = None
 
         # mode for non-negative regression msa_distance task
@@ -208,20 +211,24 @@ class Regressor:
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
             #first hidden
-            model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            # model.add(Activation('relu'))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # second hidden
-            model.add(Dense(32, kernel_initializer=GlorotUniform(),kernel_regularizer=l2(1e-4)))
+            model.add(Dense(64, kernel_initializer=GlorotUniform(),kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            # model.add(Activation('relu'))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
             model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
-            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+            # model.add(ELU())
+            model.add(Activation('relu'))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
@@ -251,27 +258,29 @@ class Regressor:
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
             # first hidden
-            model.add(Dense(64, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
+            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # second hidden
-            model.add(Dense(64, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
+            model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+            # model.add(ELU())
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
-            model.add(Dense(32, kernel_initializer='he_normal', kernel_regularizer=l2(1e-4)))
-            model.add(ELU(alpha=0.25))
+            model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            model.add(ELU())
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
             model.add(Dense(1))  #
 
-            optimizer = Adam(learning_rate=0.001)
+            optimizer = Adam(learning_rate=0.0001)
             model.compile(optimizer=optimizer, loss='mean_squared_error')
 
             # set call-backs
@@ -320,6 +329,11 @@ class Regressor:
         # Make predictions
         self.y_pred = model.predict(self.X_test_scaled)
         self.y_pred = np.ravel(self.y_pred)  # flatten multi-dimensional array into one-dimensional
+
+        # get integers predictions of RF distance
+        if self.predicted_measure == "tree_distance":
+            self.y_pred = np.round(self.y_pred).astype(int)
+
         # Create a DataFrame
         df_res = pd.DataFrame({
             'code1': self.main_codes_test,

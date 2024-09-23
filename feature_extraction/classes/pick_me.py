@@ -23,7 +23,7 @@ class PickMeGame:
         if predicted_measure == "msa_distance":
             self.true_score = 'dpos_dist_from_true'
         elif predicted_measure == "tree_distance":
-            self.true_score = ''
+            self.true_score = 'rf_from_true'
 
 
         results = []
@@ -91,7 +91,8 @@ class PickMeGame:
             top_20_filenames = top_20_rows['code'].tolist()
 
             # Calculate boolean fields
-            min_true_equals_min_predicted = (min_true_score_value == (min_predicted_score + error))
+            # min_true_equals_min_predicted = (min_true_score_value == (min_predicted_score + error))
+            min_true_equals_min_predicted = (min_true_score_code_filename == min_predicted_filename)
             min_predicted_le_default_mafft = (min_predicted_true_score <= (default_mafft_true_score + error))
             min_predicted_le_default_prank = (min_predicted_true_score <= (default_prank_true_score + error))
             min_predicted_le_default_muscle = (min_predicted_true_score <= (default_muscle_true_score + error))
