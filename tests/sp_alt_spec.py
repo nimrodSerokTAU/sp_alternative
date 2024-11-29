@@ -525,10 +525,10 @@ def test_msa_stats():
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config)
-    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_efficient_sp_parts(
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count = sp.compute_efficient_sp_parts(
         inferred_msa.sequences)
     inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                        sp_missmatch_count)
+                                        sp_missmatch_count, sp_gpo_count)
     inferred_msa.order_sequences(true_msa.seq_names)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)

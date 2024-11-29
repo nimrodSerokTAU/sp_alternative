@@ -81,9 +81,9 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             if config.sop_clac_type == SopCalcTypes.NAIVE:
                 inferred_msa.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
             else:
-                sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
+                sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
                 inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                                    sp_missmatch_count)
+                                                    sp_missmatch_count, go_count)
             inferred_msa.order_sequences(true_msa.seq_names)
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
