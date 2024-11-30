@@ -1,17 +1,20 @@
-from typing import Self
+# from typing import Self
 import copy
 
 
 class Node:
     id: int
     keys: set[str]
-    father: Self
+    # father: Self
+    father: 'Node'
     branch_length: float
-    children: list[Self]
+    # children: list[Self]
+    children: list['Node']
     newick_part: str
     parsimony_set: set[str]
 
-    def __init__(self, node_id: int, keys: set[str], children: list[Self], branch_length: float = 0):
+    # def __init__(self, node_id: int, keys: set[str], children: list[Self], branch_length: float = 0):
+    def __init__(self, node_id: int, keys: set[str], children: list['Node'], branch_length: float = 0):
         self.id = node_id
         self.keys = keys
         self.father = None
@@ -20,7 +23,8 @@ class Node:
         self.parsimony_set = set()
 
     @classmethod
-    def create_from_children(cls, children_list: list[Self], inx: int | None):
+    def create_from_children(cls, children_list: list['Node'], inx: int | None):
+    # def create_from_children(cls, children_list: list[Self], inx: int | None):
         keys: set[str] = set()
         for child in children_list:
             keys = keys.union(child.keys)
