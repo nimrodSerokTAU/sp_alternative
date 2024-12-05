@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from classes.compare_msas import msa_comp_main
 from classes.config import Configuration
 from classes.gap_interval import GapInterval
 from classes.msa import MSA
@@ -206,6 +207,23 @@ def test_compute_dpos_distance_for_diff():
         'AATAT-TG',
         'A-A-TTAG',
         'A--A-TAG'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert round(res, 3) == 0.417
+
+
+def compute_dpos_distance_for_diff_case_b():
+    profile_a: list[str] = [
+        'ABCDEFGH',
+        'A-CDEFGH',
+        'AB-DEFGH',
+        'AB-DEFGH'
+    ]
+    profile_b: list[str] = [
+        'ABCDEFGH',
+        'A-CDEFGH',
+        'AB-DEFGH',
+        'AB-DEFGH'
     ]
     res = compute_dpos_distance(profile_a, profile_b)
     assert round(res, 3) == 0.417
@@ -507,10 +525,10 @@ def test_msa_stats():
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config)
-    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_efficient_sp_parts(
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count = sp.compute_efficient_sp_parts(
         inferred_msa.sequences)
     inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                        sp_missmatch_count)
+                                        sp_missmatch_count, sp_gpo_count)
     inferred_msa.order_sequences(true_msa.seq_names)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
@@ -581,3 +599,8 @@ def create_msa_from_seqs_and_names(data_name: str, seqs: list[str], names: list[
     for i in range(len(seqs)):
         msa.add_sequence_to_me(seqs[i], names[i])
     return msa
+
+
+def test_comp_3():
+    res = msa_comp_main()
+    assert res == []

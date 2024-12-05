@@ -66,6 +66,25 @@ def construct_test_set(file):
     if mode == 3:
         X = df[['sop_score', 'normalised_sop_score']]
 
+    if mode == 4:  # test removing features
+        X = df.drop(
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                     'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
+                     'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
+                     'var_bl',
+                     'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
+                     'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+                     'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+                     'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
+                     'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
+                     'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
+                     'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
+                     'k_mer_10_top_10_norm',
+                     'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
+                     'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
+                     'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+        )
+
     # Get unique 'code1' values
     unique_code1 = df['code1'].unique()
     test_df = df
@@ -84,6 +103,26 @@ def construct_test_set(file):
     # 2 sop features
     if mode == 3:
         X_test = test_df[['sop_score', 'normalised_sop_score']]
+
+
+    if mode == 4:
+        X_test = test_df.drop(
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                     'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
+                     'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
+                     'var_bl',
+                     'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
+                     'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+                     'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+                     'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
+                     'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
+                     'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
+                     'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
+                     'k_mer_10_top_10_norm',
+                     'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
+                     'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
+                     'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+        )
 
     # # load scaler used during the training
     # scaler = joblib.load(
@@ -106,7 +145,7 @@ def construct_test_set(file):
 
 def use_test_from_origin(features_file, predictions_file):
     predicted_measure = 'msa_distance'
-    mode = 2
+    mode = 4
 
     df = pd.read_csv(features_file)
     # to make sure that all dataset codes are read as strings and not integers
@@ -119,6 +158,7 @@ def use_test_from_origin(features_file, predictions_file):
 
     # add normalized_rf
     df["normalized_rf"] = df['rf_from_true'] / (df['taxa_num'] - 1)
+    df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.010, 0, 1)
 
     # Handle missing values (if any)
     # Example: Filling missing values with the mean (for numerical columns)
@@ -137,17 +177,36 @@ def use_test_from_origin(features_file, predictions_file):
     # all features
     if mode == 1:
         X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                                  'pypythia_msa_difficulty'])
+                                  'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score'])
 
     # all features except 2 features of SoP
     if mode == 2:
         X = df.drop(
-            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label',
                      'sop_score', 'normalised_sop_score'])
 
     # only 2 features of SoP
     if mode == 3:
         X = df[['sop_score', 'normalised_sop_score']]
+
+    if mode == 4:  # test removing features
+        X = df.drop(
+            columns=['k_mer_10_norm', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                     'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
+                     'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
+                     'var_bl',
+                     'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
+                     'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+                     'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+                     'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
+                     'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
+                     'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
+                     'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
+                     'k_mer_10_top_10_norm',
+                     'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
+                     'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
+                     'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+        )
 
     # Split the unique 'code1' into training and test sets
     df_codes = pd.read_csv(predictions_file)
@@ -161,16 +220,36 @@ def use_test_from_origin(features_file, predictions_file):
     if mode == 1:
         X_test = test_df.drop(
             columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                     'pypythia_msa_difficulty'])
+                     'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score'])
 
     if mode == 2:
         X_test = test_df.drop(
             columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
-                     'sop_score', 'normalised_sop_score'])
+                     'sop_score', 'class_label', 'normalised_sop_score'])
 
     # 2 sop features
     if mode == 3:
         X_test = test_df[['sop_score', 'normalised_sop_score']]
+
+
+    if mode == 4:
+        X_test = test_df.drop(
+            columns=['k_mer_10_norm', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                     'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
+                     'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
+                     'var_bl',
+                     'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
+                     'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+                     'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+                     'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
+                     'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
+                     'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
+                     'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
+                     'k_mer_10_top_10_norm',
+                     'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
+                     'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
+                     'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+        )
 
 
     main_codes_test = test_df['code1']

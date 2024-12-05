@@ -5,11 +5,13 @@ from scipy import stats
 
 if __name__ == '__main__':
     n = 5
+    data_dict = {}
+    sop_data_dict = {}
     for i in range(n):
         # pickme = PickMeGameProgram(features_file='./out/orthomam_all_w_balify_no_ancestors_67.csv',
         #                            prediction_file=f'./out/orthomam_all_w_balify_no_ancestors/RF/rf_prediction_{i}_mode2_msa_distance.csv',
         #                            error=0)
-        pickme = PickMeGameProgram(features_file='./out/balibase_features_full_74.csv',
+        pickme = PickMeGameProgram(features_file='./out/balibase_features_73.csv',
                             prediction_file=f'./out/BaliBase/DL2/prediction_DL_{i}_mode2_msa_distance.csv',
                             error=0)
 
@@ -59,5 +61,19 @@ if __name__ == '__main__':
         pickme.save_to_csv(i)
         pickme.plot_results(i)
         pickme.plot_SoP_results(i)
+        for condition in pickme.accumulated_sop_data:
+            if condition not in sop_data_dict:
+                sop_data_dict[condition] = {'sum': 0, 'count': 0}
+
+            sop_data_dict[condition]['sum'] += pickme.accumulated_sop_data[condition]['sum']
+            sop_data_dict[condition]['count'] += pickme.accumulated_sop_data[condition]['count']
+        for condition in pickme.accumulated_data:
+            if condition not in data_dict:
+                data_dict[condition] = {'sum': 0, 'count': 0}
+
+            data_dict[condition]['sum'] += pickme.accumulated_data[condition]['sum']
+            data_dict[condition]['count'] += pickme.accumulated_data[condition]['count']
     if n > 1:
+        pickme.accumulated_sop_data = sop_data_dict
+        pickme.accumulated_data = data_dict
         pickme.plot_average_results(n)

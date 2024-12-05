@@ -5,13 +5,13 @@ from scipy import stats
 if __name__ == '__main__':
 
     auc_values = []
-    for i in range(5):
-        regressor = Regressor("./out/orthomam_all_w_balify_no_ancestors_67.csv", 0.2, mode=2,
+    for i in range(1):
+        regressor = Regressor("./out/orthomam_all_w_balify_no_ancestors_67.csv", 0.2, mode=4,
                               predicted_measure='class_label', i=i)
         # auc = regressor.random_forest_classification(n_estimators=100, i=i)
         # auc = regressor.xgb_classification(i=i)
         # auc=regressor.catboost_classification(i=i)
-        auc = regressor.dl_classifier(epochs=50, batch_size=16, validation_split=0.2, verbose=1, i=i)
+        auc = regressor.dl_classifier(epochs=30, batch_size=128, validation_split=0.2, verbose=1, learning_rate=0.001, i=i)
         auc_values.append(auc)
     print(auc_values)
     mean_auc = np.mean(auc_values)

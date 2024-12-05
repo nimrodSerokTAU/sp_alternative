@@ -188,6 +188,10 @@ class PickMeGameProgram:
             min_predicted_le_min_prank = (min_predicted_true_score <= (min_prank_true_score + error))
             min_predicted_le_min_muscle = (min_predicted_true_score <= (min_muscle_true_score + error))
             min_predicted_le_min_baliphy = (min_predicted_true_score <= (min_baliphy_true_score + error))
+            # min_predicted_le_min_mafft = (min_mafft_predicted_true_score <= (min_mafft_true_score + error))
+            # min_predicted_le_min_prank = (min_prank_predicted_true_score <= (min_prank_true_score + error))
+            # min_predicted_le_min_muscle = (min_muscle_predicted_true_score <= (min_muscle_true_score + error))
+            # min_predicted_le_min_baliphy = (min_baliphy_predicted_true_score <= (min_baliphy_true_score + error))
             # min_true_in_top20_min_predicted = (min_true_score_code_filename in top_20_filenames)
             min_true_in_top20_min_predicted = (min_true_score_value in top_20_scores)
             min_true_mafft_in_top20_min_predicted_mafft = (min_mafft_true_score in top_20_mafft_scores)
@@ -292,11 +296,11 @@ class PickMeGameProgram:
                 min_mafft_true_score = min_mafft_row[self.true_score]
                 min_mafft_code_filename = min_mafft_row['code']
 
-                min_mafft_SoP_score_row = mafft_df.loc[mafft_df['normalised_sop_score'].idxmin()]
-                min_mafft_SoP_filename = min_mafft_SoP_score_row['code']
-                min_mafft_SoP_true_score = min_mafft_SoP_score_row[self.true_score]
-                min_mafft_SoP_score = min_mafft_SoP_score_row['normalised_sop_score']
-                sorted_mafft_temp_df = mafft_df.sort_values(by='normalised_sop_score', ascending=True)
+                max_mafft_SoP_score_row = mafft_df.loc[mafft_df['normalised_sop_score'].idxmax()]
+                max_mafft_SoP_filename = max_mafft_SoP_score_row['code']
+                max_mafft_SoP_true_score = max_mafft_SoP_score_row[self.true_score]
+                max_mafft_SoP_score = max_mafft_SoP_score_row['normalised_sop_score']
+                sorted_mafft_temp_df = mafft_df.sort_values(by='normalised_sop_score', ascending=False)
                 top_20_mafft_SoP_rows = sorted_mafft_temp_df.head(20)
                 top_20_mafft_SoP_filenames = top_20_mafft_SoP_rows['code'].tolist()
                 top_20_mafft_SoP_scores = top_20_mafft_SoP_rows[self.true_score].tolist()
@@ -305,8 +309,8 @@ class PickMeGameProgram:
                 min_mafft_true_score = np.nan
                 min_mafft_code_filename = np.nan
 
-                min_mafft_SoP_true_score = np.nan
-                min_mafft_SoP_score = np.nan
+                max_mafft_SoP_true_score = np.nan
+                max_mafft_SoP_score = np.nan
 
             # Minimum true_score and code_filename among PRANK alternative MSAs
             prank_df = code_df[code_df['code'].str.contains('prank', case=False, na=False, regex=True)]
@@ -315,11 +319,11 @@ class PickMeGameProgram:
                 min_prank_true_score = min_prank_row[self.true_score]
                 min_prank_code_filename = min_prank_row['code']
 
-                min_prank_SoP_score_row = prank_df.loc[prank_df['normalised_sop_score'].idxmin()]
-                min_prank_SoP_filename = min_prank_SoP_score_row['code']
-                min_prank_SoP_true_score = min_prank_SoP_score_row[self.true_score]
-                min_prank_SoP_score = min_prank_SoP_score_row['normalised_sop_score']
-                sorted_prank_temp_df = prank_df.sort_values(by='normalised_sop_score', ascending=True)
+                max_prank_SoP_score_row = prank_df.loc[prank_df['normalised_sop_score'].idxmax()]
+                max_prank_SoP_filename = max_prank_SoP_score_row['code']
+                max_prank_SoP_true_score = max_prank_SoP_score_row[self.true_score]
+                max_prank_SoP_score = max_prank_SoP_score_row['normalised_sop_score']
+                sorted_prank_temp_df = prank_df.sort_values(by='normalised_sop_score', ascending=False)
                 top_20_prank_SoP_rows = sorted_prank_temp_df.head(20)
                 top_20_prank_SoP_filenames = top_20_prank_SoP_rows['code'].tolist()
                 top_20_prank_SoP_scores = top_20_prank_SoP_rows[self.true_score].tolist()
@@ -327,8 +331,8 @@ class PickMeGameProgram:
                 min_prank_true_score = np.nan
                 min_prank_code_filename = np.nan
 
-                min_prank_SoP_true_score = np.nan
-                min_prank_SoP_score = np.nan
+                max_prank_SoP_true_score = np.nan
+                max_prank_SoP_score = np.nan
 
             # Minimum true_score and code_filename among MUSCLE alternative MSAs
             muscle_df = code_df[code_df['code'].str.contains('muscle', case=False, na=False, regex=True)]
@@ -337,11 +341,11 @@ class PickMeGameProgram:
                 min_muscle_true_score = min_muscle_row[self.true_score]
                 min_muscle_code_filename = min_muscle_row['code']
 
-                min_muscle_SoP_score_row = muscle_df.loc[muscle_df['normalised_sop_score'].idxmin()]
-                min_muscle_SoP_filename = min_muscle_SoP_score_row['code']
-                min_muscle_SoP_true_score = min_muscle_SoP_score_row[self.true_score]
-                min_muscle_SoP_score = min_muscle_SoP_score_row['normalised_sop_score']
-                sorted_muscle_temp_df = muscle_df.sort_values(by='normalised_sop_score', ascending=True)
+                max_muscle_SoP_score_row = muscle_df.loc[muscle_df['normalised_sop_score'].idxmax()]
+                max_muscle_SoP_filename = max_muscle_SoP_score_row['code']
+                max_muscle_SoP_true_score = max_muscle_SoP_score_row[self.true_score]
+                max_muscle_SoP_score = max_muscle_SoP_score_row['normalised_sop_score']
+                sorted_muscle_temp_df = muscle_df.sort_values(by='normalised_sop_score', ascending=False)
                 top_20_muscle_SoP_rows = sorted_muscle_temp_df.head(20)
                 top_20_muscle_SoP_filenames = top_20_muscle_SoP_rows['code'].tolist()
                 top_20_muscle_SoP_scores = top_20_muscle_SoP_rows[self.true_score].tolist()
@@ -349,8 +353,8 @@ class PickMeGameProgram:
                 min_muscle_true_score = np.nan
                 min_muscle_code_filename = np.nan
 
-                min_muscle_SoP_true_score = np.nan
-                min_muscle_SoP_score = np.nan
+                max_muscle_SoP_true_score = np.nan
+                max_muscle_SoP_score = np.nan
 
             # Minimum true_score and code_filename among Bali-Phy alternative MSAs
             baliphy_df = code_df[code_df['code'].str.contains('bali_phy', case=False, na=False, regex=True)]
@@ -359,97 +363,102 @@ class PickMeGameProgram:
                 min_baliphy_true_score = min_baliphy_row[self.true_score]
                 min_baliphy_code_filename = min_baliphy_row['code']
 
-                min_baliphy_SoP_score_row = baliphy_df.loc[baliphy_df['normalised_sop_score'].idxmin()]
-                min_baliphy_SoP_filename = min_baliphy_SoP_score_row['code']
-                min_baliphy_SoP_true_score = min_baliphy_SoP_score_row[self.true_score]
-                min_baliphy_SoP_score = min_baliphy_SoP_score_row['normalised_sop_score']
-                sorted_baliphy_temp_df = baliphy_df.sort_values(by='normalised_sop_score', ascending=True)
+                max_baliphy_SoP_score_row = baliphy_df.loc[baliphy_df['normalised_sop_score'].idxmax()]
+                max_baliphy_SoP_filename = max_baliphy_SoP_score_row['code']
+                max_baliphy_SoP_true_score = max_baliphy_SoP_score_row[self.true_score]
+                max_baliphy_SoP_score = max_baliphy_SoP_score_row['normalised_sop_score']
+                sorted_baliphy_temp_df = baliphy_df.sort_values(by='normalised_sop_score', ascending=False)
                 top_20_baliphy_SoP_rows = sorted_baliphy_temp_df.head(20)
                 top_20_baliphy_SoP_filenames = top_20_baliphy_SoP_rows['code'].tolist()
                 top_20_baliphy_SoP_scores = top_20_baliphy_SoP_rows[self.true_score].tolist()
             else:
                 min_baliphy_true_score = np.nan
                 min_baliphy_code_filename = np.nan
+                max_baliphy_SoP_filename = np.nan
 
-                min_baliphy_SoP_true_score = np.nan
-                min_baliphy_SoP_score = np.nan
+                max_baliphy_SoP_true_score = np.nan
+                max_baliphy_SoP_score = np.nan
                 top_20_baliphy_SoP_scores = []
                 min_baliphy_SoP_filename = np.nan
 
             # Code_filename, predicted_score, and true_score of the filename with the minimum predicted_score
-            min_SoP_score_row = code_df.loc[code_df['normalised_sop_score'].idxmin()]
-            min_SoP_filename = min_SoP_score_row['code']
-            min_SoP_true_score = min_SoP_score_row[self.true_score]
-            min_SoP_score = min_SoP_score_row['normalised_sop_score']
-            sorted_temp_df = code_df.sort_values(by='normalised_sop_score', ascending=True)
+            max_SoP_score_row = code_df.loc[code_df['normalised_sop_score'].idxmax()]
+            max_SoP_filename = max_SoP_score_row['code']
+            max_SoP_true_score = max_SoP_score_row[self.true_score]
+            max_SoP_score = max_SoP_score_row['normalised_sop_score']
+            sorted_temp_df = code_df.sort_values(by='normalised_sop_score', ascending=False)
             top_20_SoP_rows = sorted_temp_df.head(20)
             top_20_SoP_filenames = top_20_SoP_rows['code'].tolist()
             top_20_SoP_scores = top_20_SoP_rows[self.true_score].tolist()
 
             # Calculate boolean fields
-            min_true_equals_min_SoP = (min_true_score_value == (min_SoP_true_score + error))
+            min_true_equals_max_SoP = (min_true_score_value == (max_SoP_true_score + error))
             # min_true_equals_min_predicted = (min_true_score_code_filename == min_predicted_filename)
-            min_SoP_le_default_mafft = (min_mafft_SoP_true_score <= (default_mafft_true_score + error))
-            min_SoP_le_default_prank = (min_prank_SoP_true_score <= (default_prank_true_score + error))
-            min_SoP_le_default_muscle = (min_muscle_SoP_true_score <= (default_muscle_true_score + error))
-            min_SoP_le_default_baliphy = (min_baliphy_SoP_true_score <= (default_baliphy_true_score + error))
-            min_SoP_le_min_mafft = (min_SoP_true_score <= (min_mafft_true_score + error))
-            min_SoP_le_min_prank = (min_SoP_true_score <= (min_prank_true_score + error))
-            min_SoP_le_min_muscle = (min_SoP_true_score <= (min_muscle_true_score + error))
-            min_SoP_le_min_baliphy = (min_SoP_true_score <= (min_baliphy_true_score + error))
+            max_SoP_le_default_mafft = (max_mafft_SoP_true_score <= (default_mafft_true_score + error))
+            max_SoP_le_default_prank = (max_prank_SoP_true_score <= (default_prank_true_score + error))
+            max_SoP_le_default_muscle = (max_muscle_SoP_true_score <= (default_muscle_true_score + error))
+            max_SoP_le_default_baliphy = (max_baliphy_SoP_true_score <= (default_baliphy_true_score + error))
+            max_SoP_le_min_mafft = (max_SoP_true_score <= (min_mafft_true_score + error))
+            max_SoP_le_min_prank = (max_SoP_true_score <= (min_prank_true_score + error))
+            max_SoP_le_min_muscle = (max_SoP_true_score <= (min_muscle_true_score + error))
+            max_SoP_le_min_baliphy = (max_SoP_true_score <= (min_baliphy_true_score + error))
+            # max_SoP_le_min_mafft = (max_mafft_SoP_true_score <= (min_mafft_true_score + error))
+            # max_SoP_le_min_prank = (max_prank_SoP_true_score <= (min_prank_true_score + error))
+            # max_SoP_le_min_muscle = (max_muscle_SoP_true_score <= (min_muscle_true_score + error))
+            # max_SoP_le_min_baliphy = (max_baliphy_SoP_true_score <= (min_baliphy_true_score + error))
             # min_true_in_top20_min_predicted = (min_true_score_code_filename in top_20_filenames)
-            min_true_in_top20_min_SoP = (min_true_score_value in top_20_SoP_scores)
-            min_true_mafft_in_top20_min_SoP_mafft = (min_mafft_true_score in top_20_mafft_SoP_scores)
-            min_true_prank_in_top20_min_SoP_prank = (min_prank_true_score in top_20_prank_SoP_scores)
-            min_true_muscle_in_top20_min_SoP_muscle = (min_muscle_true_score in top_20_muscle_SoP_scores)
-            min_true_baliphy_in_top20_min_SoP_baliphy = (min_baliphy_true_score in top_20_baliphy_SoP_scores)
+            min_true_in_top20_max_SoP = (min_true_score_value in top_20_SoP_scores)
+            min_true_mafft_in_top20_max_SoP_mafft = (min_mafft_true_score in top_20_mafft_SoP_scores)
+            min_true_prank_in_top20_max_SoP_prank = (min_prank_true_score in top_20_prank_SoP_scores)
+            min_true_muscle_in_top20_max_SoP_muscle = (min_muscle_true_score in top_20_muscle_SoP_scores)
+            min_true_baliphy_in_top20_max_SoP_baliphy = (min_baliphy_true_score in top_20_baliphy_SoP_scores)
 
             # Append results for the current code
             results.append({
                 'code': code,
                 'min_true_score_filename': min_true_score_code_filename,
                 'min_true_score': min_true_score_value,
-                'min_SoP_filename': min_SoP_filename,
-                'min_SoP_score': min_SoP_score,
-                'min_SoP_true_score': min_SoP_true_score,
+                'max_SoP_filename': max_SoP_filename,
+                'max_SoP_score': max_SoP_score,
+                'max_SoP_true_score': max_SoP_true_score,
                 'default_mafft_true_score': default_mafft_true_score,
                 'default_prank_true_score': default_prank_true_score,
                 'default_muscle_true_score': default_muscle_true_score,
                 'default_baliphy_true_score': default_baliphy_true_score,
                 'min_mafft_true_score': min_mafft_true_score,
                 'min_mafft_filename': min_mafft_code_filename,
-                'min_mafft_SoP_score_filename': min_mafft_SoP_filename,
-                'min_mafft_SoP_score': min_mafft_SoP_score,
-                'min_mafft_SoP_true_score': min_mafft_SoP_true_score,
+                'max_mafft_SoP_score_filename': max_mafft_SoP_filename,
+                'max_mafft_SoP_score': max_mafft_SoP_score,
+                'max_mafft_SoP_true_score': max_mafft_SoP_true_score,
                 'min_prank_true_score': min_prank_true_score,
                 'min_prank_filename': min_prank_code_filename,
-                'min_prank_SoP_score_filename': min_prank_SoP_filename,
-                'min_prank_SoP_score': min_prank_SoP_score,
-                'min_prank_SoP_true_score': min_prank_SoP_true_score,
+                'max_prank_SoP_score_filename': max_prank_SoP_filename,
+                'max_prank_SoP_score': max_prank_SoP_score,
+                'max_prank_SoP_true_score': max_prank_SoP_true_score,
                 'min_muscle_true_score': min_muscle_true_score,
                 'min_muscle_filename': min_muscle_code_filename,
-                'min_muscle_SoP_score_filename': min_muscle_SoP_filename,
-                'min_muscle_SoP_score': min_muscle_SoP_score,
-                'min_muscle_SoP_true_score': min_muscle_SoP_true_score,
+                'max_muscle_SoP_score_filename': max_muscle_SoP_filename,
+                'max_muscle_SoP_score': max_muscle_SoP_score,
+                'max_muscle_SoP_true_score': max_muscle_SoP_true_score,
                 'min_baliphy_true_score': min_baliphy_true_score,
                 'min_baliphy_filename': min_baliphy_code_filename,
-                'min_baliphy_SoP_score_filename': min_baliphy_SoP_filename,
-                'min_baliphy_SoP_score': min_baliphy_SoP_score,
-                'min_baliphy_SoP_true_score': min_baliphy_SoP_true_score,
-                'min_true_equals_min_SoP': min_true_equals_min_SoP,
-                'min_SoP_le_default_mafft': min_SoP_le_default_mafft,
-                'min_SoP_le_default_prank': min_SoP_le_default_prank,
-                'min_SoP_le_default_muscle': min_SoP_le_default_muscle,
-                'min_SoP_le_default_baliphy': min_SoP_le_default_baliphy,
-                'min_SoP_le_min_mafft': min_SoP_le_min_mafft,
-                'min_SoP_le_min_prank': min_SoP_le_min_prank,
-                'min_SoP_le_min_muscle': min_SoP_le_min_muscle,
-                'min_SoP_le_min_baliphy': min_SoP_le_min_baliphy,
-                'min_true_in_top20_min_SoP': min_true_in_top20_min_SoP,
-                'min_true_mafft_in_top20_min_SoP_mafft':min_true_mafft_in_top20_min_SoP_mafft,
-                'min_true_prank_in_top20_min_SoP_prank': min_true_prank_in_top20_min_SoP_prank,
-                'min_true_muscle_in_top20_min_SoP_muscle': min_true_muscle_in_top20_min_SoP_muscle,
-                'min_true_baliphy_in_top20_min_SoP_baliphy': min_true_baliphy_in_top20_min_SoP_baliphy
+                'max_baliphy_SoP_score_filename': max_baliphy_SoP_filename,
+                'max_baliphy_SoP_score': max_baliphy_SoP_score,
+                'max_baliphy_SoP_true_score': max_baliphy_SoP_true_score,
+                'min_true_equals_max_SoP': min_true_equals_max_SoP,
+                'max_SoP_le_default_mafft': max_SoP_le_default_mafft,
+                'max_SoP_le_default_prank': max_SoP_le_default_prank,
+                'max_SoP_le_default_muscle': max_SoP_le_default_muscle,
+                'max_SoP_le_default_baliphy': max_SoP_le_default_baliphy,
+                'max_SoP_le_min_mafft': max_SoP_le_min_mafft,
+                'max_SoP_le_min_prank': max_SoP_le_min_prank,
+                'max_SoP_le_min_muscle': max_SoP_le_min_muscle,
+                'max_SoP_le_min_baliphy': max_SoP_le_min_baliphy,
+                'min_true_in_top20_max_SoP': min_true_in_top20_max_SoP,
+                'min_true_mafft_in_top20_max_SoP_mafft':min_true_mafft_in_top20_max_SoP_mafft,
+                'min_true_prank_in_top20_max_SoP_prank': min_true_prank_in_top20_max_SoP_prank,
+                'min_true_muscle_in_top20_max_SoP_muscle': min_true_muscle_in_top20_max_SoP_muscle,
+                'min_true_baliphy_in_top20_max_SoP_baliphy': min_true_baliphy_in_top20_max_SoP_baliphy
             })
 
         # Create a DataFrame from the results
@@ -527,16 +536,16 @@ class PickMeGameProgram:
         # Calculate the percentage of True values for each condition
 
         percentages = {
-            'Did SoP find the minimum !score?': (df['min_true_equals_min_SoP'].mean() * 100),
-            'Out of MAFFT alternatives did SoP helped to choose better than default?': (df['min_SoP_le_default_mafft'].mean() * 100),
-            'Out of PRANK alternatives did SoP helped to choose better than default?': (df['min_SoP_le_default_prank'].mean() * 100),
-            'Out of MUSCLE alternatives did SoP helped to choose better than default?': (df['min_SoP_le_default_muscle'].mean() * 100),
-            'Out of Bali-Phy alternatives did SoP helped to choose better than default?': (df['min_SoP_le_default_baliphy'].mean() * 100),
-            'Is "best SoP" choice better than the best out of all MAFFT Alternatives?': (df['min_SoP_le_min_mafft'].mean() * 100),
-            'Is "best SoP" choice better than the best out of all PRANK Alternatives?': (df['min_SoP_le_min_prank'].mean() * 100),
-            'Is "best SoP" choice better than the best out of all MUSCLE Alternatives?': (df['min_SoP_le_min_muscle'].mean() * 100),
-            'Is "best SoP" choice better than the best out of all Bali-Phy Alternatives?': (df['min_SoP_le_min_baliphy'].mean() * 100),
-            'Was the real minimum !score among SoP top 20 true scores?': (df['min_true_in_top20_min_SoP'].mean() * 100)
+            'Did SoP find the minimum !score?': (df['min_true_equals_max_SoP'].mean() * 100),
+            'Out of MAFFT alternatives did SoP helped to choose better than default?': (df['max_SoP_le_default_mafft'].mean() * 100),
+            'Out of PRANK alternatives did SoP helped to choose better than default?': (df['max_SoP_le_default_prank'].mean() * 100),
+            'Out of MUSCLE alternatives did SoP helped to choose better than default?': (df['max_SoP_le_default_muscle'].mean() * 100),
+            'Out of Bali-Phy alternatives did SoP helped to choose better than default?': (df['max_SoP_le_default_baliphy'].mean() * 100),
+            'Is "best SoP" choice better than the best out of all MAFFT Alternatives?': (df['max_SoP_le_min_mafft'].mean() * 100),
+            'Is "best SoP" choice better than the best out of all PRANK Alternatives?': (df['max_SoP_le_min_prank'].mean() * 100),
+            'Is "best SoP" choice better than the best out of all MUSCLE Alternatives?': (df['max_SoP_le_min_muscle'].mean() * 100),
+            'Is "best SoP" choice better than the best out of all Bali-Phy Alternatives?': (df['max_SoP_le_min_baliphy'].mean() * 100),
+            'Was the real minimum !score among SoP top 20 true scores?': (df['min_true_in_top20_max_SoP'].mean() * 100)
         }
 
         # Accumulate percentages

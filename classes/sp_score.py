@@ -94,9 +94,9 @@ class SPScore:
             translate_to_matrix_index(a, self.code_to_index_dict)][
             translate_to_matrix_index(b, self.code_to_index_dict)]
 
-    def compute_sp_gap_open(self, profile: list[str]) -> int:
+    def compute_sp_gap_open(self, profile: list[str]) -> tuple[int, int]:
         if len(profile) == 0:
-            return 0
+            return 0, 0
         seq_len: int = len(profile[0])
         n = len(profile)
         nb_open_gap = [0] * seq_len
@@ -109,23 +109,26 @@ class SPScore:
                     nb_open_gap[k] += 1
                 gap_closing[gap_interval.end].append(gap_interval)
         sp_gp_open = 0  # part of the SP score related to gap opening costs
+        sp_gpo_count = 0
         for i in range(seq_len):
             for gap_interval in gap_closing[i]:
                 if i == seq_len - 1 or gap_interval.start == 0:
                     sp_gp_open += (n - nb_open_gap[gap_interval.start]) * self.gs_cost_extremities
+                    sp_gpo_count += 1
                 else:
                     sp_gp_open += (n - nb_open_gap[gap_interval.start]) * self.gs_cost
+                    sp_gpo_count += 1
             for gap_interval in gap_closing[i]:
                 for k in range(gap_interval.start, gap_interval.end + 1):
                     nb_open_gap[k] -= 1
-        return sp_gp_open
+        return sp_gp_open, sp_gpo_count
 
     def compute_efficient_sp(self, profile: list[str]) -> float:
         sp_score_subs, sp_score_gap_e, a, b = self.compute_sp_s_and_sp_ge(profile)
-        go_score: int = self.compute_sp_gap_open(profile)
+        go_score, sp_gpo_count = self.compute_sp_gap_open(profile)
         return sp_score_subs + sp_score_gap_e + go_score
 
-    def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, int, int]:
+    def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, int, int, int]:
         sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile)
-        go_score: int = self.compute_sp_gap_open(profile)
-        return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count
+        go_score, go_count = self.compute_sp_gap_open(profile)
+        return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count

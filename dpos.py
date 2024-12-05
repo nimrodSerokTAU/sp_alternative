@@ -43,6 +43,8 @@ def create_hpos_table(profile_naming: list[list[str]]) -> list[list[set[str]]]:
     count_20 = 0
     hpos_table: list[list[set[str]]] = [[] for i in range(seq_count)]
     for col_index in range(seq_len):
+        if col_index == 297:
+            stop = True
         col: list[str] = get_column(profile_naming, col_index)
         for i in range(seq_count):
             hpos = get_place_hpos(col, i)
