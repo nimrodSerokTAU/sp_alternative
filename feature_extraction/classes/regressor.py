@@ -20,8 +20,8 @@ import shap
 import pydot
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.initializers import GlorotUniform
@@ -29,6 +29,9 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras import backend as K
 from tensorflow.keras import metrics
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import SMOTE
+from feature_extraction.classes.attention_layer import AttentionLayer
 
 class Regressor:
     '''
@@ -60,10 +63,14 @@ class Regressor:
 
         # add normalized_rf
         df["normalized_rf"] = df['rf_from_true']/(df['taxa_num']-1)
-        df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.010, 0, 1)
+        df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
+        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, np.where(df['dpos_dist_from_true'] <= 0.05, 1, 2))
 
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
+
+        class_label2_counts_train = df['class_label2'].dropna().value_counts()
+        print(class_label2_counts_train)
 
         # Handle missing values (if any)
         # Example: Filling missing values with the mean (for numerical columns)
@@ -83,22 +90,22 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'normalised_sop_score'])
 
         # all features except 2 features of SoP
         # if mode == 2:
         #     self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'sp_score_subs_norm', 'sp_score_gap_e_norm',
         #     'sp_match_ratio', 'sp_missmatch_ratio'])
         if mode == 2:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'sop_score', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'sop_score', 'normalised_sop_score'])
 
         # only 2 features of SoP
         if mode == 3:
-            self.X = df[['sop_score', 'normalised_sop_score','class_label']]
+            self.X = df[['k_mer_10_norm', 'entropy_mean', 'constant_sites_pct']]
 
         if mode == 4: #test removing features
             self.X = df.drop(
-                columns=['k_mer_10_norm', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
                          'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
                          'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
@@ -126,16 +133,22 @@ class Regressor:
         class_label_counts_train = self.train_df['class_label'].dropna().value_counts()
         print(class_label_counts_train)
 
+        class_label2_counts_train = self.train_df['class_label2'].dropna().value_counts()
+        print(class_label2_counts_train)
+
         class_label_counts_test = self.test_df['class_label'].dropna().value_counts()
         print(class_label_counts_test)
+
+        class_label2_counts_test = self.test_df['class_label2'].dropna().value_counts()
+        print(class_label2_counts_test)
 
 
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
 
         # all features except 2 sop
         # if mode == 2:
@@ -147,19 +160,19 @@ class Regressor:
         #     'sp_match_ratio', 'sp_missmatch_ratio'])
         if mode == 2:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label2', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label2', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['sop_score', 'normalised_sop_score']]
-            self.X_test = self.test_df[['sop_score', 'normalised_sop_score']]
+            self.X_train = self.train_df[['k_mer_10_norm', 'entropy_mean', 'constant_sites_pct']]
+            self.X_test = self.test_df[['k_mer_10_norm', 'entropy_mean', 'constant_sites_pct']]
 
 
         if mode == 4:
             self.X_train = self.train_df.drop(
-                columns=['k_mer_10_norm', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
                          'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median',
                          'entropy_var',
                          'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
@@ -176,7 +189,7 @@ class Regressor:
                          'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
                          'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites'])
             self.X_test = self.test_df.drop(
-                columns=['k_mer_10_norm', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
                          'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median',
                          'entropy_var',
                          'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
@@ -205,6 +218,9 @@ class Regressor:
 
         self.main_codes_train = self.train_df['code1']
         self.file_codes_train = self.train_df['code']
+        class_weights = compute_class_weight('balanced', classes=np.unique(self.train_df['class_label2']), y=self.train_df['class_label2'])
+        self.weights = dict(enumerate(class_weights))
+        print(self.weights)
         self.main_codes_test = self.test_df['code1']
         self.file_codes_test = self.test_df['code']
 
@@ -333,7 +349,7 @@ class Regressor:
     #     print(f"Mean Squared Error: {mse:.4f}")
     #     return mse
 
-    def deep_learning(self, epochs=30, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0):
+    def deep_learning(self, epochs=30, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
         history = None
 
         # mode for non-negative regression msa_distance task
@@ -389,8 +405,21 @@ class Regressor:
                 factor=0.7,  # Factor by which the learning rate will be reduced
                 min_lr=1e-5  # Lower bound on the learning rate
             )
-
-            history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler])
+            if undersampling == True:
+                # weights = np.where(self.y_train < 0.2, 7, 1)
+                # Define thresholds and weights
+                threshold_low = 0.02
+                threshold_high = 0.05
+                w_low = self.weights[0] # Weight for the lower tail (values < threshold_low)
+                w_high = self.weights[2]  # Weight for the upper tail (values > threshold_high)
+                w_mid = self.weights[1]  # Weight for the middle range (between threshold_low and threshold_high)
+                weights = np.where(self.y_train < threshold_low, w_low,
+                                   np.where(self.y_train > threshold_high, w_high, w_mid))
+                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler], sample_weight=weights)
+            else:
+                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
+                                    validation_split=validation_split, verbose=verbose,
+                                    callbacks=[early_stopping, lr_scheduler])
 
         # # mode for non-negative regression tree_distance task
         # elif self.predicted_measure == 'tree_distance':
@@ -505,6 +534,149 @@ class Regressor:
 
         return mse
 
+    def deep_learning_with_attention(self, epochs=30, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
+        history = None
+
+        # mode for non-negative regression msa_distance task
+        if self.predicted_measure == 'msa_distance':
+            # Define input layer
+            inputs = Input(shape=(self.X_train_scaled.shape[1],))
+
+            # First hidden layer
+            x = Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(inputs)
+            x = LeakyReLU(negative_slope=0.01)(x)
+            x = BatchNormalization()(x)
+            x = Dropout(0.2)(x)
+
+            # Second hidden layer
+            x = Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(x)
+            x = LeakyReLU(negative_slope=0.01)(x)
+            x = BatchNormalization()(x)
+            x = Dropout(0.2)(x)
+
+            # Third hidden layer
+            x = Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(x)
+            x = LeakyReLU(negative_slope=0.01)(x)
+            x = BatchNormalization()(x)
+            x = Dropout(0.2)(x)
+
+            # Attention layer
+            # Assuming AttentionLayer is a custom class. The output and attention weights will be unpacked.
+            attention_output, attn_weights = AttentionLayer()(x)
+
+            # Reshape the attention output to be 2D (batch_size, features) for the next Dense layer
+            attention_output_reshaped = Reshape((-1,))(attention_output)
+
+            # Output layer (sigmoid)
+            output = Dense(1, activation='sigmoid')(attention_output_reshaped)
+
+            # Define the model
+            model = Model(inputs=inputs, outputs=output)
+
+            optimizer = Adam(learning_rate=learning_rate)
+            model.compile(optimizer=optimizer, loss='mean_squared_error')
+
+            #set call-backs
+            # 1. Implement early stopping
+            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+            # 2. learning rate scheduler
+            lr_scheduler = ReduceLROnPlateau(
+                monitor='val_loss',  # Metric to monitor
+                patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
+                verbose=1,  # Print messages when learning rate is reduced
+                factor=0.7,  # Factor by which the learning rate will be reduced
+                min_lr=1e-5  # Lower bound on the learning rate
+            )
+            if undersampling == True:
+                # weights = np.where(self.y_train < 0.2, 7, 1)
+                # Define thresholds and weights
+                threshold_low = 0.2
+                threshold_high = 0.8
+                w_low = 5 # Weight for the lower tail (values < threshold_low)
+                w_high = 2  # Weight for the upper tail (values > threshold_high)
+                w_mid = 1  # Weight for the middle range (between threshold_low and threshold_high)
+                weights = np.where(self.y_train < threshold_low, w_low,
+                                   np.where(self.y_train > threshold_high, w_high, w_mid))
+                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler], sample_weight=weights)
+            else:
+                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
+                                    validation_split=validation_split, verbose=verbose,
+                                    callbacks=[early_stopping, lr_scheduler])
+
+
+        # Plotting training and validation loss
+        plt.plot(history.history['loss'], label='Training Loss')
+        plt.plot(history.history['val_loss'], label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+
+        # Set integer ticks on the x-axis
+        epochs = range(1, len(history.history['loss']) + 1)  # Integer epoch numbers
+        plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
+
+        plt.legend()
+        plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
+        plt.show()
+        plt.close()
+
+        # visualize model architecture
+        plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.predicted_measure}.png', show_shapes=True, show_layer_names=True,
+                   show_layer_activations=True)
+        model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
+        # Save the model architecture as a Dot file
+        plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+        # visualkeras.layered_view(model, to_file='./out/output.png',legend=True, draw_funnel=False, show_dimension=True).show()
+
+        # Evaluate the model
+        loss = model.evaluate(self.X_test_scaled, self.y_test)
+        print(f"Test Loss: {loss}")
+
+        # Make predictions
+        self.y_pred = model.predict(self.X_test_scaled)
+        self.y_pred = np.ravel(self.y_pred)  # flatten multi-dimensional array into one-dimensional
+        self.y_pred = self.y_pred.astype('float64')
+
+        # get integers predictions of RF distance
+        if self.predicted_measure == "tree_distance":
+            self.y_pred = np.round(self.y_pred).astype(int)
+
+
+        # Create a DataFrame
+        df_res = pd.DataFrame({
+            'code1': self.main_codes_test,
+            'code': self.file_codes_test,
+            'predicted_score': self.y_pred
+        })
+
+        # Save the DataFrame to a CSV file
+        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
+
+        # Evaluate the model
+        mse = mean_squared_error(self.y_test, self.y_pred)
+        print(f"Mean Squared Error: {mse:.4f}")
+        corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
+        print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
+
+        # To visualize the attention weights for a specific input sample:
+        sample_input = self.X_train_scaled[0]  # Use the first sample or any other sample index
+        sample_input = np.expand_dims(sample_input, axis=0)  # Add batch dimension
+
+        # Pass through the model up to the attention layer
+        _, attn_weights_val = model.layers[-2](sample_input)  # Access the attention weights directly
+        print(attn_weights_val)
+
+        # explain features importance
+        X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+        explainer = shap.Explainer(model, X_test_scaled_with_names)
+        shap_values = explainer(X_test_scaled_with_names)
+        # explainer = shap.Explainer(model, self.X_test_scaled)
+        # shap_values = explainer(self.X_test_scaled)
+        joblib.dump(explainer,
+                    f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        joblib.dump(shap_values,
+                    f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+
+        return mse
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
         # Plot results for many features
@@ -563,8 +735,6 @@ class Regressor:
             plt.close()
 
     def random_forest_classification(self, n_estimators: int = 100, i: int = 0) -> float:
-
-        from imblearn.under_sampling import RandomUnderSampler
 
         # class_weights = compute_class_weight('balanced', classes=np.unique(self.y_train), y=self.y_train)
         # class_weight_dict = dict(enumerate(class_weights))

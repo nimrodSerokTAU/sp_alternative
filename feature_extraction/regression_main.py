@@ -6,7 +6,7 @@ if __name__ == '__main__':
 
     mse_values = []
     for i in range(1):
-        regressor = Regressor("./out/balibase_features_73.csv", 0.2, mode=2,
+        regressor = Regressor("./out/orthomam_all_w_balify_no_ancestors_67.csv", 0.2, mode=1,
                               predicted_measure='msa_distance', i=i)
         # regressor = Regressor("./out/TreeBASE_3M_features.csv", 0.2, mode=2,
         #                       predicted_measure='msa_distance', i=i)
@@ -22,7 +22,8 @@ if __name__ == '__main__':
         # regressor = Regressor("/Users/kpolonsky/Downloads/BaliBase4/balibase_features.csv", 0.2, mode=2,
         #                       predicted_measure='msa_distance', i=i)
         # mse = regressor.random_forest(i=i)
-        mse = regressor.deep_learning(i=i)
+        # mse = regressor.deep_learning(i=i, undersampling = True)
+        mse = regressor.deep_learning_with_attention(i=i, undersampling = False)
         mse_values.append(mse)
         # regressor.plot_results("rf", mse, i)
         regressor.plot_results("dl", mse, i)

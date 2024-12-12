@@ -248,26 +248,26 @@ class PickMeGame:
 
 
             # Code_filename, predicted_score, and true_score of the filename with the minimum predicted_score
-            min_SoP_score_row = code_df.loc[code_df['normalised_sop_score'].idxmin()]
-            min_SoP_filename = min_SoP_score_row['code']
-            min_SoP_true_score = min_SoP_score_row[self.true_score]
-            min_SoP_score = min_SoP_score_row['normalised_sop_score']
-            sorted_temp_df = code_df.sort_values(by='normalised_sop_score', ascending=True)
+            max_SoP_score_row = code_df.loc[code_df['normalised_sop_score'].idxmax()]
+            max_SoP_filename = max_SoP_score_row['code']
+            max_SoP_true_score = max_SoP_score_row[self.true_score]
+            max_SoP_score = max_SoP_score_row['normalised_sop_score']
+            sorted_temp_df = code_df.sort_values(by='normalised_sop_score', ascending=False)
             top_20_SoP_rows = sorted_temp_df.head(20)
             top_20_SoP_filenames = top_20_SoP_rows['code'].tolist()
             top_20_SoP_scores = top_20_SoP_rows[self.true_score].tolist()
 
             # Calculate boolean fields
-            min_true_equals_min_SoP = (min_true_score_value == (min_SoP_true_score + error))
+            min_true_equals_max_SoP = (min_true_score_value == (max_SoP_true_score + error))
             # min_true_equals_min_predicted = (min_true_score_code_filename == min_predicted_filename)
-            min_SoP_le_default_mafft = (min_SoP_true_score <= (default_mafft_true_score + error))
-            min_SoP_le_default_prank = (min_SoP_true_score <= (default_prank_true_score + error))
-            min_SoP_le_default_muscle = (min_SoP_true_score <= (default_muscle_true_score + error))
-            min_SoP_le_default_baliphy = (min_SoP_true_score <= (default_baliphy_true_score + error))
-            min_SoP_le_min_mafft = (min_SoP_true_score <= (min_mafft_true_score + error))
-            min_SoP_le_min_prank = (min_SoP_true_score <= (min_prank_true_score + error))
-            min_SoP_le_min_muscle = (min_SoP_true_score <= (min_muscle_true_score + error))
-            min_SoP_le_min_baliphy = (min_SoP_true_score <= (min_baliphy_true_score + error))
+            min_SoP_le_default_mafft = (max_SoP_true_score <= (default_mafft_true_score + error))
+            min_SoP_le_default_prank = (max_SoP_true_score <= (default_prank_true_score + error))
+            min_SoP_le_default_muscle = (max_SoP_true_score <= (default_muscle_true_score + error))
+            min_SoP_le_default_baliphy = (max_SoP_true_score <= (default_baliphy_true_score + error))
+            min_SoP_le_min_mafft = (max_SoP_true_score <= (min_mafft_true_score + error))
+            min_SoP_le_min_prank = (max_SoP_true_score <= (min_prank_true_score + error))
+            min_SoP_le_min_muscle = (max_SoP_true_score <= (min_muscle_true_score + error))
+            min_SoP_le_min_baliphy = (max_SoP_true_score <= (min_baliphy_true_score + error))
             # min_true_in_top20_min_predicted = (min_true_score_code_filename in top_20_filenames)
             min_true_in_top20_min_SoP = (min_true_score_value in top_20_SoP_scores)
 
@@ -276,9 +276,9 @@ class PickMeGame:
                 'code': code,
                 'min_true_score_filename': min_true_score_code_filename,
                 'min_true_score': min_true_score_value,
-                'min_SoP_filename': min_SoP_filename,
-                'min_SoP_score': min_SoP_score,
-                'min_SoP_true_score': min_SoP_true_score,
+                'min_SoP_filename': max_SoP_filename,
+                'min_SoP_score': max_SoP_score,
+                'min_SoP_true_score': max_SoP_true_score,
                 'default_mafft_true_score': default_mafft_true_score,
                 'default_prank_true_score': default_prank_true_score,
                 'default_muscle_true_score': default_muscle_true_score,
@@ -291,7 +291,7 @@ class PickMeGame:
                 'min_muscle_filename': min_muscle_code_filename,
                 'min_baliphy_true_score': min_baliphy_true_score,
                 'min_baliphy_filename': min_baliphy_code_filename,
-                'min_true_equals_min_SoP': min_true_equals_min_SoP,
+                'min_true_equals_min_SoP': min_true_equals_max_SoP,
                 'min_SoP_le_default_mafft': min_SoP_le_default_mafft,
                 'min_SoP_le_default_prank': min_SoP_le_default_prank,
                 'min_SoP_le_default_muscle': min_SoP_le_default_muscle,

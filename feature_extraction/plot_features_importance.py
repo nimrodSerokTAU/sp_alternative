@@ -33,10 +33,10 @@ from predict_with_pretrained import use_test_from_origin
 
 if __name__ == '__main__':
     X_test, test_df, true_score_name, main_codes_test, file_codes_test = use_test_from_origin(
-        features_file='/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/balibase_features_73.csv',
-        predictions_file='/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/Balilbase_mode4/DL_wo_k_mer_10_norm/prediction_DL_0_mode4_msa_distance.csv')
+        features_file='/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors_67.csv',
+        predictions_file='/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/Orthomam_mode4/DL_w_weights/prediction_DL_0_mode4_msa_distance.csv')
     scaler = joblib.load(
-        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/Balilbase_mode4/DL_wo_k_mer_10_norm/scaler_0_mode4_msa_distance.pkl')
+        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/Orthomam_mode4/DL_w_weights/scaler_0_mode4_msa_distance.pkl')
     X_test_scaled = scaler.transform(X_test)
     X_test_scaled = X_test_scaled.astype('float64')
     X_test_scaled_with_names = pd.DataFrame(X_test_scaled, columns=X_test.columns)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     # shap.initjs()
     matplotlib.use('Agg')
-    shap_values = joblib.load(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/Balilbase_mode4/DL_wo_k_mer_10_norm/shap_values__0_mode4_msa_distance.pkl')
+    shap_values = joblib.load(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/Orthomam_mode4/DL_w_weights/shap_values__0_mode4_msa_distance.pkl')
 
     feature_names = [
         a + ": " + str(b) for a, b in zip(X_test.columns, np.abs(shap_values.values).mean(0).round(3))

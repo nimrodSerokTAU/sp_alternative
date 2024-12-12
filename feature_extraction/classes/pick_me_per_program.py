@@ -288,7 +288,7 @@ class PickMeGameProgram:
 
 
             # Minimum true_score and filename among MAFFT alternative MSAs
-            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt']
+            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy']
             mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
             mafft_df = code_df[~mask]
             if not mafft_df.empty:
@@ -383,6 +383,7 @@ class PickMeGameProgram:
 
             # Code_filename, predicted_score, and true_score of the filename with the minimum predicted_score
             max_SoP_score_row = code_df.loc[code_df['normalised_sop_score'].idxmax()]
+            # max_SoP_score_row = code_df.loc[code_df['sop_score'].idxmax()]
             max_SoP_filename = max_SoP_score_row['code']
             max_SoP_true_score = max_SoP_score_row[self.true_score]
             max_SoP_score = max_SoP_score_row['normalised_sop_score']

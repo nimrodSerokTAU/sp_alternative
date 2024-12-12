@@ -177,7 +177,7 @@ class MSAStats:
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
             'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
             'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
-            'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm',
+            'sp_score_subs_norm', 'sp_score_gap_e_norm',
             'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count', 'bl_sum',
             'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
             'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',

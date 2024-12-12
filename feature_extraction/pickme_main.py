@@ -4,15 +4,15 @@ from classes.pick_me_per_program import PickMeGameProgram
 from scipy import stats
 
 if __name__ == '__main__':
-    n = 5
+    n = 1
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
-        # pickme = PickMeGameProgram(features_file='./out/orthomam_all_w_balify_no_ancestors_67.csv',
-        #                            prediction_file=f'./out/orthomam_all_w_balify_no_ancestors/RF/rf_prediction_{i}_mode2_msa_distance.csv',
+        # pickme = PickMeGameProgram(features_file='./out/balibase_features_full_74.csv',
+        #                            prediction_file=f'./out/BaliBase/DL2/prediction_DL_{i}_mode2_msa_distance.csv',
         #                            error=0)
-        pickme = PickMeGameProgram(features_file='./out/balibase_features_73.csv',
-                            prediction_file=f'./out/BaliBase/DL2/prediction_DL_{i}_mode2_msa_distance.csv',
+        pickme = PickMeGameProgram(features_file='./out/orthomam_all_w_balify_no_ancestors_67.csv',
+                            prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
                             error=0)
 
         # pickme = PickMeGame(features_file='./out/orthomam_all_w_balify_no_ancestors_67.csv',
