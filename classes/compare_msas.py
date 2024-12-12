@@ -142,6 +142,6 @@ def msa_comp_main():
                                   Path('../compThree/NR4A2_TRUE.fas'),
                                   Path('../compThree/PRANK_b0#0041_hhT_tree_9_OP_0.23758512508472418_Split_41.fasta'))
     # print(f"{style.RED}{test1} {style.BLUE}{test2}{style.RESET}")
-    comp.print_single(5, 20, Path('D:/test1.pdf'), comp.test_msa.sequences)
-    comp.print_single(5, 20, Path('D:/comp1.pdf'), comp.compared_msa.sequences)
-    comp.print_single(5, 20, Path('D:/true1.pdf'), comp.true_msa.sequences)
+    comp.print_single(5, 20, Path('C:/test1.pdf'), comp.test_msa.sequences)
+    comp.print_single(5, 20, Path('C:/comp1.pdf'), comp.compared_msa.sequences)
+    comp.print_single(5, 20, Path('C:/true1.pdf'), comp.true_msa.sequences)
