@@ -65,6 +65,9 @@ class MSA:
                                           sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count,
                                           sp_go_count=sp_go_count)
 
+    def set_w(self, sp_score_subs_w_g: float, sp_score_subs_w_no_g: float):
+        self.stats.set_my_w_sop(sp_score_subs_w_g, sp_score_subs_w_no_g)
+
     def set_my_sop_score(self, sop_score: float):
         self.stats.set_my_sop_score(sop_score)
 

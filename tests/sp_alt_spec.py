@@ -604,3 +604,34 @@ def create_msa_from_seqs_and_names(data_name: str, seqs: list[str], names: list[
 def test_comp_3():
     res = msa_comp_main()
     assert res == []
+
+
+def test_henikoff_w():
+    aln: list[str] = [
+        'AT-CGC',
+        'ACATG-',
+        'AT-CG-',
+        'ATC-GA',
+        'TTATGC'
+    ]
+    configuration: Configuration = Configuration(-1, -1, -1, 'Blosum62')
+    sp: SPScore = SPScore(configuration)
+    seq_weights_with_gap, seq_weights_no_gap = sp.compute_seq_w_henikoff_vars(aln)
+    res = {'seq_weights_with_gap': seq_weights_with_gap, 'seq_weights_no_gap': seq_weights_no_gap}
+    assert res == {
+        'seq_weights_no_gap': [
+             0.15454545454545454,
+             0.22272727272727275,
+             0.10909090909090909,
+             0.24545454545454548,
+             0.2681818181818182,
+        ],
+        'seq_weights_with_gap': [
+             0.15714285714285717,
+             0.21071428571428572,
+             0.15714285714285717,
+             0.2642857142857143,
+             0.21071428571428572,
+        ],
+    }
+

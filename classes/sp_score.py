@@ -63,30 +63,40 @@ class SPScore:
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
         return gap_intervals_list
 
-    def compute_sp_s_and_sp_ge(self, profile: list[str]) -> tuple[int, float, int, int]:
+    def compute_sp_s_and_sp_ge(self, profile: list[str], seq_w: list[float] = None) -> tuple[float, float, int, int]:
         options_count = len(self.w_matrix[0])
         seq_len: int = len(profile[0])
         sp_score_subs: int = 0
         sp_score_gap_e: int = 0
         sp_match_count: int = 0
         sp_missmatch_count: int = 0
+        if seq_w is None:
+            seq_w = [1] * len(profile)
         for k in range(seq_len):
-            histo = [0] * options_count
+            histo: list[dict] = []
+            for opt in range(options_count):
+                histo.append({'count': 0, 'w_sum': 0, 'sq_w_sum': 0})
             for i in range(len(profile)):
                 char = profile[i][k]
                 if char == '-':
                     sp_score_gap_e += 1
                 else:
                     char_index = translate_to_matrix_index(char, self.code_to_index_dict)
-                    histo[char_index] += 1
+                    histo[char_index]['count'] += 1
+                    histo[char_index]['w_sum'] += seq_w[i]
+                    histo[char_index]['sq_w_sum'] += seq_w[i] * seq_w[i]
             for i in range(options_count):
                 if histo[i] != 0:
-                    sp_score_subs += int(self.w_matrix[i][i] * histo[i] * (histo[i] - 1) / 2)
-                    sp_match_count += histo[i] * (histo[i] - 1) / 2
+                    sp_score_subs += float(self.w_matrix[i][i] *
+                                           # histo[i]['count'] * (histo[i]['count'] - 1) / 2 * \
+                                           (histo[i]['w_sum'] * histo[i]['w_sum'] - histo[i]['sq_w_sum']) / 2)
+                    sp_match_count += histo[i]['count'] * (histo[i]['count'] - 1) / 2
                     for j in range(i + 1, options_count):
                         if histo[j] != 0:
-                            sp_score_subs += self.w_matrix[i][j] * histo[i] * histo[j]
-                            sp_missmatch_count += histo[i] * histo[j]
+                            sp_score_subs += (self.w_matrix[i][j] *
+                                            # histo[i]['count'] * histo[j]['count'] * \
+                                             histo[i]['w_sum'] * histo[j]['w_sum'])
+                            sp_missmatch_count += histo[i]['count'] * histo[j]['count']
         return sp_score_subs, sp_score_gap_e * self.ge_cost, sp_match_count, sp_missmatch_count
 
     def subst(self, a: str, b: str) -> int:
@@ -133,6 +143,13 @@ class SPScore:
         go_score, go_count = self.compute_sp_gap_open(profile)
         return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count
 
+    def compute_efficient_w_sp(self, profile: list[str]) -> [float, float]:
+        seq_weights_with_gap, seq_weights_no_gap = self.compute_seq_w_henikoff_vars(profile)
+        sp_score_subs_w_g, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile, seq_weights_with_gap)
+        sp_score_subs_w_no_g, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile,
+                                                                                                            seq_weights_no_gap)
+        return sp_score_subs_w_g, sp_score_subs_w_no_g
+
     @staticmethod
     def compute_seq_w_henikoff_vars(profile: list[str]) -> tuple[list[float], list[float]]:
         seq_len: int = len(profile[0])
@@ -140,21 +157,18 @@ class SPScore:
         seq_weights_with_gap: list[float] = [0] * len(profile)
         seq_weights_no_gap: list[float] = [0] * len(profile)
         for k in range(seq_len):
-            seq_dict: dict[str, list[int]] = {'-': []}
+            seq_dict: dict[str, list[int]] = {}
             for i in range(seq_num):
                 char = profile[i][k]
                 if not char in seq_dict:
                     seq_dict[char] = []
                 seq_dict[char].append(i)
-            gap_len: int = len(seq_dict['-'])
             for cluster_key in seq_dict.keys():
-                w_with_gap: float = len(seq_dict[cluster_key]) / seq_num
+                w: float = 1 / len(seq_dict[cluster_key])
                 for seq_inx in seq_dict[cluster_key]:
-                    seq_weights_with_gap[seq_inx] += w_with_gap
-                if cluster_key != '-':
-                    w_without_gap: float = len(seq_dict[cluster_key]) / (seq_num - gap_len)
-                    for seq_inx in seq_dict[cluster_key]:
-                        seq_weights_no_gap[seq_inx] += w_without_gap
+                    seq_weights_with_gap[seq_inx] += w
+                    if cluster_key != '-':
+                        seq_weights_no_gap[seq_inx] += w
         seq_weights_with_gap_sum: float = sum(seq_weights_with_gap)
         seq_weights_no_gap_sum: float = sum(seq_weights_no_gap)
         for seq_inx in range(seq_num):
