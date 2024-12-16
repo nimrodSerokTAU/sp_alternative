@@ -7,9 +7,10 @@ from classes.msa import MSA
 from classes.msa_stats import calc_parsimony, MSAStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
+from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
-from enums import SopCalcTypes
+from enums import SopCalcTypes, RootingMethod
 from multi_msa_service import calc_multiple_msa_sp_scores
 from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 from ete3 import Tree, TreeNode
@@ -534,6 +535,7 @@ def test_msa_stats():
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
     inferred_msa.set_my_alignment_features()
     inferred_msa.build_nj_tree()
+    inferred_msa.tree.longest_path()
     true_msa.build_nj_tree()
     inferred_msa.set_rf_from_true(true_msa.tree)
     assert inferred_msa.stats.get_my_features() == (
@@ -634,4 +636,29 @@ def test_henikoff_w():
              0.21071428571428572,
         ],
     }
+
+def test_mid_point_rooting():
+    aln: list[str] = [
+        'AT-CGC-GGT',
+        'ACATG-T-GA',
+        'AT-CG--GGT',
+        'ATC-GA-GGA',
+        'TTATGCTGGA'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                          SopCalcTypes.EFFICIENT, 'comparison_files',
+                                          False, False)
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+
+    sp: SPScore = SPScore(config)
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count = sp.compute_efficient_sp_parts(
+        inferred_msa.sequences)
+    inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
+                                        sp_missmatch_count, sp_gpo_count)
+    inferred_msa.build_nj_tree()
+    path, max_dist = inferred_msa.tree.longest_path()
+    tree = RootedTree.root_tree(inferred_msa.tree, RootingMethod.LONGEST_PATH_MID)
+    res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length, 'tree_a_keys': tree.root.children[0].keys}
+    assert res == {'lp_length': 1.3641359567812426, 'tree_a_length': 0.22007006899467785, 'tree_a_keys': {'b', 'e'}}
 

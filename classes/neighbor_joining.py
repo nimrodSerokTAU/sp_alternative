@@ -1,25 +1,24 @@
 import copy
 import sys
-from typing import List
 
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
 
 
 class NeighborJoining:
-    distance_matrix: List[List[float]]
-    nodes: List[Node]
-    q_matrix: List[List[float]]
-    all_nodes: List[Node]
+    distance_matrix: list[list[float]]
+    nodes: list[Node]
+    q_matrix: list[list[float]]
+    all_nodes: list[Node]
     tree_res: UnrootedTree
 
-    def __init__(self, distanceMatrix: List[List[float]], nodes: List[Node]):
+    def __init__(self, distanceMatrix: list[list[float]], nodes: list[Node]):
         self.distance_matrix = copy.deepcopy(distanceMatrix)
         self.nodes = nodes
         self.all_nodes = nodes.copy()
         self.tree_res = self.build_tree()
 
-    def calc_q_matrix(self) -> List[List[int]]:
+    def calc_q_matrix(self) -> list[list[int]]:
         number_of_seq = len(self.nodes)
         q_matrix = []
         for i in range(len(self.distance_matrix) - 1):
@@ -83,10 +82,11 @@ class NeighborJoining:
         delta_f, delta_s = self.find_delta(0, 1)
         delta_t = self.distance_matrix[0][2] - delta_f
         deltas = [delta_f, delta_s, delta_t]
-        new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], None)
-        self.all_nodes.append(new_node)
         for i in range(3):
             self.nodes[i].set_branch_length(deltas[i])
+        new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], len(self.all_nodes))
+        self.all_nodes.append(new_node)
+        for i in range(3):
             self.nodes[i].set_a_father(new_node)
         return new_node
 
