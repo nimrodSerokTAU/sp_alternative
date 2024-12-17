@@ -659,6 +659,47 @@ def test_mid_point_rooting():
     inferred_msa.build_nj_tree()
     path, max_dist = inferred_msa.tree.longest_path()
     tree = RootedTree.root_tree(inferred_msa.tree, RootingMethod.LONGEST_PATH_MID)
-    res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length, 'tree_a_keys': tree.root.children[0].keys}
-    assert res == {'lp_length': 1.3641359567812426, 'tree_a_length': 0.22007006899467785, 'tree_a_keys': {'b', 'e'}}
+    res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length, 'tree_a_keys': tree.root.children[0].keys,
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': round(tree.all_nodes[1].branch_length, 3),
+           'bl_c': round(tree.all_nodes[2].branch_length, 3), 'bl_d': round(tree.all_nodes[3].branch_length, 3),
+           'bl_e': round(tree.all_nodes[4].branch_length, 3), 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+           'bl_a_c_d': round(tree.all_nodes[6].branch_length, 3), 'bl_b_e': round(tree.all_nodes[7].branch_length, 3),
+    }
+    assert res == {'lp_length': 1.3641359567812426, 'tree_a_length': 0.22007006899467785, 'tree_a_keys': {'b', 'e'},
+                   'bl_a': 0.082, 'bl_a_c': 0.329, 'bl_a_c_d': 0.271, 'bl_b': 0.462, 'bl_b_e': 0.22,
+                   'bl_c': 0.026, 'bl_d': 0.183, 'bl_e': 0.104,}
+
+
+def test_mid_point_rooting_case_b():
+    node_a = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0, branch_length=0.2)
+    node_b = Node(node_id=1, keys={'b'}, children=[], children_bl_sum=0, branch_length=0.1)
+    node_c = Node(node_id=2, keys={'c'}, children=[], children_bl_sum=0, branch_length=0.15)
+    node_d = Node(node_id=3, keys={'d'}, children=[], children_bl_sum=0, branch_length=0.25)
+    node_e = Node(node_id=4, keys={'e'}, children=[], children_bl_sum=0, branch_length=0.05)
+    node_a_c = Node.create_from_children([node_a, node_c], 5)
+    node_a_c.set_branch_length(0.6)
+    node_a_c_d = Node.create_from_children([node_a_c, node_d], 6)
+    node_a_c_d.set_branch_length(0.3)
+    anchor = Node.create_from_children([node_a_c_d, node_b, node_e], 7)
+    node_a.set_a_father(node_a_c)
+    node_c.set_a_father(node_a_c)
+    node_a_c.set_a_father(node_a_c_d)
+    node_d.set_a_father(node_a_c_d)
+    node_a_c_d.set_a_father(anchor)
+    node_b.set_a_father(anchor)
+    node_e.set_a_father(anchor)
+    unrooted = UnrootedTree(anchor=anchor, all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
+    path, max_dist = unrooted.longest_path()
+    tree = RootedTree.root_tree(unrooted, RootingMethod.LONGEST_PATH_MID)
+    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': tree.all_nodes[5].branch_length,
+           'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 1)}
+    tree.calc_clustal_w()
+    res['a_w'] = tree.all_nodes[0].weight
+    res['c_w'] = tree.all_nodes[2].weight
+    res['e_w'] = round(tree.all_nodes[4].weight, 3)
+    assert res == {'bl_b_e_d': 0.2, 'bl_a': 0.2, 'bl_a_c': 0.4, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
+                    'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['b', 'd', 'e'], 'tree_a_length': 0.2,
+                    'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
 

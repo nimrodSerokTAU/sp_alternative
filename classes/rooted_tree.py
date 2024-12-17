@@ -41,6 +41,13 @@ class RootedTree:
             node_to_update.update_data_from_children()
         return cls(root=new_root, all_nodes=all_nodes, keys=keys)
 
+    def calc_clustal_w(self):
+        nodes_to_recalc: list[Node] = [self.root]
+        while len(nodes_to_recalc) > 0:
+            node = nodes_to_recalc.pop(0)
+            fill_nodes_w(node, nodes_to_recalc)
+
+
 def calc_mid_point(unrooted: UnrootedTree) -> tuple[int, int, float, float]:
     path, max_dist = unrooted.longest_path()
     half_length: float = 0
@@ -52,10 +59,12 @@ def calc_mid_point(unrooted: UnrootedTree) -> tuple[int, int, float, float]:
             half_length += b['dist']
 
 
-def recalc_tree_down(node, father: Node, broke_id: int, nodes_to_recalc: list[dict], all_nodes: list[Node]):
-    if node.id == 6:
-        stop = True
+def recalc_tree_down(node: Node, father: Node, broke_id: int, nodes_to_recalc: list[dict], all_nodes: list[Node]):
+    # if node.id == 7:
+    #     stop = True
     node.set_rank_from_root(father.rank_from_root + 1)
+    if father in node.children:
+        node.branch_length = father.branch_length
     adj = node.get_adj()
     children = [all_nodes[n['node'].id] for n in adj if (father is None or n['node'].id != father.id) and n['node'].id != broke_id]
     if len(children):
@@ -63,6 +72,16 @@ def recalc_tree_down(node, father: Node, broke_id: int, nodes_to_recalc: list[di
         nodes_to_recalc.append({'node': children[0], 'father': node, 'broke': broke_id})
         nodes_to_recalc.append({'node': children[1], 'father': node, 'broke': broke_id})
     node.father = father
+
+def fill_nodes_w(node: Node, nodes_to_recalc: list[Node]):
+    node.set_w_from_root((node.father.w_from_root.copy() if node.father is not None else []) + [node.branch_length])
+    if len(node.children):
+        nodes_to_recalc.append(node.children[0])
+        nodes_to_recalc.append(node.children[1])
+    else:
+        node.set_weight_from_root()
+
+
 
 
 

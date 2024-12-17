@@ -13,6 +13,8 @@ class Node:
     bl_sum_on_differentiator: float
     bl_sum_on_non_differentiator: float
     rank_from_root: int
+    w_from_root: list[float]
+    weight: float
 
     def __init__(self, node_id: int, keys: set[str], children: list[Self], children_bl_sum: float,
                  branch_length: float = 0):
@@ -24,6 +26,7 @@ class Node:
         self.parsimony_set = set()
         self.children_bl_sum = children_bl_sum
         self.rank_from_root = -1
+        self.w_from_root = []
 
     @classmethod
     def create_from_children(cls, children_list: list[Self], inx: int | None):
@@ -88,6 +91,9 @@ class Node:
     def set_rank_from_root(self, rank: int):
         self.rank_from_root = rank
 
+    def set_w_from_root(self, w_list: list[float]):
+        self.w_from_root = w_list
+
     def update_data_from_children(self):
         if len(self.children):
             self.keys: set[str] = set()
@@ -96,4 +102,11 @@ class Node:
                 self.keys = self.keys.union(child.keys)
                 self.children_bl_sum += child.children_bl_sum + child.branch_length
 
+    def set_weight_from_root(self):
+        w: float = 0
+        rev_w = self.w_from_root.copy()
+        rev_w.reverse()
+        for index, bw in enumerate(rev_w):
+            w += bw / (index + 1)
+        self.weight = w
 
