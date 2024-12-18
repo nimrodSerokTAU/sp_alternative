@@ -91,6 +91,7 @@ class MSAStats:
     henikoff_with_gaps: float
     henikoff_without_gaps: float
     clustal_mid_root: float
+    clustal_differential_sum: float
 
     def __init__(self, code: str):
         self.code = code
@@ -174,6 +175,7 @@ class MSAStats:
         self.henikoff_with_gaps = 0
         self.henikoff_without_gaps = 0
         self.clustal_mid_root = 0
+        self.clustal_differential_sum = 0
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -189,7 +191,8 @@ class MSAStats:
             'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
             'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',
             'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm',
-            'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root'
+            'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root',
+            'clustal_differential_sum'
         ]
 
     def set_my_sop_score(self, sop_score: float):
@@ -214,6 +217,8 @@ class MSAStats:
         self.henikoff_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
         self.clustal_mid_root = sop_w_options_dict[
             WeightMethods.CLUSTAL_MID_ROOT.value] if WeightMethods.CLUSTAL_MID_ROOT.value in sop_w_options_dict else 0
+        self.clustal_differential_sum = sop_w_options_dict[
+            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value] if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value in sop_w_options_dict else 0
 
     def set_my_dpos_dist_from_true(self, dpos: float):
         self.dpos_dist_from_true = dpos

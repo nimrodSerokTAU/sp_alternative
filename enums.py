@@ -13,3 +13,4 @@ class WeightMethods(Enum):
     HENIKOFF_WG = 'henikoff_with_gaps'
     HENIKOFF_WOG = 'henikoff_without_gaps'
     CLUSTAL_MID_ROOT = 'clustal_mid_root'
+    CLUSTAL_DIFFERENTIAL_SUM = 'clustal_differential_sum'

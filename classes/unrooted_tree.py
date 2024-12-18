@@ -99,6 +99,22 @@ class UnrootedTree:
         print('Longest path is:', path)
         return path, max_dist
 
+    def get_longest_dist_to(self, dest: Node) -> float:
+        nodes_count: int = len(self.all_nodes)
+        nodes_by_id: list[Node | None] = [None for i in range(nodes_count + 1)]
+        distance = [-1 for i in range(nodes_count + 1)]
+        distance[dest.id] = 0
+        queue: list[Node] = [dest]
+        nodes_by_id[dest.id] = dest
+        while len(queue) > 0:
+            front = queue.pop(0)
+            for i in front.get_adj():
+                if nodes_by_id[i['node'].id] is None:
+                    nodes_by_id[i['node'].id] = i['node']
+                    distance[i['node'].id] = distance[front.id] + i['dist']
+                    queue.append(i['node'])
+        return max(distance)
+
 
 def root_from_newick_str(newick_str: str) -> tuple[Node, list[Node]]:
     root, all_nodes = create_a_tree_from_newick(newick_str)
@@ -177,6 +193,7 @@ def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level
     for child in open_nodes_per_level[level + 1]:
         child.set_a_father(current_node)
     return current_node
+
 
 
 
