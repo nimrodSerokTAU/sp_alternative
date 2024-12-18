@@ -45,9 +45,9 @@ def test_sp_perfect():
         'ARNDCQEGHI',
         'ARNDCQEGHI',
         'ARNDCQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
+    res: list[int] = sp.compute_naive_sp_score(profile)
     # (5 + 7 + 7 + 8 + 13 + 7 + 6 + 8 + 10 + 5) * 3 = 76 * 3
-    assert res == 228
+    assert res[0] == 228
 
 
 def test_sp_no_gaps():
@@ -57,10 +57,10 @@ def test_sp_no_gaps():
         'ARNDCQEGHI',
         'AANDCQEGAI',
         'AANDCQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
+    res: list[int] = sp.compute_naive_sp_score(profile)
     # RRR -> RAA : 21 -> 5  -4 = 1 -> -20
     # HHH -> HHA : 30 -> 10 -4 = 6 -> -24
-    assert res == 184
+    assert res[0] == 184
 
 
 def test_sp_local_gaps():
@@ -70,9 +70,9 @@ def test_sp_local_gaps():
         'ARNDCQ-GHI',
         'AANDCQ-GAI',
         'AANDCQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
+    res: list[int] = sp.compute_naive_sp_score(profile)
     # EEE -> --E : 18 -> -6 * 2 = -12 -> -30
-    assert res == 154
+    assert res[0] == 154
 
 
 def test_naive_algo_case_a_subs_only():
@@ -83,8 +83,8 @@ def test_naive_algo_case_a_subs_only():
         'AA-DCQ--AI',
         'AA--CQEGHI']
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
-    res: int = sp.compute_naive_sp_score(profile)
-    assert res == 91  # subs only: 91
+    res: list[int] = sp.compute_naive_sp_score(profile, [[1, 1, 1]])
+    assert res[0] == 91  # subs only: 91
 
 
 def test_naive_algo_case_a_subs_and_ge():
@@ -95,8 +95,8 @@ def test_naive_algo_case_a_subs_and_ge():
         'AA-DCQ--AI',
         'AA--CQEGHI']
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
-    res: int = sp.compute_naive_sp_score(profile)
-    assert res == 41  # ge cost only: -50
+    res: list[int] = sp.compute_naive_sp_score(profile, [[1, 1, 1]])
+    assert res[0] == 41  # ge cost only: -50
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs():
@@ -106,8 +106,19 @@ def test_naive_algo_case_a_subs_and_ge_and_gs():
         'ARNDC---HI',
         'AA-DCQ--AI',
         'AA--CQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
-    assert res == 35  # gs cost only: -6
+    res: list[int] = sp.compute_naive_sp_score(profile)
+    assert res[0] == 35  # gs cost only: -6
+
+
+def test_naive_algo_case_a_subs_and_ge_and_gs_with_weights():
+    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
+    sp: SPScore = SPScore(configuration)
+    profile: list[str] = [
+        'ARNDC---HI',
+        'AA-DCQ--AI',
+        'AA--CQEGHI']
+    res: list[int] = sp.compute_naive_sp_score(profile, [[1, 1, 1], [2, 2, 2]])
+    assert res == [35, 140]  # gs cost only: -6
 
 
 def test_compute_sp_s_and_sp_ge():  # our function
@@ -133,7 +144,7 @@ def test_onl_gap_open_and_ext_cost_same():
         'AA-DCQ--AI',
         'AA--CQEGHI']
     res: int = sp.compute_sp_gap_open(profile)
-    assert res == -6
+    assert res == (-6, 4)
 
 
 def test_compute_efficient_sp():
@@ -474,7 +485,7 @@ def test_rf_for_nj_using_newick():
 def test_neighbor_joining():
     nodes: list[Node] = []
     for key in keys_case_nj:
-        nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1))
+        nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1, children_bl_sum=0))
     tree_calculation: UnrootedTree = NeighborJoining(matrix_case_nj, nodes).tree_res
     bl_list: list[float] = tree_calculation.get_branches_lengths_list()
     bl_list.sort()
@@ -482,11 +493,11 @@ def test_neighbor_joining():
 
 
 def test_parsimony():  # TODO: continue from here
-    n_a: Node = Node(node_id=0, keys={'a'}, children=[])
-    n_b: Node = Node(node_id=1, keys={'b'}, children=[])
-    n_c: Node = Node(node_id=2, keys={'c'}, children=[])
-    n_d: Node = Node(node_id=3, keys={'d'}, children=[])
-    n_e: Node = Node(node_id=4, keys={'e'}, children=[])
+    n_a: Node = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0)
+    n_b: Node = Node(node_id=1, keys={'b'}, children=[], children_bl_sum=0)
+    n_c: Node = Node(node_id=2, keys={'c'}, children=[], children_bl_sum=0)
+    n_d: Node = Node(node_id=3, keys={'d'}, children=[], children_bl_sum=0)
+    n_e: Node = Node(node_id=4, keys={'e'}, children=[], children_bl_sum=0)
     n_a_b: Node = Node.create_from_children([n_a, n_b], 5)
     n_a_b_c: Node = Node.create_from_children([n_a_b, n_c], 6)
     anchor: Node = Node.create_from_children([n_a_b_c, n_d, n_e], 7)
@@ -605,7 +616,7 @@ def create_msa_from_seqs_and_names(data_name: str, seqs: list[str], names: list[
 
 def test_comp_3():
     res = msa_comp_main()
-    assert res == []
+    assert res is None
 
 
 def test_henikoff_w():

@@ -143,7 +143,7 @@ def create_a_tree_from_newick(newick: str) -> tuple[Node, list[Node]]:
                 i += 1
         elif newick[i] == ',' or newick[i] == ')':
             if len(current_key) > 0:
-                current_node = Node(node_id=len(all_nodes), keys={current_key}, children=[],
+                current_node = Node(node_id=len(all_nodes), keys={current_key}, children=[], children_bl_sum=0,
                                     branch_length=float(branch_length))
                 open_nodes_per_level[level].append(current_node)
                 current_key = ''
@@ -173,7 +173,7 @@ def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level
     for child in open_nodes_per_level[level + 1]:
         node_keys = node_keys.union(child.keys)
     current_node = Node(node_id=node_inx, keys=node_keys, children=open_nodes_per_level[level + 1].copy(),
-                        branch_length=float(branch_length))
+                        children_bl_sum=0, branch_length=float(branch_length))
     for child in open_nodes_per_level[level + 1]:
         child.set_a_father(current_node)
     return current_node

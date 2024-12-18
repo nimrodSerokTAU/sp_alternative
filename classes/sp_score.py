@@ -24,27 +24,33 @@ class SPScore:
         self.ge_cost = configuration.ge_cost
         self.gs_cost_extremities = configuration.gs_cost_extremities
 
-    def compute_naive_sp_score(self, profile: list[str]) -> int:
+    def compute_naive_sp_score(self, profile: list[str], seq_w_options: list[list[float]] = None) -> list[int]:
+        if seq_w_options is None:
+            seq_w_options = [[1] * len(profile)]
+        weight_options_count: int = len(seq_w_options)
         if len(profile) == 0:
-            return 0
+            return [0] * weight_options_count
         seq_len: int = len(profile[0])
-        sp_score_subs: int = 0
-        sp_score_gaps: int = 0
+        sp_score_subs: list[int] = [0] * weight_options_count
+        sp_score_gaps: list[int] = [0] * weight_options_count
         for i in range(len(profile)):
             seq_i = profile[i]
             for j in range(i + 1, len(profile)):
                 seq_j = profile[j]
                 clean_seq_i: list[str] = []
                 clean_seq_j: list[str] = []
+                seq_weights_multiplication = [seq_w_options[w_option_index][i] * seq_w_options[w_option_index][j] for w_option_index in range(weight_options_count) ]
                 for k in range(seq_len):
                     if not (seq_i[k] == '-' and seq_j[k] == '-'):
                         clean_seq_i.append(seq_i[k])
                         clean_seq_j.append(seq_j[k])
                     if seq_i[k] != '-' and seq_j[k] != '-':
-                        sp_score_subs += self.subst(seq_i[k], seq_j[k])  # Nimrod: bug on pseudo code
+                        for w_option_index in range(weight_options_count):
+                            sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * seq_weights_multiplication[w_option_index]
                 for gap_interval in (self.compute_gap_intervals(clean_seq_i) + self.compute_gap_intervals(clean_seq_j)):
-                    sp_score_gaps += gap_interval.g_cost(self.gs_cost, self.ge_cost)
-        return sp_score_subs + sp_score_gaps
+                    for w_option_index in range(weight_options_count):
+                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.gs_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
+        return [sp_score_subs[w_op] + sp_score_gaps[w_op] for w_op in range(weight_options_count)]
 
     @staticmethod
     def compute_gap_intervals(seq_i: list[str]) -> list[GapInterval]:
@@ -143,11 +149,11 @@ class SPScore:
         go_score, go_count = self.compute_sp_gap_open(profile)
         return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count
 
-    def compute_efficient_w_sp(self, profile: list[str]) -> [float, float]:
+    def compute_weighted_sp(self, profile: list[str]) -> [float, float]:
         seq_weights_with_gap, seq_weights_no_gap = self.compute_seq_w_henikoff_vars(profile)
-        sp_score_subs_w_g, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile, seq_weights_with_gap)
-        sp_score_subs_w_no_g, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile,
-                                                                                                            seq_weights_no_gap)
+
+        # TODO: continue from here
+
         return sp_score_subs_w_g, sp_score_subs_w_no_g
 
     @staticmethod
