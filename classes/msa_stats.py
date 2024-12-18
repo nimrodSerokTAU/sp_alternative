@@ -5,6 +5,7 @@ from collections import defaultdict, Counter
 
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
+from enums import WeightMethods
 
 
 class MSAStats:
@@ -87,8 +88,9 @@ class MSAStats:
     k_mer_20_norm: float
     number_of_gap_segments: int
     number_of_mismatches: int
-    sop_w_henikoff: float
-    sop_w_henokof_var: float
+    henikoff_with_gaps: float
+    henikoff_without_gaps: float
+    clustal_mid_root: float
 
     def __init__(self, code: str):
         self.code = code
@@ -169,8 +171,9 @@ class MSAStats:
         self.k_mer_20_norm = 0
         self.number_of_gap_segments = 0
         self.number_of_mismatches = 0
-        self.sop_w_henikoff = 0
-        self.sop_w_henokof_var = 0
+        self.henikoff_with_gaps = 0
+        self.henikoff_without_gaps = 0
+        self.clustal_mid_root = 0
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -186,7 +189,7 @@ class MSAStats:
             'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
             'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',
             'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm',
-            'number_of_gap_segments', 'number_of_mismatches', 'sop_w_henikoff', 'sop_w_henokof_var',
+            'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root'
         ]
 
     def set_my_sop_score(self, sop_score: float):
@@ -206,9 +209,11 @@ class MSAStats:
         self.number_of_mismatches = sp_missmatch_count
         self.number_of_gap_segments = sp_go_count
 
-    def set_my_w_sop(self, sop_w_henikoff: float, sop_w_henokof_var: float):
-        self.sop_w_henikoff = sop_w_henikoff
-        self.sop_w_henokof_var = sop_w_henokof_var
+    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]): # TODO: continue from here. use default
+        self.henikoff_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
+        self.henikoff_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
+        self.clustal_mid_root = sop_w_options_dict[
+            WeightMethods.CLUSTAL_MID_ROOT.value] if WeightMethods.CLUSTAL_MID_ROOT.value in sop_w_options_dict else 0
 
     def set_my_dpos_dist_from_true(self, dpos: float):
         self.dpos_dist_from_true = dpos

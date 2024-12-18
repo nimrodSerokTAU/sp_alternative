@@ -10,7 +10,7 @@ from classes.node import Node
 from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
-from enums import SopCalcTypes, RootingMethod
+from enums import SopCalcTypes, RootingMethods
 from multi_msa_service import calc_multiple_msa_sp_scores
 from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 from ete3 import Tree, TreeNode
@@ -614,11 +614,6 @@ def create_msa_from_seqs_and_names(data_name: str, seqs: list[str], names: list[
     return msa
 
 
-def test_comp_3():
-    res = msa_comp_main()
-    assert res is None
-
-
 def test_henikoff_w():
     aln: list[str] = [
         'AT-CGC',
@@ -627,9 +622,9 @@ def test_henikoff_w():
         'ATC-GA',
         'TTATGC'
     ]
-    configuration: Configuration = Configuration(-1, -1, -1, 'Blosum62')
-    sp: SPScore = SPScore(configuration)
-    seq_weights_with_gap, seq_weights_no_gap = sp.compute_seq_w_henikoff_vars(aln)
+    msa = MSA('test')
+    msa.sequences = aln
+    seq_weights_with_gap, seq_weights_no_gap = msa.compute_seq_w_henikoff_vars()
     res = {'seq_weights_with_gap': seq_weights_with_gap, 'seq_weights_no_gap': seq_weights_no_gap}
     assert res == {
         'seq_weights_no_gap': [
@@ -669,7 +664,7 @@ def test_mid_point_rooting():
                                         sp_missmatch_count, sp_gpo_count)
     inferred_msa.build_nj_tree()
     path, max_dist = inferred_msa.tree.longest_path()
-    tree = RootedTree.root_tree(inferred_msa.tree, RootingMethod.LONGEST_PATH_MID)
+    tree = RootedTree.root_tree(inferred_msa.tree, RootingMethods.LONGEST_PATH_MID)
     res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length, 'tree_a_keys': tree.root.children[0].keys,
            'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': round(tree.all_nodes[1].branch_length, 3),
            'bl_c': round(tree.all_nodes[2].branch_length, 3), 'bl_d': round(tree.all_nodes[3].branch_length, 3),
@@ -701,7 +696,7 @@ def test_mid_point_rooting_case_b():
     node_e.set_a_father(anchor)
     unrooted = UnrootedTree(anchor=anchor, all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
     path, max_dist = unrooted.longest_path()
-    tree = RootedTree.root_tree(unrooted, RootingMethod.LONGEST_PATH_MID)
+    tree = RootedTree.root_tree(unrooted, RootingMethods.LONGEST_PATH_MID)
     res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
            'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
            'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': tree.all_nodes[5].branch_length,
@@ -714,3 +709,7 @@ def test_mid_point_rooting_case_b():
                     'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['b', 'd', 'e'], 'tree_a_length': 0.2,
                     'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
 
+
+def test_comp_3():
+    res = msa_comp_main()
+    assert res is None

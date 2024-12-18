@@ -1,7 +1,7 @@
 import copy
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
-from enums import RootingMethod
+from enums import RootingMethods
 
 
 class RootedTree:
@@ -15,11 +15,11 @@ class RootedTree:
         self.keys = keys
 
     @classmethod
-    def root_tree(cls, unrooted: UnrootedTree, rooting_method: RootingMethod):
+    def root_tree(cls, unrooted: UnrootedTree, rooting_method: RootingMethods):
         all_nodes: list[Node] = copy.deepcopy(unrooted.all_nodes) # TODO: consider not using deep copy as the nodes will not refer to other nodes. consider moving over nodes and reattach.
         keys: set[str] = copy.copy(unrooted.keys)
         new_root: Node
-        if rooting_method == RootingMethod.LONGEST_PATH_MID:
+        if rooting_method == RootingMethods.LONGEST_PATH_MID:
             start_id, end_id, dist_from_start, dist_from_end = calc_mid_point(unrooted)
             new_root_id = len(all_nodes)
             new_root = Node(node_id=new_root_id, keys=set(),

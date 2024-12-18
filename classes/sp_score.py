@@ -148,36 +148,3 @@ class SPScore:
         sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile)
         go_score, go_count = self.compute_sp_gap_open(profile)
         return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count
-
-    def compute_weighted_sp(self, profile: list[str]) -> [float, float]:
-        seq_weights_with_gap, seq_weights_no_gap = self.compute_seq_w_henikoff_vars(profile)
-
-        # TODO: continue from here
-
-        return sp_score_subs_w_g, sp_score_subs_w_no_g
-
-    @staticmethod
-    def compute_seq_w_henikoff_vars(profile: list[str]) -> tuple[list[float], list[float]]:
-        seq_len: int = len(profile[0])
-        seq_num: int = len(profile)
-        seq_weights_with_gap: list[float] = [0] * len(profile)
-        seq_weights_no_gap: list[float] = [0] * len(profile)
-        for k in range(seq_len):
-            seq_dict: dict[str, list[int]] = {}
-            for i in range(seq_num):
-                char = profile[i][k]
-                if not char in seq_dict:
-                    seq_dict[char] = []
-                seq_dict[char].append(i)
-            for cluster_key in seq_dict.keys():
-                w: float = 1 / len(seq_dict[cluster_key])
-                for seq_inx in seq_dict[cluster_key]:
-                    seq_weights_with_gap[seq_inx] += w
-                    if cluster_key != '-':
-                        seq_weights_no_gap[seq_inx] += w
-        seq_weights_with_gap_sum: float = sum(seq_weights_with_gap)
-        seq_weights_no_gap_sum: float = sum(seq_weights_no_gap)
-        for seq_inx in range(seq_num):
-            seq_weights_with_gap[seq_inx] = seq_weights_with_gap[seq_inx] / seq_weights_with_gap_sum
-            seq_weights_no_gap[seq_inx] = seq_weights_no_gap[seq_inx] / seq_weights_no_gap_sum
-        return seq_weights_with_gap, seq_weights_no_gap

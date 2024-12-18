@@ -6,7 +6,7 @@ from classes.node import Node
 from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
-from enums import RootingMethod
+from enums import RootingMethods, WeightMethods
 from utils import calc_kimura_distance_from_other
 
 
@@ -18,6 +18,8 @@ class MSA:
     stats: MSAStats
     rooted_tree: RootedTree
     seq_w: dict[str, float]
+    weight_names: list[str]
+    seq_weights_options: list[list[float]]
 
     def __init__(self, dataset_name: str):
         self.dataset_name = dataset_name
@@ -25,6 +27,8 @@ class MSA:
         self.seq_names = []
         self.stats = MSAStats(self.dataset_name)
         self.seq_w = {}
+        self.weight_names = []
+        self.seq_weights_options = []
 
     def add_sequence_to_me(self, sequence: str, seq_name: str):
         self.sequences.append(sequence)
@@ -70,8 +74,11 @@ class MSA:
                                           sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count,
                                           sp_go_count=sp_go_count)
 
-    def set_w(self, sp_score_subs_w_g: float, sp_score_subs_w_no_g: float):
-        self.stats.set_my_w_sop(sp_score_subs_w_g, sp_score_subs_w_no_g)
+    def set_w(self, sop_w_options: list[float]):
+        sop_w_options_dict: dict[str, float] = {}
+        for index, weight_name in enumerate(self.weight_names):
+            sop_w_options_dict[weight_name] = sop_w_options[index]
+        self.stats.set_my_w_sop(sop_w_options_dict)
 
     def set_my_sop_score(self, sop_score: float):
         self.stats.set_my_sop_score(sop_score)
@@ -103,7 +110,7 @@ class MSA:
     def set_my_alignment_features(self):
         self.stats.set_my_alignment_features(self.sequences)
 
-    def root_tree(self, rooting_method: RootingMethod):
+    def root_tree(self, rooting_method: RootingMethods):
         self.rooted_tree = RootedTree.root_tree(self.tree, rooting_method)
         self.rooted_tree.calc_clustal_w()
         for node in self.rooted_tree.all_nodes:
@@ -113,5 +120,44 @@ class MSA:
     def get_weight_list(self) -> list[float]:
         return [self.seq_w[s_name] for s_name in self.seq_names]
 
+    def compute_seq_w_henikoff_vars(self) -> tuple[list[float], list[float]]:
+        seq_len: int = len(self.sequences[0])
+        seq_num: int = len(self.sequences)
+        seq_weights_with_gap: list[float] = [0] * seq_num
+        seq_weights_no_gap: list[float] = [0] * seq_num
+        for k in range(seq_len):
+            seq_dict: dict[str, list[int]] = {}
+            for i in range(seq_num):
+                char = self.sequences[i][k]
+                if not char in seq_dict:
+                    seq_dict[char] = []
+                seq_dict[char].append(i)
+            for cluster_key in seq_dict.keys():
+                w: float = 1 / len(seq_dict[cluster_key])
+                for seq_inx in seq_dict[cluster_key]:
+                    seq_weights_with_gap[seq_inx] += w
+                    if cluster_key != '-':
+                        seq_weights_no_gap[seq_inx] += w
+        seq_weights_with_gap_sum: float = sum(seq_weights_with_gap)
+        seq_weights_no_gap_sum: float = sum(seq_weights_no_gap)
+        for seq_inx in range(seq_num):
+            seq_weights_with_gap[seq_inx] = seq_weights_with_gap[seq_inx] / seq_weights_with_gap_sum
+            seq_weights_no_gap[seq_inx] = seq_weights_no_gap[seq_inx] / seq_weights_no_gap_sum
+        return seq_weights_with_gap, seq_weights_no_gap
+
+    def calc_seq_weights(self, additional_weights: set[WeightMethods]):
+        if len(additional_weights) == 0:
+            return None
+        if WeightMethods.HENIKOFF_WG in additional_weights or WeightMethods.HENIKOFF_WOG in additional_weights:
+            seq_weights_with_gap, seq_weights_no_gap = self.compute_seq_w_henikoff_vars()
+            if WeightMethods.HENIKOFF_WG in additional_weights:
+                self.seq_weights_options.append(seq_weights_with_gap)
+                self.weight_names.append(WeightMethods.HENIKOFF_WG.value)
+            if WeightMethods.HENIKOFF_WOG in additional_weights:
+                self.seq_weights_options.append(seq_weights_no_gap)
+                self.weight_names.append(WeightMethods.HENIKOFF_WOG.value)
+            if WeightMethods.CLUSTAL_MID_ROOT in additional_weights:
+                self.seq_weights_options.append(self.get_weight_list())
+                self.weight_names.append(WeightMethods.CLUSTAL_MID_ROOT.value)
 
 

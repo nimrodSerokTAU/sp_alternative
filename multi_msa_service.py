@@ -9,7 +9,7 @@ from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
 from dpos import compute_dpos_distance
-from enums import SopCalcTypes, RootingMethod
+from enums import SopCalcTypes, RootingMethods
 
 
 def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | None, list[str]]:
@@ -86,13 +86,15 @@ def calc_multiple_msa_sp_scores(config: Configuration):
                 sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
                 inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
                                                     sp_missmatch_count, go_count)
-                # inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences))  # TODO: fix this
+                inferred_msa.calc_seq_weights(config.additional_weights)
+                if len(inferred_msa.weight_names) > 0:
+                    inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
             inferred_msa.order_sequences(true_msa.seq_names)
             dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
             inferred_msa.set_my_alignment_features()
             inferred_msa.build_nj_tree()
-            inferred_msa.root_tree(RootingMethod.LONGEST_PATH_MID)
+            inferred_msa.root_tree(RootingMethods.LONGEST_PATH_MID)
             inferred_msa.set_rf_from_true(true_msa.tree)
             all_msa_stats.append(inferred_msa.stats)
         if config.is_analyze_per_dir:
