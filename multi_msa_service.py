@@ -9,7 +9,7 @@ from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
 from dpos import compute_dpos_distance
-from enums import SopCalcTypes
+from enums import SopCalcTypes, RootingMethod
 
 
 def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | None, list[str]]:
@@ -90,6 +90,7 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
             inferred_msa.set_my_alignment_features()
             inferred_msa.build_nj_tree()
+            inferred_msa.root_tree(RootingMethod.LONGEST_PATH_MID)
             inferred_msa.set_rf_from_true(true_msa.tree)
             all_msa_stats.append(inferred_msa.stats)
         if config.is_analyze_per_dir:

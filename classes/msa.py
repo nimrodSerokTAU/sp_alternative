@@ -3,8 +3,10 @@ from pathlib import Path
 from classes.msa_stats import MSAStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
+from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
+from enums import RootingMethod
 from utils import calc_kimura_distance_from_other
 
 
@@ -14,12 +16,15 @@ class MSA:
     seq_names: list[str]
     tree: UnrootedTree
     stats: MSAStats
+    rooted_tree: RootedTree
+    seq_w: dict[str, float]
 
     def __init__(self, dataset_name: str):
         self.dataset_name = dataset_name
         self.sequences = []
         self.seq_names = []
         self.stats = MSAStats(self.dataset_name)
+        self.seq_w = {}
 
     def add_sequence_to_me(self, sequence: str, seq_name: str):
         self.sequences.append(sequence)
@@ -97,3 +102,16 @@ class MSA:
 
     def set_my_alignment_features(self):
         self.stats.set_my_alignment_features(self.sequences)
+
+    def root_tree(self, rooting_method: RootingMethod):
+        self.rooted_tree = RootedTree.root_tree(self.tree, rooting_method)
+        self.rooted_tree.calc_clustal_w()
+        for node in self.rooted_tree.all_nodes:
+            if len(node.children) == 0:
+                self.seq_w[list(node.keys)[0]] = node.weight
+
+    def get_weight_list(self) -> list[float]:
+        return [self.seq_w[s_name] for s_name in self.seq_names]
+
+
+
