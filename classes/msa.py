@@ -16,8 +16,7 @@ class MSA:
     seq_names: list[str]
     tree: UnrootedTree
     stats: MSAStats
-    rooted_tree: RootedTree
-    seq_w: dict[str, float]
+    rooted_trees: dict[str, RootedTree]
     weight_names: list[str]
     seq_weights_options: list[list[float]]
 
@@ -26,7 +25,7 @@ class MSA:
         self.sequences = []
         self.seq_names = []
         self.stats = MSAStats(self.dataset_name)
-        self.seq_w = {}
+        self.rooted_trees = {}
         self.weight_names = []
         self.seq_weights_options = []
 
@@ -111,14 +110,12 @@ class MSA:
         self.stats.set_my_alignment_features(self.sequences)
 
     def root_tree(self, rooting_method: RootingMethods):
-        self.rooted_tree = RootedTree.root_tree(self.tree, rooting_method)
-        self.rooted_tree.calc_clustal_w()
-        for node in self.rooted_tree.all_nodes:
-            if len(node.children) == 0:
-                self.seq_w[list(node.keys)[0]] = node.weight
+        self.rooted_trees[rooting_method.value] = RootedTree.root_tree(self.tree, rooting_method)
 
-    def get_weight_list(self) -> list[float]:
-        return [self.seq_w[s_name] for s_name in self.seq_names]
+    def get_weight_list(self, rooting_method: RootingMethods) -> list[float]:
+        self.root_tree(rooting_method)
+        self.rooted_trees[rooting_method.value].calc_seq_w()
+        return [self.rooted_trees[rooting_method.value].seq_weight_dict[s_name] for s_name in self.seq_names]
 
     def compute_seq_w_henikoff_vars(self) -> tuple[list[float], list[float]]:
         seq_len: int = len(self.sequences[0])
@@ -157,7 +154,7 @@ class MSA:
                 self.seq_weights_options.append(seq_weights_no_gap)
                 self.weight_names.append(WeightMethods.HENIKOFF_WOG.value)
             if WeightMethods.CLUSTAL_MID_ROOT in additional_weights:
-                self.seq_weights_options.append(self.get_weight_list())
+                self.seq_weights_options.append(self.get_weight_list(RootingMethods.LONGEST_PATH_MID))
                 self.weight_names.append(WeightMethods.CLUSTAL_MID_ROOT.value)
 
 

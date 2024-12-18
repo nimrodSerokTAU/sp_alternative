@@ -8,11 +8,13 @@ class RootedTree:
     root: Node
     all_nodes: list[Node]
     keys: set[str]
+    seq_weight_dict: dict[str, float]
 
     def __init__(self, root: Node, all_nodes: list[Node], keys: set[str]):
         self.root = root
         self.all_nodes = all_nodes
         self.keys = keys
+        self.seq_weight_dict = {}
 
     @classmethod
     def root_tree(cls, unrooted: UnrootedTree, rooting_method: RootingMethods):
@@ -47,6 +49,12 @@ class RootedTree:
             node = nodes_to_recalc.pop(0)
             fill_nodes_w(node, nodes_to_recalc)
 
+    def calc_seq_w(self):
+        self.calc_clustal_w()
+        for node in self.all_nodes:
+            if len(node.children) == 0:
+                self.seq_weight_dict[list(node.keys)[0]] = node.weight
+
 
 def calc_mid_point(unrooted: UnrootedTree) -> tuple[int, int, float, float]:
     path, max_dist = unrooted.longest_path()
@@ -80,6 +88,7 @@ def fill_nodes_w(node: Node, nodes_to_recalc: list[Node]):
         nodes_to_recalc.append(node.children[1])
     else:
         node.set_weight_from_root()
+
 
 
 

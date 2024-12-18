@@ -10,7 +10,7 @@ from classes.node import Node
 from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
-from enums import SopCalcTypes, RootingMethods
+from enums import SopCalcTypes, RootingMethods, WeightMethods
 from multi_msa_service import calc_multiple_msa_sp_scores
 from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 from ete3 import Tree, TreeNode
@@ -402,7 +402,8 @@ def test_tree_from_newick():
 def test_multi():
     configuration: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
-                                                 False)
+                                                 False, False,
+                                                 {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT})
     calc_multiple_msa_sp_scores(configuration)
 
 
@@ -532,7 +533,8 @@ def test_msa_stats():
     ]
     config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
-                                          False, False)
+                                          False, False,
+                                          {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT})
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
@@ -549,6 +551,8 @@ def test_msa_stats():
     inferred_msa.tree.longest_path()
     true_msa.build_nj_tree()
     inferred_msa.set_rf_from_true(true_msa.tree)
+    inferred_msa.calc_seq_weights(config.additional_weights)
+    inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
     assert inferred_msa.stats.get_my_features() == (
         'inferred,-3.5,-0.035,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
         '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.045,-0.045,0.47,0.22,1,5,1.676,0.183,0.086,0.399,0.031,0.323,'

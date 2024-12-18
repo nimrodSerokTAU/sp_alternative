@@ -5,9 +5,9 @@ class SopCalcTypes:
     NAIVE = 0
     EFFICIENT = 1
 
-class RootingMethods:
-    LONGEST_PATH_MID = 0
-    MIN_DIFFERENTIAL_SUM = 1
+class RootingMethods(Enum):
+    LONGEST_PATH_MID = 'longest_path_mid'
+    MIN_DIFFERENTIAL_SUM = 'min_differential_sum'
 
 class WeightMethods(Enum):
     HENIKOFF_WG = 'henikoff_with_gaps'
