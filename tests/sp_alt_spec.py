@@ -405,7 +405,7 @@ def test_multi():
                                                  False, False,
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
-                                                })
+                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     calc_multiple_msa_sp_scores(configuration)
 
 
@@ -721,6 +721,31 @@ def test_differential_sum_rooting():
     assert res == {'bl_b_e_d': 0.1, 'bl_a': 0.2, 'bl_a_c': 0.475, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
                     'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.475,
                     'a_w': 0.438, 'c_w': 0.387, 'e_w': 0.242}
+
+
+def test_differential_sum_rooting_case_of_no_solution():
+    unrooted = create_unrooted_tree_for_test()
+    unrooted.all_nodes[0].set_branch_length(0.6)
+    unrooted.all_nodes[1].set_branch_length(0.7)
+    unrooted.all_nodes[2].set_branch_length(0.2)
+    unrooted.all_nodes[3].set_branch_length(0.9)
+    unrooted.all_nodes[4].set_branch_length(0.2)
+    unrooted.all_nodes[5].set_branch_length(0.3)
+    unrooted.all_nodes[6].set_branch_length(0.1)
+
+    path, max_dist = unrooted.longest_path()
+    tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
+    res = {'lp_length': round(max_dist, 2), 'tree_a_length': round(tree.root.children[0].branch_length, 3), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+           'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 3)}
+    tree.calc_clustal_w()
+    res['a_w'] = round(tree.all_nodes[0].weight, 3)
+    res['c_w'] = round(tree.all_nodes[2].weight, 3)
+    res['e_w'] = round(tree.all_nodes[4].weight, 3)
+    assert res == {'bl_b_e_d': 0.01, 'bl_a': 0.6, 'bl_a_c': 0.29, 'bl_b': 0.7, 'bl_b_e': 0.1, 'bl_c': 0.2, 'bl_d': 0.9,
+                    'bl_e': 0.2, 'lp_length': 1.8, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.29,
+                    'a_w': 0.745, 'c_w': 0.345, 'e_w': 0.253}
 
 def create_unrooted_tree_for_test() -> UnrootedTree:
     node_a = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0, branch_length=0.2)

@@ -57,7 +57,9 @@ def calc_mid_point(unrooted: UnrootedTree) -> dict:
 
 def calc_min_differential_sum(unrooted: UnrootedTree, all_nodes: list[Node]) -> list[dict]:
     all_branches: dict[str, dict] = {}
-    total_branch_length: float = sum(unrooted.get_branches_lengths_list())
+    all_bl: list[float] = unrooted.get_branches_lengths_list()
+    total_branch_length: float = sum(all_bl)
+    min_bl: float = min(all_bl)
     for node in all_nodes:
         for n in node.get_adj():
             min_id = min(n['node'].id, node.id)
@@ -67,10 +69,13 @@ def calc_min_differential_sum(unrooted: UnrootedTree, all_nodes: list[Node]) -> 
                 this_branch = {'origin': min_id, 'dest': max_id, 'bl': n['dist'],
                                'w_to_orig': sum_bl_up_to_node_id(all_nodes[min_id], max_id)}
                 this_branch['w_to_dest'] = total_branch_length - this_branch['w_to_orig'] - this_branch['bl']
-                this_branch['is_root_option'] = abs(this_branch['w_to_dest'] - this_branch['w_to_orig']) < this_branch[
-                    'bl']
+                this_branch['delta'] = this_branch['bl'] - abs(this_branch['w_to_dest'] - this_branch['w_to_orig'])
                 all_branches[key] = this_branch
-    return [calc_potential_root_on_branch(b) for b in all_branches.values() if b['is_root_option']]
+    res: list[dict] = [calc_potential_root_on_branch(b, min_bl) for b in all_branches.values() if b['delta'] > 0]
+    if len(res) == 0:
+        res = [calc_potential_root_on_branch(sorted(all_branches.values(), key=lambda x: x['delta'], reverse=True)[0],
+                                             min_bl)]
+    return res
 
 def recalc_tree_down(node: Node, father: Node, broke_id: int, nodes_to_recalc: list[dict], all_nodes: list[Node]):
     node.set_rank_from_root(father.rank_from_root + 1)
@@ -105,10 +110,16 @@ def sum_bl_up_to_node_id(origin: Node, dest_id: int) -> float:
             queue += [data for data in next_node['node'].get_adj() if data['node'].id not in visited_node_ids]
     return w_to_orig
 
-def calc_potential_root_on_branch(b: dict) -> dict:
-    dist_from_start: float = b['bl'] / 2 - (b['w_to_orig'] - b['w_to_dest']) / 2
+def calc_potential_root_on_branch(b: dict, min_bl: float) -> dict:
+    min_bl /= 10
+    if b['delta'] > 0:
+        dist_from_start: float = b['bl'] / 2 - (b['w_to_orig'] - b['w_to_dest']) / 2
+    elif b['w_to_orig'] > b['w_to_dest']:
+        dist_from_start: float = min_bl
+    else:
+        dist_from_start: float = b['bl'] - min_bl
     return {'start_id': b['origin'], 'end_id': b['dest'], 'dist_from_start': dist_from_start,
-            'dist_from_end':  b['bl'] - dist_from_start}
+            'dist_from_end': b['bl'] - dist_from_start}
 
 def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[Node]]:
     new_root_id: int = len(all_nodes)
@@ -135,6 +146,8 @@ def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[
 
 
 def find_shallowest_tree(all_nodes: list[Node], rooting_points: list[dict]) -> dict:
+    if len(rooting_points) == 1:
+        return rooting_points[0]
     for rp in rooting_points:
         start_id: int = rp['start_id']
         end_id: int = rp['end_id']
@@ -144,7 +157,7 @@ def find_shallowest_tree(all_nodes: list[Node], rooting_points: list[dict]) -> d
                              rp['dist_from_start'], rp['dist_from_end'])
         else:
             add_node_between(my_nodes, my_nodes[end_id], my_nodes[start_id],
-                             rp['dist_from_start'], rp['dist_from_end'])
+                             rp['dist_from_end'], rp['dist_from_start'])
         unrooted_tree = UnrootedTree(my_nodes[-2], my_nodes)
         rp['longest_dist'] = unrooted_tree.get_longest_dist_to(my_nodes[-1])
     rooting_points.sort(key=lambda x: x['longest_dist'])
