@@ -13,7 +13,6 @@ class UnrootedTree:
     def __init__(self, anchor: Node, all_nodes: list[Node]):
         self.anchor = anchor
         self.all_nodes = all_nodes
-        self.keys = set()
         self.keys = set(anchor.keys)
         self.differentiator_key = sorted(list(self.keys))[0]
 
@@ -47,6 +46,74 @@ class UnrootedTree:
                 bl_list.append(max(n.branch_length, EPSILON))
         return bl_list
 
+    def get_longest_path(self, u: Node) -> tuple[Node, list[dict], float]:
+        nodes_count: int = len(self.all_nodes)
+        nodes_by_id: list[Node | None] = [None for i in range(nodes_count + 1)]
+        # mark all distance with -1
+        distance = [-1 for i in range(nodes_count + 1)]
+        path: list[list[dict]] = [[] for i in range(nodes_count + 1)]
+
+        # distance of u from u will be 0
+        distance[u.id] = 0
+        path[u.id] = []
+        # in-built library for queue which performs fast operations on both the ends
+        queue: list[Node] = [u]
+        nodes_by_id[u.id] = u
+        # mark node u as visited
+
+        while len(queue) > 0:
+
+            # pop the front of the queue(0th element)
+            front = queue.pop(0)
+            # loop for all adjacent nodes of node front
+
+            for i in front.get_adj():
+
+                if nodes_by_id[i['node'].id] is None:
+                    # mark the ith node as visited
+                    nodes_by_id[i['node'].id] = i['node']
+                    # make distance of i , one more than distance of front
+                    distance[i['node'].id] = distance[front.id] + i['dist']
+                    path[i['node'].id] = path[front.id].copy()
+                    path[i['node'].id].append({'start_id': front.id, 'end_id': i['node'].id, 'dist': i['dist']})
+                    # Push node into the stack only if it is not visited already
+                    queue.append(i['node'])
+
+        max_dist: float = 0
+        # get farthest node distance and its index
+        node_index: int = -1
+        for i in range(nodes_count):
+            if distance[i] > max_dist:
+                max_dist = distance[i]
+                node_index = i
+
+        return nodes_by_id[node_index], path[node_index], max_dist
+
+    def longest_path(self) -> tuple[list[dict], float]:
+
+        # first DFS to find one end point of longest path
+        node, path, max_dist = self.get_longest_path(self.all_nodes[0])
+
+        # second DFS to find the actual longest path
+        node_2, path, max_dist = self.get_longest_path(node)
+        print('Longest path is:', path)
+        return path, max_dist
+
+    def get_longest_dist_to(self, dest: Node) -> float:
+        nodes_count: int = len(self.all_nodes)
+        nodes_by_id: list[Node | None] = [None for i in range(nodes_count + 1)]
+        distance = [-1 for i in range(nodes_count + 1)]
+        distance[dest.id] = 0
+        queue: list[Node] = [dest]
+        nodes_by_id[dest.id] = dest
+        while len(queue) > 0:
+            front = queue.pop(0)
+            for i in front.get_adj():
+                if nodes_by_id[i['node'].id] is None:
+                    nodes_by_id[i['node'].id] = i['node']
+                    distance[i['node'].id] = distance[front.id] + i['dist']
+                    queue.append(i['node'])
+        return max(distance)
 
 def root_from_newick_str(newick_str: str) -> tuple[Node, list[Node]]:
     root, all_nodes = create_a_tree_from_newick(newick_str)
@@ -91,7 +158,7 @@ def create_a_tree_from_newick(newick: str) -> tuple[Node, list[Node]]:
                 i += 1
         elif newick[i] == ',' or newick[i] == ')':
             if len(current_key) > 0:
-                current_node = Node(node_id=len(all_nodes), keys={current_key}, children=[],
+                current_node = Node(node_id=len(all_nodes), keys={current_key}, children=[], children_bl_sum=0,
                                     branch_length=float(branch_length))
                 open_nodes_per_level[level].append(current_node)
                 current_key = ''
@@ -121,7 +188,7 @@ def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level
     for child in open_nodes_per_level[level + 1]:
         node_keys = node_keys.union(child.keys)
     current_node = Node(node_id=node_inx, keys=node_keys, children=open_nodes_per_level[level + 1].copy(),
-                        branch_length=float(branch_length))
+                        children_bl_sum=0, branch_length=float(branch_length))
     for child in open_nodes_per_level[level + 1]:
         child.set_a_father(current_node)
     return current_node

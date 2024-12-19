@@ -22,21 +22,21 @@ class NeighborJoining:
     def calc_q_matrix(self) -> List[List[int]]:
         number_of_seq = len(self.nodes)
         q_matrix = []
-        for i in range(len(self.distance_matrix)):
+        for i in range(len(self.distance_matrix) - 1):
             q_matrix.append([0] * number_of_seq)
             for j in range(i + 1, len(self.distance_matrix)):
                 q_matrix[i][j] = ((number_of_seq - 2) * self.distance_matrix[i][j] -
                                   sum(self.distance_matrix[i]) - sum(self.distance_matrix[j]))
         return q_matrix
 
-    def find_closest_pair(self):
-        f_inx = -1
-        s_inx = -1
+    def find_closest_pair(self) -> tuple[int, int, float]:
+        f_inx: int = -1
+        s_inx: int = -1
         min_dist = sys.maxsize
         for i in range(len(self.q_matrix)):
             for j in range(i + 1, len(self.q_matrix)):
                 if self.q_matrix[i][j] < min_dist:
-                    min_dist = self.q_matrix[i][j]
+                    min_dist: float = self.q_matrix[i][j]
                     f_inx = i
                     s_inx = j
         return f_inx, s_inx, min_dist
@@ -44,7 +44,7 @@ class NeighborJoining:
     def merge_two_clusters(self):
         f_inx, s_inx, min_dist = self.find_closest_pair()
         delta_f, delta_s = self.find_delta(f_inx, s_inx)
-        matrix = []
+        matrix: list[list[float]] = []
         for r in range(len(self.distance_matrix)):
             row = copy.copy(self.distance_matrix[r])
             if r == f_inx:
@@ -71,21 +71,25 @@ class NeighborJoining:
 
         del self.nodes[s_inx]
 
-    def find_delta(self, f_inx: int, s_inx: int):
+    def find_delta(self, f_inx: int, s_inx: int) -> tuple[float, float]:
         number_of_seq = len(self.nodes)
-        delta_f = (0.5 * self.distance_matrix[f_inx][s_inx] +
-                   (sum(self.distance_matrix[f_inx]) - sum(self.distance_matrix[s_inx])) / (2 * (number_of_seq - 2)))
-        delta_s = self.distance_matrix[f_inx][s_inx] - delta_f
+        delta_f: float = (0.5 * self.distance_matrix[f_inx][s_inx] +
+                          (sum(self.distance_matrix[f_inx]) - sum(self.distance_matrix[s_inx])) / (
+                                      2 * (number_of_seq - 2)))
+        delta_s: float = self.distance_matrix[f_inx][s_inx] - delta_f
         return delta_f, delta_s
 
     def merge_last_three(self) -> Node:
         delta_f, delta_s = self.find_delta(0, 1)
         delta_t = self.distance_matrix[0][2] - delta_f
         deltas = [delta_f, delta_s, delta_t]
-        new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], None)
-        self.all_nodes.append(new_node)
+        # new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], None)
+        # self.all_nodes.append(new_node)
         for i in range(3):
             self.nodes[i].set_branch_length(deltas[i])
+        new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], len(self.all_nodes))
+        self.all_nodes.append(new_node)
+        for i in range(3):
             self.nodes[i].set_a_father(new_node)
         return new_node
 

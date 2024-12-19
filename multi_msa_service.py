@@ -9,7 +9,7 @@ from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
 from dpos import compute_dpos_distance
-from enums import SopCalcTypes
+from enums import SopCalcTypes, RootingMethods
 
 
 def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | None, list[str]]:
@@ -78,10 +78,13 @@ def calc_multiple_msa_sp_scores(config: Configuration):
         dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
         true_file_name, true_tree_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
         true_msa = MSA(dir_name)
-        if true_tree_file_name:
-            true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
         if true_file_name:
             true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
+        if true_tree_file_name:
+            true_msa.set_tree(
+                UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
+        else:
+            true_msa.build_nj_tree()
         true_msa.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
         for inferred_file_name in inferred_file_names:
             try:
@@ -92,16 +95,22 @@ def calc_multiple_msa_sp_scores(config: Configuration):
                 inferred_msa = MSA(msa_name)
                 inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
                 if config.sop_clac_type == SopCalcTypes.NAIVE:
-                    inferred_msa.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences))
+                    inferred_msa.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences)[0])
                 else:
-                    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
+                    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count = sp.compute_efficient_sp_parts(
+                        inferred_msa.sequences)
                     inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
                                                         sp_missmatch_count, go_count)
+                    if len(inferred_msa.weight_names) > 0:
+                        inferred_msa.set_w(
+                            sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
                 inferred_msa.order_sequences(true_msa.seq_names)
                 dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
                 inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
                 inferred_msa.set_my_alignment_features()
                 inferred_msa.build_nj_tree()
+                inferred_msa.calc_seq_weights(config.additional_weights)
+                inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
                 inferred_msa.set_rf_from_true(true_msa.tree)
                 all_msa_stats.append(inferred_msa.stats)
             except Exception as e:

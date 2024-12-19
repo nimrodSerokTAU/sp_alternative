@@ -7,9 +7,10 @@ from classes.msa import MSA
 from classes.msa_stats import calc_parsimony, MSAStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
+from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
-from enums import SopCalcTypes
+from enums import SopCalcTypes, RootingMethods, WeightMethods
 from multi_msa_service import calc_multiple_msa_sp_scores
 from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
 from ete3 import Tree, TreeNode
@@ -44,9 +45,9 @@ def test_sp_perfect():
         'ARNDCQEGHI',
         'ARNDCQEGHI',
         'ARNDCQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
+    res: list[int] = sp.compute_naive_sp_score(profile)
     # (5 + 7 + 7 + 8 + 13 + 7 + 6 + 8 + 10 + 5) * 3 = 76 * 3
-    assert res == 228
+    assert res[0] == 228
 
 
 def test_sp_no_gaps():
@@ -56,10 +57,10 @@ def test_sp_no_gaps():
         'ARNDCQEGHI',
         'AANDCQEGAI',
         'AANDCQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
+    res: list[int] = sp.compute_naive_sp_score(profile)
     # RRR -> RAA : 21 -> 5  -4 = 1 -> -20
     # HHH -> HHA : 30 -> 10 -4 = 6 -> -24
-    assert res == 184
+    assert res[0] == 184
 
 
 def test_sp_local_gaps():
@@ -69,9 +70,9 @@ def test_sp_local_gaps():
         'ARNDCQ-GHI',
         'AANDCQ-GAI',
         'AANDCQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
+    res: list[int] = sp.compute_naive_sp_score(profile)
     # EEE -> --E : 18 -> -6 * 2 = -12 -> -30
-    assert res == 154
+    assert res[0] == 154
 
 
 def test_naive_algo_case_a_subs_only():
@@ -82,8 +83,8 @@ def test_naive_algo_case_a_subs_only():
         'AA-DCQ--AI',
         'AA--CQEGHI']
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
-    res: int = sp.compute_naive_sp_score(profile)
-    assert res == 91  # subs only: 91
+    res: list[int] = sp.compute_naive_sp_score(profile, [[1, 1, 1]])
+    assert res[0] == 91  # subs only: 91
 
 
 def test_naive_algo_case_a_subs_and_ge():
@@ -94,8 +95,8 @@ def test_naive_algo_case_a_subs_and_ge():
         'AA-DCQ--AI',
         'AA--CQEGHI']
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
-    res: int = sp.compute_naive_sp_score(profile)
-    assert res == 41  # ge cost only: -50
+    res: list[int] = sp.compute_naive_sp_score(profile, [[1, 1, 1]])
+    assert res[0] == 41  # ge cost only: -50
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs():
@@ -105,8 +106,19 @@ def test_naive_algo_case_a_subs_and_ge_and_gs():
         'ARNDC---HI',
         'AA-DCQ--AI',
         'AA--CQEGHI']
-    res: int = sp.compute_naive_sp_score(profile)
-    assert res == 35  # gs cost only: -6
+    res: list[int] = sp.compute_naive_sp_score(profile)
+    assert res[0] == 35  # gs cost only: -6
+
+
+def test_naive_algo_case_a_subs_and_ge_and_gs_with_weights():
+    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
+    sp: SPScore = SPScore(configuration)
+    profile: list[str] = [
+        'ARNDC---HI',
+        'AA-DCQ--AI',
+        'AA--CQEGHI']
+    res: list[int] = sp.compute_naive_sp_score(profile, [[1, 1, 1], [2, 2, 2]])
+    assert res == [35, 140]  # gs cost only: -6
 
 
 def test_compute_sp_s_and_sp_ge():  # our function
@@ -132,7 +144,7 @@ def test_onl_gap_open_and_ext_cost_same():
         'AA-DCQ--AI',
         'AA--CQEGHI']
     res: int = sp.compute_sp_gap_open(profile)
-    assert res == -6
+    assert res == (-6, 4)
 
 
 def test_compute_efficient_sp():
@@ -390,7 +402,10 @@ def test_tree_from_newick():
 def test_multi():
     configuration: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
-                                                 False)
+                                                 False, False,
+                                                 {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                                  WeightMethods.CLUSTAL_MID_ROOT,
+                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     calc_multiple_msa_sp_scores(configuration)
 
 
@@ -473,7 +488,7 @@ def test_rf_for_nj_using_newick():
 def test_neighbor_joining():
     nodes: list[Node] = []
     for key in keys_case_nj:
-        nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1))
+        nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1, children_bl_sum=0))
     tree_calculation: UnrootedTree = NeighborJoining(matrix_case_nj, nodes).tree_res
     bl_list: list[float] = tree_calculation.get_branches_lengths_list()
     bl_list.sort()
@@ -481,11 +496,11 @@ def test_neighbor_joining():
 
 
 def test_parsimony():  # TODO: continue from here
-    n_a: Node = Node(node_id=0, keys={'a'}, children=[])
-    n_b: Node = Node(node_id=1, keys={'b'}, children=[])
-    n_c: Node = Node(node_id=2, keys={'c'}, children=[])
-    n_d: Node = Node(node_id=3, keys={'d'}, children=[])
-    n_e: Node = Node(node_id=4, keys={'e'}, children=[])
+    n_a: Node = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0)
+    n_b: Node = Node(node_id=1, keys={'b'}, children=[], children_bl_sum=0)
+    n_c: Node = Node(node_id=2, keys={'c'}, children=[], children_bl_sum=0)
+    n_d: Node = Node(node_id=3, keys={'d'}, children=[], children_bl_sum=0)
+    n_e: Node = Node(node_id=4, keys={'e'}, children=[], children_bl_sum=0)
     n_a_b: Node = Node.create_from_children([n_a, n_b], 5)
     n_a_b_c: Node = Node.create_from_children([n_a_b, n_c], 6)
     anchor: Node = Node.create_from_children([n_a_b_c, n_d, n_e], 7)
@@ -520,7 +535,10 @@ def test_msa_stats():
     ]
     config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
-                                          False, False)
+                                          False, False,
+                                          {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                           WeightMethods.CLUSTAL_MID_ROOT,
+                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
@@ -534,8 +552,11 @@ def test_msa_stats():
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
     inferred_msa.set_my_alignment_features()
     inferred_msa.build_nj_tree()
+    inferred_msa.tree.longest_path()
     true_msa.build_nj_tree()
     inferred_msa.set_rf_from_true(true_msa.tree)
+    inferred_msa.calc_seq_weights(config.additional_weights)
+    inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
     assert inferred_msa.stats.get_my_features() == (
         'inferred,-3.5,-0.035,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
         '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.045,-0.045,0.47,0.22,1,5,1.676,0.183,0.086,0.399,0.031,0.323,'
@@ -601,6 +622,148 @@ def create_msa_from_seqs_and_names(data_name: str, seqs: list[str], names: list[
     return msa
 
 
+def test_henikoff_w():
+    aln: list[str] = [
+        'AT-CGC',
+        'ACATG-',
+        'AT-CG-',
+        'ATC-GA',
+        'TTATGC'
+    ]
+    msa = MSA('test')
+    msa.sequences = aln
+    seq_weights_with_gap, seq_weights_no_gap = msa.compute_seq_w_henikoff_vars()
+    res = {'seq_weights_with_gap': seq_weights_with_gap, 'seq_weights_no_gap': seq_weights_no_gap}
+    assert res == {
+        'seq_weights_no_gap': [
+             0.15454545454545454,
+             0.22272727272727275,
+             0.10909090909090909,
+             0.24545454545454548,
+             0.2681818181818182,
+        ],
+        'seq_weights_with_gap': [
+             0.15714285714285717,
+             0.21071428571428572,
+             0.15714285714285717,
+             0.2642857142857143,
+             0.21071428571428572,
+        ],
+    }
+
+def test_mid_point_rooting():
+    aln: list[str] = [
+        'AT-CGC-GGT',
+        'ACATG-T-GA',
+        'AT-CG--GGT',
+        'ATC-GA-GGA',
+        'TTATGCTGGA'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                          SopCalcTypes.EFFICIENT, 'comparison_files',
+                                          False, False)
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+
+    sp: SPScore = SPScore(config)
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count = sp.compute_efficient_sp_parts(
+        inferred_msa.sequences)
+    inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
+                                        sp_missmatch_count, sp_gpo_count)
+    inferred_msa.build_nj_tree()
+    path, max_dist = inferred_msa.tree.longest_path()
+    tree = RootedTree.root_tree(inferred_msa.tree, RootingMethods.LONGEST_PATH_MID)
+    res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length, 'tree_a_keys': tree.root.children[0].keys,
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': round(tree.all_nodes[1].branch_length, 3),
+           'bl_c': round(tree.all_nodes[2].branch_length, 3), 'bl_d': round(tree.all_nodes[3].branch_length, 3),
+           'bl_e': round(tree.all_nodes[4].branch_length, 3), 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+           'bl_a_c_d': round(tree.all_nodes[6].branch_length, 3), 'bl_b_e': round(tree.all_nodes[7].branch_length, 3),
+    }
+    assert res == {'lp_length': 1.3641359567812426, 'tree_a_length': 0.22007006899467785, 'tree_a_keys': {'b', 'e'},
+                   'bl_a': 0.082, 'bl_a_c': 0.329, 'bl_a_c_d': 0.271, 'bl_b': 0.462, 'bl_b_e': 0.22,
+                   'bl_c': 0.026, 'bl_d': 0.183, 'bl_e': 0.104,}
+
+
+def test_mid_point_rooting_case_b():
+    unrooted = create_unrooted_tree_for_test()
+    path, max_dist = unrooted.longest_path()
+    tree = RootedTree.root_tree(unrooted, RootingMethods.LONGEST_PATH_MID)
+    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': tree.all_nodes[5].branch_length,
+           'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 1)}
+    tree.calc_clustal_w()
+    res['a_w'] = tree.all_nodes[0].weight
+    res['c_w'] = tree.all_nodes[2].weight
+    res['e_w'] = round(tree.all_nodes[4].weight, 3)
+    assert res == {'bl_b_e_d': 0.2, 'bl_a': 0.2, 'bl_a_c': 0.4, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
+                    'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['b', 'd', 'e'], 'tree_a_length': 0.2,
+                    'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
+
+
 def test_comp_3():
     res = msa_comp_main()
-    assert res == []
+    assert res is None
+
+
+def test_differential_sum_rooting():
+    unrooted = create_unrooted_tree_for_test()
+    path, max_dist = unrooted.longest_path()
+    tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
+    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 3), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+           'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 1)}
+    tree.calc_clustal_w()
+    res['a_w'] = round(tree.all_nodes[0].weight, 3)
+    res['c_w'] = round(tree.all_nodes[2].weight, 3)
+    res['e_w'] = round(tree.all_nodes[4].weight, 3)
+    assert res == {'bl_b_e_d': 0.1, 'bl_a': 0.2, 'bl_a_c': 0.475, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
+                    'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.475,
+                    'a_w': 0.438, 'c_w': 0.387, 'e_w': 0.242}
+
+
+def test_differential_sum_rooting_case_of_no_solution():
+    unrooted = create_unrooted_tree_for_test()
+    unrooted.all_nodes[0].set_branch_length(0.6)
+    unrooted.all_nodes[1].set_branch_length(0.7)
+    unrooted.all_nodes[2].set_branch_length(0.2)
+    unrooted.all_nodes[3].set_branch_length(0.9)
+    unrooted.all_nodes[4].set_branch_length(0.2)
+    unrooted.all_nodes[5].set_branch_length(0.3)
+    unrooted.all_nodes[6].set_branch_length(0.1)
+
+    path, max_dist = unrooted.longest_path()
+    tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
+    res = {'lp_length': round(max_dist, 2), 'tree_a_length': round(tree.root.children[0].branch_length, 3), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+           'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 3)}
+    tree.calc_clustal_w()
+    res['a_w'] = round(tree.all_nodes[0].weight, 3)
+    res['c_w'] = round(tree.all_nodes[2].weight, 3)
+    res['e_w'] = round(tree.all_nodes[4].weight, 3)
+    assert res == {'bl_b_e_d': 0.01, 'bl_a': 0.6, 'bl_a_c': 0.29, 'bl_b': 0.7, 'bl_b_e': 0.1, 'bl_c': 0.2, 'bl_d': 0.9,
+                    'bl_e': 0.2, 'lp_length': 1.8, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.29,
+                    'a_w': 0.745, 'c_w': 0.345, 'e_w': 0.253}
+
+def create_unrooted_tree_for_test() -> UnrootedTree:
+    node_a = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0, branch_length=0.2)
+    node_b = Node(node_id=1, keys={'b'}, children=[], children_bl_sum=0, branch_length=0.1)
+    node_c = Node(node_id=2, keys={'c'}, children=[], children_bl_sum=0, branch_length=0.15)
+    node_d = Node(node_id=3, keys={'d'}, children=[], children_bl_sum=0, branch_length=0.25)
+    node_e = Node(node_id=4, keys={'e'}, children=[], children_bl_sum=0, branch_length=0.05)
+    node_a_c = Node.create_from_children([node_a, node_c], 5)
+    node_a_c.set_branch_length(0.6)
+    node_a_c_d = Node.create_from_children([node_a_c, node_d], 6)
+    node_a_c_d.set_branch_length(0.3)
+    anchor = Node.create_from_children([node_a_c_d, node_b, node_e], 7)
+    node_a.set_a_father(node_a_c)
+    node_c.set_a_father(node_a_c)
+    node_a_c.set_a_father(node_a_c_d)
+    node_d.set_a_father(node_a_c_d)
+    node_a_c_d.set_a_father(anchor)
+    node_b.set_a_father(anchor)
+    node_e.set_a_father(anchor)
+    return UnrootedTree(anchor=anchor,
+                            all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
