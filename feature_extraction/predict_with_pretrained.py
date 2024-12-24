@@ -42,7 +42,8 @@ def construct_test_set(file, mode=1):
 
     # add normalized_rf
     df["normalized_rf"] = df['rf_from_true'] / (df['taxa_num'] - 1)
-    df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.2, 0, 1)
+    df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
+    df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.1, 0, np.where(df['dpos_dist_from_true'] <= 0.5, 1, 2))
     df = df.dropna()
     if 'sp_score_gap_e_norm.1' in df.columns:
         df = df.drop(columns=['sp_score_gap_e_norm.1'])
@@ -57,8 +58,12 @@ def construct_test_set(file, mode=1):
     # all features
     if mode == 1:
         X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                             'pypythia_msa_difficulty','normalised_sop_score','class_label'])
+                             'pypythia_msa_difficulty','normalised_sop_score','class_label', 'number_of_gap_segments', 'number_of_mismatches'])
     # all except 2SoP
+    # if mode == 2:
+    #     X = df.drop(
+    #         columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
+    #                  'sop_score', 'normalised_sop_score','class_label', 'number_of_gap_segments', 'number_of_mismatches'])
     if mode == 2:
         X = df.drop(
             columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
@@ -70,15 +75,15 @@ def construct_test_set(file, mode=1):
 
     if mode == 4:  # test removing features
         X = df.drop(
-            columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len']
         )
 
     # Get unique 'code1' values
@@ -89,9 +94,12 @@ def construct_test_set(file, mode=1):
     if mode == 1:
         X_test = test_df.drop(
             columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                     'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label'])
+                     'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label', 'number_of_gap_segments', 'number_of_mismatches'])
 
     if mode == 2:
+        # X_test = test_df.drop(
+        #     columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
+        #              'sop_score', 'normalised_sop_score', 'class_label', 'number_of_gap_segments', 'number_of_mismatches'])
         X_test = test_df.drop(
             columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
                      'sop_score', 'normalised_sop_score', 'class_label'])
@@ -102,15 +110,15 @@ def construct_test_set(file, mode=1):
 
     if mode == 4:
         X_test = test_df.drop(
-            columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len']
         )
 
     # # load scaler used during the training
@@ -182,15 +190,15 @@ def use_test_from_origin(features_file, predictions_file):
 
     if mode == 4:  # test removing features
         X = df.drop(
-            columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len']
         )
 
     # Split the unique 'code1' into training and test sets
@@ -218,15 +226,15 @@ def use_test_from_origin(features_file, predictions_file):
 
     if mode == 4:
         X_test = test_df.drop(
-            columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites']
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len']
         )
 
     main_codes_test = test_df['code1']
@@ -328,10 +336,10 @@ if __name__ == '__main__':
         #     predictions_file=f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/DL1/prediction_DL_{i}_mode2_msa_distance.csv')
         # load scaler used during the training
         X_test, test_df, true_score_name, main_codes_test, file_codes_test = construct_test_set(
-            "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/TreeBASE_incl_missing_prank.csv", mode=2)
+            "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/oxbench_features.csv", mode=4)
 
         scaler = joblib.load(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/DL1/scaler_{i}.pkl')
+            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL4_mode4_withSoP/scaler_{i}_mode4_msa_distance.pkl')
         X_test_scaled = scaler.transform(X_test)
         X_test_scaled = X_test_scaled.astype('float64')
         X_test_scaled_with_names = pd.DataFrame(X_test_scaled, columns=X_test.columns)
@@ -350,20 +358,20 @@ if __name__ == '__main__':
 
         # Load the saved model
         model = load_model(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/DL1/regressor_model_{i}_mode2_msa_distance.keras')
+            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL4_mode4_withSoP/regressor_model_{i}_mode4_msa_distance.keras')
         # with open(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_w_BaliPhy/RF/random_forest_model_{i}.pkl', 'rb') as f:
         #     model = pickle.load(f)
         # Make predictions
         y_pred = model.predict(X_test_scaled)
         y_pred = np.ravel(y_pred)  # flatten multi-dimensional array into one-dimensional
 
-        # try to explain the features
-        explainer = shap.Explainer(model, X_test_scaled_with_names)
-        shap_values = explainer(X_test_scaled_with_names)
-        joblib.dump(explainer,
-                    '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_pretrained_model.pkl')
-        joblib.dump(shap_values,
-                    '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values_pretrained_model.pkl')
+        # # try to explain the features
+        # explainer = shap.Explainer(model, X_test_scaled_with_names)
+        # shap_values = explainer(X_test_scaled_with_names)
+        # joblib.dump(explainer,
+        #             '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_pretrained_model.pkl')
+        # joblib.dump(shap_values,
+        #             '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values_pretrained_model.pkl')
 
         # Create a DataFrame
         df_res = pd.DataFrame({

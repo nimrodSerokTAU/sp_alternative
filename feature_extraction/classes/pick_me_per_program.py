@@ -60,12 +60,15 @@ class PickMeGameProgram:
             default_muscle_true_score = default_muscle_true_scores.min() if len(default_muscle_true_scores) > 0 else np.nan
 
             # True_score for 'bali_phy_msa.199.fasta'
-            default_baliphy_true_scores = code_df[code_df['code'] == 'bali_phy_msa.199.fasta'][self.true_score].values
+            # default_baliphy_true_scores = code_df[code_df['code'] == 'bali_phy_msa.199.fasta'][self.true_score].values
+            # default_baliphy_true_score = default_baliphy_true_scores[0] if len(default_baliphy_true_scores) > 0 else np.nan
+            default_baliphy_true_scores = \
+                code_df[code_df['code'].str.contains(r'^MSA\.BALIPHY\.aln\.best\.[\w]+\.fas$', regex=True)][
+                    self.true_score].values
             default_baliphy_true_score = default_baliphy_true_scores[0] if len(default_baliphy_true_scores) > 0 else np.nan
 
-
             # Minimum true_score and filename among MAFFT alternative MSAs
-            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy']
+            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy', 'BALIPHY', 'original']
             mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
             mafft_df = code_df[~mask]
             if not mafft_df.empty:
@@ -82,12 +85,14 @@ class PickMeGameProgram:
                 top_20_mafft_filenames = top_20_mafft_rows['code'].tolist()
                 top_20_mafft_scores = top_20_mafft_rows[self.true_score].tolist()
             else:
+                print(f"no mafft for code {code}")
                 min_mafft_true_score = np.nan
                 min_mafft_code_filename = np.nan
 
+                min_mafft_predicted_filename = np.nan
                 min_mafft_predicted_true_score = np.nan
                 min_mafft_predicted_score = np.nan
-                top_20_prank_scores = []
+                top_20_mafft_scores = []
 
 
             # Minimum true_score and code_filename among PRANK alternative MSAs
@@ -106,9 +111,10 @@ class PickMeGameProgram:
                 top_20_prank_filenames = top_20_prank_rows['code'].tolist()
                 top_20_prank_scores = top_20_prank_rows[self.true_score].tolist()
             else:
+                print(f"no prank files for code {code}")
                 min_prank_true_score = np.nan
                 min_prank_code_filename = np.nan
-
+                min_prank_predicted_filename = np.nan
                 min_prank_predicted_true_score = np.nan
                 min_prank_predicted_score = np.nan
                 top_20_prank_scores = []
@@ -130,15 +136,16 @@ class PickMeGameProgram:
                 top_20_muscle_filenames = top_20_muscle_rows['code'].tolist()
                 top_20_muscle_scores = top_20_muscle_rows[self.true_score].tolist()
             else:
+                print(f"no muscle files for {code}")
                 min_muscle_true_score = np.nan
                 min_muscle_code_filename = np.nan
-
+                min_muscle_predicted_filename = np.nan
                 min_muscle_predicted_true_score = np.nan
                 min_muscle_predicted_score = np.nan
                 top_20_muscle_scores = []
 
             # Minimum true_score and code_filename among Bali-Phy alternative MSAs
-            baliphy_df = code_df[code_df['code'].str.contains('bali_phy', case=False, na=False, regex=True)]
+            baliphy_df = code_df[code_df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
             if not baliphy_df.empty:
                 min_baliphy_row = baliphy_df.loc[baliphy_df[self.true_score].idxmin()]
                 min_baliphy_true_score = min_baliphy_row[self.true_score]
@@ -282,13 +289,18 @@ class PickMeGameProgram:
                 default_muscle_true_scores) > 0 else np.nan
 
             # True_score for 'bali_phy_msa.199.fasta'
-            default_baliphy_true_scores = code_df[code_df['code'] == 'bali_phy_msa.199.fasta'][self.true_score].values
+            # default_baliphy_true_scores = code_df[code_df['code'] == 'bali_phy_msa.199.fasta'][self.true_score].values
+            # default_baliphy_true_score = default_baliphy_true_scores[0] if len(
+            #     default_baliphy_true_scores) > 0 else np.nan
+            default_baliphy_true_scores = \
+                code_df[code_df['code'].str.contains(r'^MSA\.BALIPHY\.aln\.best\.[\w]+\.fas$', regex=True)][
+                    self.true_score].values
             default_baliphy_true_score = default_baliphy_true_scores[0] if len(
                 default_baliphy_true_scores) > 0 else np.nan
 
 
             # Minimum true_score and filename among MAFFT alternative MSAs
-            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy']
+            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy', 'BALIPHY', 'original']
             mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
             mafft_df = code_df[~mask]
             if not mafft_df.empty:
@@ -306,11 +318,13 @@ class PickMeGameProgram:
                 top_20_mafft_SoP_scores = top_20_mafft_SoP_rows[self.true_score].tolist()
 
             else:
+                print(f"no mafft for code {code}")
                 min_mafft_true_score = np.nan
                 min_mafft_code_filename = np.nan
-
+                max_mafft_SoP_filename = np.nan
                 max_mafft_SoP_true_score = np.nan
                 max_mafft_SoP_score = np.nan
+                top_20_mafft_SoP_scores = []
 
             # Minimum true_score and code_filename among PRANK alternative MSAs
             prank_df = code_df[code_df['code'].str.contains('prank', case=False, na=False, regex=True)]
@@ -328,11 +342,13 @@ class PickMeGameProgram:
                 top_20_prank_SoP_filenames = top_20_prank_SoP_rows['code'].tolist()
                 top_20_prank_SoP_scores = top_20_prank_SoP_rows[self.true_score].tolist()
             else:
+                print(f"no prank for code {code}")
                 min_prank_true_score = np.nan
                 min_prank_code_filename = np.nan
-
+                max_prank_SoP_filename = np.nan
                 max_prank_SoP_true_score = np.nan
                 max_prank_SoP_score = np.nan
+                top_20_prank_SoP_scores = []
 
             # Minimum true_score and code_filename among MUSCLE alternative MSAs
             muscle_df = code_df[code_df['code'].str.contains('muscle', case=False, na=False, regex=True)]
@@ -350,14 +366,16 @@ class PickMeGameProgram:
                 top_20_muscle_SoP_filenames = top_20_muscle_SoP_rows['code'].tolist()
                 top_20_muscle_SoP_scores = top_20_muscle_SoP_rows[self.true_score].tolist()
             else:
+                print(f"no muscle for code {code}")
                 min_muscle_true_score = np.nan
                 min_muscle_code_filename = np.nan
-
+                max_muscle_SoP_filename = np.nan
                 max_muscle_SoP_true_score = np.nan
                 max_muscle_SoP_score = np.nan
+                top_20_muscle_SoP_scores = []
 
             # Minimum true_score and code_filename among Bali-Phy alternative MSAs
-            baliphy_df = code_df[code_df['code'].str.contains('bali_phy', case=False, na=False, regex=True)]
+            baliphy_df = code_df[code_df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
             if not baliphy_df.empty:
                 min_baliphy_row = baliphy_df.loc[baliphy_df[self.true_score].idxmin()]
                 min_baliphy_true_score = min_baliphy_row[self.true_score]

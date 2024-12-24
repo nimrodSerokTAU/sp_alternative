@@ -22,7 +22,7 @@ import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, Nadam, RMSprop
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.initializers import GlorotUniform
 from tensorflow.keras.regularizers import l2
@@ -64,7 +64,7 @@ class Regressor:
         # add normalized_rf
         df["normalized_rf"] = df['rf_from_true']/(df['taxa_num']-1)
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
-        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, np.where(df['dpos_dist_from_true'] <= 0.05, 1, 2))
+        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.01, 0, np.where(df['dpos_dist_from_true'] <= 0.05, 1, 2))
 
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
@@ -105,15 +105,15 @@ class Regressor:
 
         if mode == 4: #test removing features
             self.X = df.drop(
-                columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median', 'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites'])
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len'])
 
 
         # self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=self.test_size)
@@ -172,39 +172,31 @@ class Regressor:
 
         if mode == 4:
             self.X_train = self.train_df.drop(
-                columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median',
-                         'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
-                         'var_bl',
-                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
-                         'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
-                         'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
-                         'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-                         'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
-                         'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
-                         'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
-                         'k_mer_10_top_10_norm',
-                         'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-                         'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
-                         'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
+                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
+            'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+            'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len'])
             self.X_test = self.test_df.drop(
-                columns=['k_mer_10_norm', 'entropy_mean', 'dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'entropy_median',
-                         'entropy_var',
-                         'entropy_pct_25', 'entropy_pct_75', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct',
-                         'var_bl',
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code',
+                         'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
+                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
-                         'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'gaps_1seq_len1',
+                         'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
                          'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
                          'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
                          'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
                          'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
-                         'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
-                         'k_mer_10_top_10_norm',
+                         'k_mer_10_max', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
                          'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-                         'k_mer_20_top_10_norm', 'k_mer_20_norm', 'median_bl', 'sp_missmatch_ratio', 'num_cols_2_gaps',
-                         'num_cols_all_gaps_except1', 'seq_min_len', 'n_unique_sites'])
+                         'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
+                         'seq_min_len']
+            )
 
         self.scaler = MinMaxScaler()
         # scaler = StandardScaler()
@@ -349,8 +341,17 @@ class Regressor:
     #     print(f"Mean Squared Error: {mse:.4f}")
     #     return mse
 
-    def deep_learning(self, epochs=30, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
+    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
         history = None
+
+        def weighted_mse(y_true, y_pred, weights):
+            mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
+            weighted_loss = mse_loss * weights
+            return weighted_loss
+
+        # def quantile_loss(q, y_true, y_pred):
+        #     error = y_true - y_pred
+        #     return tf.reduce_mean(tf.maximum(q * error, (q - 1) * error))
 
         # mode for non-negative regression msa_distance task
         if self.predicted_measure == 'msa_distance':
@@ -358,41 +359,45 @@ class Regressor:
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
             #first hidden
-            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
-            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
-            # model.add(Activation('relu'))
+            model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            model.add(Activation('relu'))
             # model.add(ELU())
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # # # second new hidden
-            # model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
-            # # # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            model.add(Activation('relu'))
+            model.add(BatchNormalization())
+            model.add(Dropout(0.2))  # Dropout for regularization
+
+            # second hidden
+            # model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=l2(1e-4)))
+            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
             # model.add(BatchNormalization())
             # model.add(Dropout(0.2))  # Dropout for regularization
 
-            # second hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=l2(1e-4)))
-            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
-            # model.add(Activation('relu'))
-            model.add(BatchNormalization())
-            model.add(Dropout(0.2))  # Dropout for regularization
-
             # third hidden
-            model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
-            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
-            # model.add(ELU())
-            # model.add(Activation('relu'))
-            model.add(BatchNormalization())
-            model.add(Dropout(0.2))  # Dropout for regularization
+            # model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
+            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+            # # model.add(ELU())
+            # # model.add(Activation('relu'))
+            # model.add(BatchNormalization())
+            # model.add(Dropout(0.2))  # Dropout for regularization
 
             # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
             # model.add(Dense(1, activation='softplus'))  #ensures non-negative values
             model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
 
             optimizer = Adam(learning_rate=learning_rate)
+            # optimizer = RMSprop(learning_rate=learning_rate)
+
             model.compile(optimizer=optimizer, loss='mean_squared_error')
+            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: quantile_loss(0.02, y_true, y_pred))
+            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
 
             #set call-backs
             # 1. Implement early stopping
@@ -403,12 +408,12 @@ class Regressor:
                 patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
                 verbose=1,  # Print messages when learning rate is reduced
                 factor=0.7,  # Factor by which the learning rate will be reduced
-                min_lr=1e-5  # Lower bound on the learning rate
+                min_lr=1e-6  # Lower bound on the learning rate
             )
             if undersampling == True:
                 # weights = np.where(self.y_train < 0.2, 7, 1)
                 # Define thresholds and weights
-                threshold_low = 0.02
+                threshold_low = 0.01
                 threshold_high = 0.05
                 w_low = self.weights[0] # Weight for the lower tail (values < threshold_low)
                 w_high = self.weights[2]  # Weight for the upper tail (values > threshold_high)
@@ -521,162 +526,165 @@ class Regressor:
         corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
 
-        # explain features importance
-        X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        explainer = shap.Explainer(model, X_test_scaled_with_names)
-        shap_values = explainer(X_test_scaled_with_names)
-        # explainer = shap.Explainer(model, self.X_test_scaled)
-        # shap_values = explainer(self.X_test_scaled)
-        joblib.dump(explainer,
-                    f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-        joblib.dump(shap_values,
-                    f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        # # explain features importance
+        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+        # explainer = shap.Explainer(model, X_test_scaled_with_names)
+        # shap_values = explainer(X_test_scaled_with_names)
+        # # explainer = shap.Explainer(model, self.X_test_scaled)
+        # # shap_values = explainer(self.X_test_scaled)
+        # joblib.dump(explainer,
+        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        # joblib.dump(shap_values,
+        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
 
         return mse
 
-    def deep_learning_with_attention(self, epochs=30, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
-        history = None
-
-        # mode for non-negative regression msa_distance task
-        if self.predicted_measure == 'msa_distance':
-            # Define input layer
-            inputs = Input(shape=(self.X_train_scaled.shape[1],))
-
-            # First hidden layer
-            x = Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(inputs)
-            x = LeakyReLU(negative_slope=0.01)(x)
-            x = BatchNormalization()(x)
-            x = Dropout(0.2)(x)
-
-            # Second hidden layer
-            x = Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(x)
-            x = LeakyReLU(negative_slope=0.01)(x)
-            x = BatchNormalization()(x)
-            x = Dropout(0.2)(x)
-
-            # Third hidden layer
-            x = Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(x)
-            x = LeakyReLU(negative_slope=0.01)(x)
-            x = BatchNormalization()(x)
-            x = Dropout(0.2)(x)
-
-            # Attention layer
-            # Assuming AttentionLayer is a custom class. The output and attention weights will be unpacked.
-            attention_output, attn_weights = AttentionLayer()(x)
-
-            # Reshape the attention output to be 2D (batch_size, features) for the next Dense layer
-            attention_output_reshaped = Reshape((-1,))(attention_output)
-
-            # Output layer (sigmoid)
-            output = Dense(1, activation='sigmoid')(attention_output_reshaped)
-
-            # Define the model
-            model = Model(inputs=inputs, outputs=output)
-
-            optimizer = Adam(learning_rate=learning_rate)
-            model.compile(optimizer=optimizer, loss='mean_squared_error')
-
-            #set call-backs
-            # 1. Implement early stopping
-            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-            # 2. learning rate scheduler
-            lr_scheduler = ReduceLROnPlateau(
-                monitor='val_loss',  # Metric to monitor
-                patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
-                verbose=1,  # Print messages when learning rate is reduced
-                factor=0.7,  # Factor by which the learning rate will be reduced
-                min_lr=1e-5  # Lower bound on the learning rate
-            )
-            if undersampling == True:
-                # weights = np.where(self.y_train < 0.2, 7, 1)
-                # Define thresholds and weights
-                threshold_low = 0.2
-                threshold_high = 0.8
-                w_low = 5 # Weight for the lower tail (values < threshold_low)
-                w_high = 2  # Weight for the upper tail (values > threshold_high)
-                w_mid = 1  # Weight for the middle range (between threshold_low and threshold_high)
-                weights = np.where(self.y_train < threshold_low, w_low,
-                                   np.where(self.y_train > threshold_high, w_high, w_mid))
-                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler], sample_weight=weights)
-            else:
-                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
-                                    validation_split=validation_split, verbose=verbose,
-                                    callbacks=[early_stopping, lr_scheduler])
-
-
-        # Plotting training and validation loss
-        plt.plot(history.history['loss'], label='Training Loss')
-        plt.plot(history.history['val_loss'], label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-
-        # Set integer ticks on the x-axis
-        epochs = range(1, len(history.history['loss']) + 1)  # Integer epoch numbers
-        plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
-
-        plt.legend()
-        plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
-        plt.show()
-        plt.close()
-
-        # visualize model architecture
-        plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.predicted_measure}.png', show_shapes=True, show_layer_names=True,
-                   show_layer_activations=True)
-        model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
-        # Save the model architecture as a Dot file
-        plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
-        # visualkeras.layered_view(model, to_file='./out/output.png',legend=True, draw_funnel=False, show_dimension=True).show()
-
-        # Evaluate the model
-        loss = model.evaluate(self.X_test_scaled, self.y_test)
-        print(f"Test Loss: {loss}")
-
-        # Make predictions
-        self.y_pred = model.predict(self.X_test_scaled)
-        self.y_pred = np.ravel(self.y_pred)  # flatten multi-dimensional array into one-dimensional
-        self.y_pred = self.y_pred.astype('float64')
-
-        # get integers predictions of RF distance
-        if self.predicted_measure == "tree_distance":
-            self.y_pred = np.round(self.y_pred).astype(int)
-
-
-        # Create a DataFrame
-        df_res = pd.DataFrame({
-            'code1': self.main_codes_test,
-            'code': self.file_codes_test,
-            'predicted_score': self.y_pred
-        })
-
-        # Save the DataFrame to a CSV file
-        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
-
-        # Evaluate the model
-        mse = mean_squared_error(self.y_test, self.y_pred)
-        print(f"Mean Squared Error: {mse:.4f}")
-        corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
-        print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
-
-        # To visualize the attention weights for a specific input sample:
-        sample_input = self.X_train_scaled[0]  # Use the first sample or any other sample index
-        sample_input = np.expand_dims(sample_input, axis=0)  # Add batch dimension
-
-        # Pass through the model up to the attention layer
-        _, attn_weights_val = model.layers[-2](sample_input)  # Access the attention weights directly
-        print(attn_weights_val)
-
-        # explain features importance
-        X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        explainer = shap.Explainer(model, X_test_scaled_with_names)
-        shap_values = explainer(X_test_scaled_with_names)
-        # explainer = shap.Explainer(model, self.X_test_scaled)
-        # shap_values = explainer(self.X_test_scaled)
-        joblib.dump(explainer,
-                    f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-        joblib.dump(shap_values,
-                    f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-
-        return mse
+    # def deep_learning_with_attention(self, epochs=30, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
+    #     history = None
+    #
+    #     # mode for non-negative regression msa_distance task
+    #     if self.predicted_measure == 'msa_distance':
+    #         # Define input layer
+    #         inputs = Input(shape=(self.X_train_scaled.shape[1],))
+    #
+    #         # First hidden layer
+    #         x = Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(inputs)
+    #         x = LeakyReLU(negative_slope=0.01)(x)
+    #         x = BatchNormalization()(x)
+    #         x = Dropout(0.2)(x)
+    #
+    #         # Second hidden layer
+    #         x = Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(x)
+    #         x = LeakyReLU(negative_slope=0.01)(x)
+    #         x = BatchNormalization()(x)
+    #         x = Dropout(0.2)(x)
+    #
+    #         # Third hidden layer
+    #         x = Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4))(x)
+    #         x = LeakyReLU(negative_slope=0.01)(x)
+    #         x = BatchNormalization()(x)
+    #         x = Dropout(0.2)(x)
+    #
+    #         # Attention layer
+    #         # Assuming AttentionLayer is a custom class. The output and attention weights will be unpacked.
+    #         attention_output, attn_weights = AttentionLayer()(x)
+    #
+    #         # Reshape the attention output to be 2D (batch_size, features) for the next Dense layer
+    #         attention_output_reshaped = Reshape((-1,))(attention_output)
+    #
+    #         # Output layer (sigmoid)
+    #         output = Dense(1, activation='sigmoid')(attention_output_reshaped)
+    #
+    #         # Define the model
+    #         model = Model(inputs=inputs, outputs=output)
+    #
+    #         # Create a sub-model for accessing the attention weights directly
+    #         attn_model = Model(inputs=inputs, outputs=[attention_output, attn_weights])
+    #
+    #         optimizer = Adam(learning_rate=learning_rate)
+    #         model.compile(optimizer=optimizer, loss='mean_squared_error')
+    #
+    #         #set call-backs
+    #         # 1. Implement early stopping
+    #         early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+    #         # 2. learning rate scheduler
+    #         lr_scheduler = ReduceLROnPlateau(
+    #             monitor='val_loss',  # Metric to monitor
+    #             patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
+    #             verbose=1,  # Print messages when learning rate is reduced
+    #             factor=0.7,  # Factor by which the learning rate will be reduced
+    #             min_lr=1e-5  # Lower bound on the learning rate
+    #         )
+    #         if undersampling == True:
+    #             # weights = np.where(self.y_train < 0.2, 7, 1)
+    #             # Define thresholds and weights
+    #             threshold_low = 0.2
+    #             threshold_high = 0.8
+    #             w_low = 5 # Weight for the lower tail (values < threshold_low)
+    #             w_high = 2  # Weight for the upper tail (values > threshold_high)
+    #             w_mid = 1  # Weight for the middle range (between threshold_low and threshold_high)
+    #             weights = np.where(self.y_train < threshold_low, w_low,
+    #                                np.where(self.y_train > threshold_high, w_high, w_mid))
+    #             history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler], sample_weight=weights)
+    #         else:
+    #             history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
+    #                                 validation_split=validation_split, verbose=verbose,
+    #                                 callbacks=[early_stopping, lr_scheduler])
+    #
+    #
+    #     # Plotting training and validation loss
+    #     plt.plot(history.history['loss'], label='Training Loss')
+    #     plt.plot(history.history['val_loss'], label='Validation Loss')
+    #     plt.xlabel('Epoch')
+    #     plt.ylabel('Loss')
+    #
+    #     # Set integer ticks on the x-axis
+    #     epochs = range(1, len(history.history['loss']) + 1)  # Integer epoch numbers
+    #     plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
+    #
+    #     plt.legend()
+    #     plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
+    #     plt.show()
+    #     plt.close()
+    #
+    #     # visualize model architecture
+    #     plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.predicted_measure}.png', show_shapes=True, show_layer_names=True,
+    #                show_layer_activations=True)
+    #     model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
+    #     # Save the model architecture as a Dot file
+    #     plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+    #     # visualkeras.layered_view(model, to_file='./out/output.png',legend=True, draw_funnel=False, show_dimension=True).show()
+    #
+    #     # Evaluate the model
+    #     loss = model.evaluate(self.X_test_scaled, self.y_test)
+    #     print(f"Test Loss: {loss}")
+    #
+    #     # Make predictions
+    #     self.y_pred = model.predict(self.X_test_scaled)
+    #     self.y_pred = np.ravel(self.y_pred)  # flatten multi-dimensional array into one-dimensional
+    #     self.y_pred = self.y_pred.astype('float64')
+    #
+    #     # get integers predictions of RF distance
+    #     if self.predicted_measure == "tree_distance":
+    #         self.y_pred = np.round(self.y_pred).astype(int)
+    #
+    #
+    #     # Create a DataFrame
+    #     df_res = pd.DataFrame({
+    #         'code1': self.main_codes_test,
+    #         'code': self.file_codes_test,
+    #         'predicted_score': self.y_pred
+    #     })
+    #
+    #     # Save the DataFrame to a CSV file
+    #     df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
+    #
+    #     # Evaluate the model
+    #     mse = mean_squared_error(self.y_test, self.y_pred)
+    #     print(f"Mean Squared Error: {mse:.4f}")
+    #     corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
+    #     print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
+    #
+    #     # # To visualize the attention weights for a specific input sample:
+    #     # sample_input = self.X_train_scaled[0]  # Use the first sample or any other sample index
+    #     # sample_input = np.expand_dims(sample_input, axis=0)  # Add batch dimension
+    #     #
+    #     # # Get both the attention output and attention weights by calling predict on attn_model
+    #     # attn_output_val, attn_weights_val = attn_model.predict(sample_input)
+    #     # print(attn_weights_val)
+    #
+    #     # explain features importance
+    #     X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+    #     explainer = shap.Explainer(model, X_test_scaled_with_names)
+    #     shap_values = explainer(X_test_scaled_with_names)
+    #     # explainer = shap.Explainer(model, self.X_test_scaled)
+    #     # shap_values = explainer(self.X_test_scaled)
+    #     joblib.dump(explainer,
+    #                 f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+    #     joblib.dump(shap_values,
+    #                 f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+    #
+    #     return mse
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
         # Plot results for many features
