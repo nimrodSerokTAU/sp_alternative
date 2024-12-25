@@ -14,7 +14,8 @@ class Configuration:
 
     def __init__(self, gs_cost: int, ge_cost: float, gs_cost_extremities: int, blosum_file_name: str,
                  sop_clac_type: SopCalcTypes = SopCalcTypes.EFFICIENT, input_files_dir_name: str | None = None,
-                 is_analyze_per_dir: bool = False, is_compute_correlation: bool = False, additional_weights: set[WeightMethods] = None):
+                 is_analyze_per_dir: bool = False, is_compute_correlation: bool = False,
+                 additional_weights: set[WeightMethods] = None):
         self.gs_cost = gs_cost
         self.ge_cost = ge_cost
         self.gs_cost_extremities = gs_cost_extremities

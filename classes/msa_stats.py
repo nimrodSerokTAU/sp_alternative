@@ -7,6 +7,7 @@ from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
 from enums import WeightMethods
 
+
 class MSAStats:
     code: str
     sop_score: float
@@ -189,7 +190,8 @@ class MSAStats:
             'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count', 'double_char_count', 'bl_sum',
             'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std', 'bl_max', 'bl_min',
             'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm',
+            'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root',
             'clustal_differential_sum'
         ]
 
@@ -197,7 +199,8 @@ class MSAStats:
         self.sop_score = sop_score
 
     def set_my_sop_score_parts(self, seqs_count: int, alignment_length: int, sp_score_subs: float, go_score: float,
-                               sp_score_gap_e: float, sp_match_count: int, sp_missmatch_count: int, sp_go_count: int):
+                               sp_score_gap_e: float, sp_match_count: int, sp_missmatch_count: int,
+                               sp_go_count: int):
         number_of_pairs = seqs_count * (seqs_count - 1) / 2 * alignment_length
         self.sop_score = sp_score_subs + go_score + sp_score_gap_e
         self.normalised_sop_score = self.sop_score / number_of_pairs
@@ -209,11 +212,9 @@ class MSAStats:
         self.number_of_mismatches = sp_missmatch_count
         self.number_of_gap_segments = sp_go_count
 
-    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]):  # TODO: continue from here. use default
-        self.henikoff_with_gaps = sop_w_options_dict[
-            WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
-        self.henikoff_without_gaps = sop_w_options_dict[
-            WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
+    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]): # TODO: continue from here. use default
+        self.henikoff_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
+        self.henikoff_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
         self.clustal_mid_root = sop_w_options_dict[
             WeightMethods.CLUSTAL_MID_ROOT.value] if WeightMethods.CLUSTAL_MID_ROOT.value in sop_w_options_dict else 0
         self.clustal_differential_sum = sop_w_options_dict[
@@ -386,15 +387,10 @@ class MSAStats:
                 unique_gaps_length += length
             num_of_gaps += len(seq_set)
             total_length += len(seq_set) * length
-        if num_of_gaps != 0:
-            self.av_gaps = total_length / num_of_gaps
-        else:
-            self.av_gaps = 0
+
+        self.av_gaps = total_length / num_of_gaps
         self.num_unique_gaps = unique_gaps
-        if self.num_unique_gaps != 0:
-            self.avg_unique_gap = unique_gaps_length / unique_gaps
-        else:
-            self.avg_unique_gap = 0
+        self.avg_unique_gap = unique_gaps_length / unique_gaps
         self.gaps_1seq_len1 = length_count[1][1]
         self.gaps_2seq_len1 = length_count[1][2]
         self.gaps_all_except_1_len1 = length_count[1][self.taxa_num - 1]

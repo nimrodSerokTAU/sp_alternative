@@ -39,20 +39,17 @@ class SPScore:
                 seq_j = profile[j]
                 clean_seq_i: list[str] = []
                 clean_seq_j: list[str] = []
-                seq_weights_multiplication = [seq_w_options[w_option_index][i] * seq_w_options[w_option_index][j] for
-                                              w_option_index in range(weight_options_count)]
+                seq_weights_multiplication = [seq_w_options[w_option_index][i] * seq_w_options[w_option_index][j] for w_option_index in range(weight_options_count) ]
                 for k in range(seq_len):
                     if not (seq_i[k] == '-' and seq_j[k] == '-'):
                         clean_seq_i.append(seq_i[k])
                         clean_seq_j.append(seq_j[k])
                     if seq_i[k] != '-' and seq_j[k] != '-':
                         for w_option_index in range(weight_options_count):
-                            sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * \
-                                                             seq_weights_multiplication[w_option_index]
+                            sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * seq_weights_multiplication[w_option_index]
                 for gap_interval in (self.compute_gap_intervals(clean_seq_i) + self.compute_gap_intervals(clean_seq_j)):
                     for w_option_index in range(weight_options_count):
-                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.gs_cost, self.ge_cost) * \
-                                                         seq_weights_multiplication[w_option_index]
+                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.gs_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
         return [sp_score_subs[w_op] + sp_score_gaps[w_op] for w_op in range(weight_options_count)]
 
     @staticmethod
@@ -103,8 +100,8 @@ class SPScore:
                     for j in range(i + 1, options_count):
                         if histo[j] != 0:
                             sp_score_subs += (self.w_matrix[i][j] *
-                                              # histo[i]['count'] * histo[j]['count'] * \
-                                              histo[i]['w_sum'] * histo[j]['w_sum'])
+                                            # histo[i]['count'] * histo[j]['count'] * \
+                                             histo[i]['w_sum'] * histo[j]['w_sum'])
                             sp_missmatch_count += histo[i]['count'] * histo[j]['count']
         return sp_score_subs, sp_score_gap_e * self.ge_cost, sp_match_count, sp_missmatch_count
 

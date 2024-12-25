@@ -1,4 +1,4 @@
-# from typing import Self
+from typing import Self
 
 
 class Node:
@@ -18,8 +18,8 @@ class Node:
     w_from_root: list[float]
     weight: float
 
-    # def __init__(self, node_id: int, keys: set[str], children: list[Self], branch_length: float = 0):
-    def __init__(self, node_id: int, keys: set[str], children: list['Node'], children_bl_sum: float, branch_length: float = 0):
+    def __init__(self, node_id: int, keys: set[str], children: list['Node'], children_bl_sum: float,
+                 branch_length: float = 0):
         self.id = node_id
         self.keys = keys
         self.father = None
@@ -32,7 +32,6 @@ class Node:
 
     @classmethod
     def create_from_children(cls, children_list: list['Node'], inx: int | None):
-    # def create_from_children(cls, children_list: list[Self], inx: int | None):
         keys: set[str] = set()
         children_bl_sum = 0
         for child in children_list:
@@ -40,7 +39,8 @@ class Node:
             children_bl_sum += child.children_bl_sum + child.branch_length
         return cls(node_id=inx,
                    keys=keys,
-                   children=children_list, children_bl_sum=children_bl_sum)
+                   children=children_list,
+                   children_bl_sum=children_bl_sum)
 
     def add_child_to_me(self, child_node):
         self.children.append(child_node)
@@ -85,7 +85,7 @@ class Node:
             res.append({'node': self.father, 'dist': self.branch_length})
         return res
 
-    def update_children_only(self, children_list: list['Node']):
+    def update_children_only(self, children_list: list[Self]):
         self.children = children_list
         for child in children_list:
             child.set_a_father(self)
@@ -111,3 +111,4 @@ class Node:
         for index, bw in enumerate(rev_w):
             w += bw / (index + 1)
         self.weight = w
+

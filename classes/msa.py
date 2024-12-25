@@ -159,3 +159,5 @@ class MSA:
             if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
                 self.seq_weights_options.append(self.get_weight_list(RootingMethods.MIN_DIFFERENTIAL_SUM))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
+
+

@@ -83,8 +83,6 @@ class NeighborJoining:
         delta_f, delta_s = self.find_delta(0, 1)
         delta_t = self.distance_matrix[0][2] - delta_f
         deltas = [delta_f, delta_s, delta_t]
-        # new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], None)
-        # self.all_nodes.append(new_node)
         for i in range(3):
             self.nodes[i].set_branch_length(deltas[i])
         new_node = Node.create_from_children([self.nodes[0], self.nodes[1], self.nodes[2]], len(self.all_nodes))
@@ -100,7 +98,3 @@ class NeighborJoining:
         self.q_matrix = self.calc_q_matrix()
         root = self.merge_last_three()
         return UnrootedTree(root, self.all_nodes)
-
-
-
-

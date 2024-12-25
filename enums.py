@@ -1,9 +1,9 @@
 from enum import Enum
 
+
 class SopCalcTypes:
     NAIVE = 0
     EFFICIENT = 1
-
 
 class RootingMethods(Enum):
     LONGEST_PATH_MID = 'longest_path_mid'

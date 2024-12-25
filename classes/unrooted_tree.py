@@ -115,6 +115,7 @@ class UnrootedTree:
                     queue.append(i['node'])
         return max(distance)
 
+
 def root_from_newick_str(newick_str: str) -> tuple[Node, list[Node]]:
     root, all_nodes = create_a_tree_from_newick(newick_str)
     if len(root.children) == 3:
@@ -192,5 +193,7 @@ def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level
     for child in open_nodes_per_level[level + 1]:
         child.set_a_father(current_node)
     return current_node
+
+
 
 
