@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from classes.compare_msas import msa_comp_main
@@ -767,3 +768,32 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
     node_e.set_a_father(anchor)
     return UnrootedTree(anchor=anchor,
                             all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
+
+
+def test_single_msas():
+    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                                 SopCalcTypes.EFFICIENT, 'tests/comparison_files',
+                                                 False, False,
+                                                 {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                                  WeightMethods.CLUSTAL_MID_ROOT,
+                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+
+    calc_single_msas(config)
+
+
+def calc_single_msas(config: Configuration):
+    all_msa_stats: list[MSAStats] = []
+    sp: SPScore = SPScore(config)
+    dir_path: Path = Path('C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/msa_to_test')
+    file_names = os.listdir(dir_path)
+    for inferred_file_name in file_names:
+        msa_name = inferred_file_name
+        print(msa_name)
+        inferred_msa = MSA(msa_name)
+        inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
+        if len(inferred_msa.weight_names) > 0:
+            inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
+        inferred_msa.build_nj_tree()
+        inferred_msa.calc_seq_weights(config.additional_weights)
+        inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
+        all_msa_stats.append(inferred_msa.stats)
