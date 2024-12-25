@@ -784,7 +784,8 @@ def test_single_msas():
 def calc_single_msas(config: Configuration):
     all_msa_ws: list[list[int]] = []
     sp: SPScore = SPScore(config)
-    dir_path: Path = Path('C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/msa_to_test')
+    project_path: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent.absolute()
+    dir_path: Path = Path(str(project_path) + '/msa_to_test')
     file_names = os.listdir(dir_path)
     for inferred_file_name in file_names:
         msa_name = inferred_file_name
