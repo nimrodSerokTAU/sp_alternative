@@ -11,8 +11,8 @@ if __name__ == '__main__':
         # pickme = PickMeGameProgram(features_file='./out/balibase_features_full_74.csv',
         #                            prediction_file=f'./out/BaliBase/DL2/prediction_DL_{i}_mode2_msa_distance.csv',
         #                            error=0)
-        pickme = PickMeGameProgram(features_file='./out/orthomam_w2new_features.csv',
-                            prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
+        pickme = PickMeGameProgram(features_file='./out/homstrad_features.csv',
+                            prediction_file=f'./out/homstrad/DL1/prediction_DL_{i}_mode1_msa_distance.csv',
                             error=0)
 
         # pickme = PickMeGameProgram(features_file='./out/balibase_ALL_10-50_features.csv',

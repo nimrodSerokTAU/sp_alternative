@@ -360,16 +360,16 @@ class Regressor:
 
             #first hidden
             model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
-            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
-            model.add(Activation('relu'))
+            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            # model.add(Activation('relu'))
             # model.add(ELU())
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # # # second new hidden
             model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
-            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
-            model.add(Activation('relu'))
+            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            # model.add(Activation('relu'))
             model.add(BatchNormalization())
             model.add(Dropout(0.2))  # Dropout for regularization
 
@@ -381,12 +381,12 @@ class Regressor:
             # model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
-            # model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-4)))
-            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
-            # # model.add(ELU())
-            # # model.add(Activation('relu'))
-            # model.add(BatchNormalization())
-            # model.add(Dropout(0.2))  # Dropout for regularization
+            model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+            # model.add(ELU())
+            # model.add(Activation('relu'))
+            model.add(BatchNormalization())
+            model.add(Dropout(0.2))  # Dropout for regularization
 
             # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
             # model.add(Dense(1, activation='softplus'))  #ensures non-negative values
