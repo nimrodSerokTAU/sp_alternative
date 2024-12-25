@@ -84,6 +84,8 @@ def recalc_tree_down(node: Node, father: Node, broke_id: int, nodes_to_recalc: l
     adj = node.get_adj()
     children = [all_nodes[n['node'].id] for n in adj if (father is None or n['node'].id != father.id) and n['node'].id != broke_id]
     if len(children):
+        if len(children) == 1:
+            stop = True
         node.update_children_only(children)
         nodes_to_recalc.append({'node': children[0], 'father': node, 'broke': broke_id})
         nodes_to_recalc.append({'node': children[1], 'father': node, 'broke': broke_id})

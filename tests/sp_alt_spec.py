@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from classes.compare_msas import msa_comp_main
@@ -767,3 +768,37 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
     node_e.set_a_father(anchor)
     return UnrootedTree(anchor=anchor,
                             all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
+
+
+def test_single_msas():
+    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+                                                 SopCalcTypes.EFFICIENT, 'tests/comparison_files',
+                                                 False, False,
+                                                 {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                                  WeightMethods.CLUSTAL_MID_ROOT,
+                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+
+    calc_single_msas(config)
+
+
+def calc_single_msas(config: Configuration):
+    all_msa_ws: list[list[int]] = []
+    sp: SPScore = SPScore(config)
+    project_path: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent.absolute()
+    dir_path: Path = Path(str(project_path) + '/msa_to_test')
+    file_names = os.listdir(dir_path)
+    for inferred_file_name in file_names:
+        msa_name = inferred_file_name
+        print(msa_name)
+        inferred_msa = MSA(msa_name)
+        inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
+        if len(inferred_msa.weight_names) > 0:
+            inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
+        inferred_msa.build_nj_tree()
+        inferred_msa.calc_seq_weights(config.additional_weights)
+        all_msa_ws.append(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
+    assert all_msa_ws == [
+        [401.3797261063572, 402.45238292922056, 1607.4598272053804, 1396.584222219682],
+        [401.0417600554709, 399.8565813655558, 2136.4204964575442, 1578.570699310766],
+        [400.98871068138055, 402.2891297632128, 2314.664373827455, 1444.721691365885],
+        [403.1283990916456, 405.13410889386114, 2286.363206046346, 1451.505481668867]]

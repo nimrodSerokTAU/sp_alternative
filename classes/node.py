@@ -87,8 +87,6 @@ class Node:
 
     def update_children_only(self, children_list: list['Node']):
         self.children = children_list
-        for child in children_list:
-            child.set_a_father(self)
 
     def set_rank_from_root(self, rank: int):
         self.rank_from_root = rank

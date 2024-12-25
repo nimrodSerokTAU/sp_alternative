@@ -78,6 +78,7 @@ class MSA:
         for index, weight_name in enumerate(self.weight_names):
             sop_w_options_dict[weight_name] = sop_w_options[index]
         self.stats.set_my_w_sop(sop_w_options_dict)
+        print(sop_w_options_dict)
 
     def set_my_sop_score(self, sop_score: float):
         self.stats.set_my_sop_score(sop_score)
