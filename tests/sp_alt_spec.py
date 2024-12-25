@@ -782,7 +782,7 @@ def test_single_msas():
 
 
 def calc_single_msas(config: Configuration):
-    all_msa_stats: list[MSAStats] = []
+    all_msa_ws: list[list[int]] = []
     sp: SPScore = SPScore(config)
     dir_path: Path = Path('C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/msa_to_test')
     file_names = os.listdir(dir_path)
@@ -795,5 +795,9 @@ def calc_single_msas(config: Configuration):
             inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
         inferred_msa.build_nj_tree()
         inferred_msa.calc_seq_weights(config.additional_weights)
-        inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
-        all_msa_stats.append(inferred_msa.stats)
+        all_msa_ws.append(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
+    assert all_msa_ws == [
+        [401.3797261063572, 402.45238292922056, 1607.4598272053804, 1396.584222219682],
+        [401.0417600554709, 399.8565813655558, 2136.4204964575442, 1578.570699310766],
+        [400.98871068138055, 402.2891297632128, 2314.664373827455, 1444.721691365885],
+        [403.1283990916456, 405.13410889386114, 2286.363206046346, 1451.505481668867]]
