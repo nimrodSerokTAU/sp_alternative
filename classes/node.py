@@ -1,4 +1,4 @@
-from typing import Self
+# from typing import Self
 
 
 class Node:
@@ -85,7 +85,7 @@ class Node:
             res.append({'node': self.father, 'dist': self.branch_length})
         return res
 
-    def update_children_only(self, children_list: list[Self]):
+    def update_children_only(self, children_list: list['Node']):
         self.children = children_list
         for child in children_list:
             child.set_a_father(self)
