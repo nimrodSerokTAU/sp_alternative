@@ -62,6 +62,7 @@ class PickMeGameProgram:
             # True_score for 'bali_phy_msa.199.fasta'
             # default_baliphy_true_scores = code_df[code_df['code'] == 'bali_phy_msa.199.fasta'][self.true_score].values
             # default_baliphy_true_score = default_baliphy_true_scores[0] if len(default_baliphy_true_scores) > 0 else np.nan
+            # BaliPhy default / True score for MSA.BALIPHY.aln.best.{code}.fas
             default_baliphy_true_scores = \
                 code_df[code_df['code'].str.contains(r'^MSA\.BALIPHY\.aln\.best\.[\w]+\.fas$', regex=True)][
                     self.true_score].values

@@ -57,8 +57,7 @@ def construct_test_set(file, mode=1):
 
     # all features
     if mode == 1:
-        X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                             'pypythia_msa_difficulty','normalised_sop_score','class_label', 'number_of_gap_segments', 'number_of_mismatches'])
+        X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
     # all except 2SoP
     # if mode == 2:
     #     X = df.drop(
@@ -93,8 +92,7 @@ def construct_test_set(file, mode=1):
     # all features
     if mode == 1:
         X_test = test_df.drop(
-            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                     'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label', 'number_of_gap_segments', 'number_of_mismatches'])
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
 
     if mode == 2:
         # X_test = test_df.drop(
@@ -143,7 +141,7 @@ def construct_test_set(file, mode=1):
 
 def use_test_from_origin(features_file, predictions_file):
     predicted_measure = 'msa_distance'
-    mode = 4
+    mode = 1
 
     df = pd.read_csv(features_file)
     # to make sure that all dataset codes are read as strings and not integers
@@ -157,6 +155,7 @@ def use_test_from_origin(features_file, predictions_file):
     # add normalized_rf
     df["normalized_rf"] = df['rf_from_true'] / (df['taxa_num'] - 1)
     df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.010, 0, 1)
+    df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.01, 0, np.where(df['dpos_dist_from_true'] <= 0.05, 1, 2))
 
     # Handle missing values (if any)
     # Example: Filling missing values with the mean (for numerical columns)
@@ -174,8 +173,7 @@ def use_test_from_origin(features_file, predictions_file):
 
     # all features
     if mode == 1:
-        X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                             'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score'])
+        X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
 
     # all features except 2 features of SoP
     if mode == 2:
@@ -212,8 +210,7 @@ def use_test_from_origin(features_file, predictions_file):
     # all features
     if mode == 1:
         X_test = test_df.drop(
-            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                     'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score'])
+            columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
 
     if mode == 2:
         X_test = test_df.drop(
@@ -336,10 +333,10 @@ if __name__ == '__main__':
         #     predictions_file=f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_all_w_balify_no_ancestors/DL1/prediction_DL_{i}_mode2_msa_distance.csv')
         # load scaler used during the training
         X_test, test_df, true_score_name, main_codes_test, file_codes_test = construct_test_set(
-            "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/oxbench_features.csv", mode=4)
+            "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_features_251224.csv", mode=1)
 
         scaler = joblib.load(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL4_mode4_withSoP/scaler_{i}_mode4_msa_distance.pkl')
+            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/Ensemble/DL2_w_new_features/scaler_{i}_mode1_msa_distance.pkl')
         X_test_scaled = scaler.transform(X_test)
         X_test_scaled = X_test_scaled.astype('float64')
         X_test_scaled_with_names = pd.DataFrame(X_test_scaled, columns=X_test.columns)
@@ -358,7 +355,7 @@ if __name__ == '__main__':
 
         # Load the saved model
         model = load_model(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL4_mode4_withSoP/regressor_model_{i}_mode4_msa_distance.keras')
+            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/Ensemble/DL2_w_new_features/regressor_model_{i}_mode1_msa_distance.keras')
         # with open(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_w_BaliPhy/RF/random_forest_model_{i}.pkl', 'rb') as f:
         #     model = pickle.load(f)
         # Make predictions

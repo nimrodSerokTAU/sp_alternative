@@ -6,7 +6,7 @@ if __name__ == '__main__':
 
     mse_values = []
     for i in range(1):
-        regressor = Regressor("./out/homstrad_features.csv", 0.2, mode=1,
+        regressor = Regressor("./out/orthomam_features_251224.csv", 0.2, mode=1,
                               predicted_measure='msa_distance', i=i)
         # regressor = Regressor("./out/TreeBASE_3M_features.csv", 0.2, mode=2,
         #                       predicted_measure='msa_distance', i=i)

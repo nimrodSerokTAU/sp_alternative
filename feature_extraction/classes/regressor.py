@@ -90,7 +90,7 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
 
         # all features except 2 features of SoP
         # if mode == 2:
@@ -146,9 +146,9 @@ class Regressor:
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
 
         # all features except 2 sop
         # if mode == 2:
@@ -528,10 +528,11 @@ class Regressor:
 
         # # explain features importance
         # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        # explainer = shap.Explainer(model, X_test_scaled_with_names)
-        # shap_values = explainer(X_test_scaled_with_names)
-        # # explainer = shap.Explainer(model, self.X_test_scaled)
-        # # shap_values = explainer(self.X_test_scaled)
+        # X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
+        # explainer = shap.Explainer(model, X_test_subset)
+        # shap_values = explainer(X_test_subset)
+        # # explainer = shap.Explainer(model, X_test_scaled_with_names)
+        # # shap_values = explainer(X_test_scaled_with_names)
         # joblib.dump(explainer,
         #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
         # joblib.dump(shap_values,
