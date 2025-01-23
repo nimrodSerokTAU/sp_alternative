@@ -22,7 +22,6 @@ class SPScore:
         self.code_to_index_dict = code_to_index_dict
         self.gs_cost = configuration.gs_cost
         self.ge_cost = configuration.ge_cost
-        self.gs_cost_extremities = configuration.gs_cost_extremities
 
     def compute_naive_sp_score(self, profile: list[str], seq_w_options: list[list[float]] = None) -> list[int]:
         if seq_w_options is None:
@@ -80,12 +79,12 @@ class SPScore:
             seq_w = [1] * len(profile)
         for k in range(seq_len):
             histo: list[dict] = []
-            for opt in range(options_count):
+            for opt in range(options_count + 1):
                 histo.append({'count': 0, 'w_sum': 0, 'sq_w_sum': 0})
             for i in range(len(profile)):
                 char = profile[i][k]
                 if char == '-':
-                    sp_score_gap_e += 1
+                    histo[-1]['count'] += 1
                 else:
                     char_index = translate_to_matrix_index(char, self.code_to_index_dict)
                     histo[char_index]['count'] += 1
@@ -103,6 +102,8 @@ class SPScore:
                                             # histo[i]['count'] * histo[j]['count'] * \
                                              histo[i]['w_sum'] * histo[j]['w_sum'])
                             sp_missmatch_count += histo[i]['count'] * histo[j]['count']
+            if histo[-1]['count'] > 0:
+                sp_score_gap_e += (len(profile) - histo[-1]['count']) * histo[-1]['count']
         return sp_score_subs, sp_score_gap_e * self.ge_cost, sp_match_count, sp_missmatch_count
 
     def subst(self, a: str, b: str) -> int:
@@ -128,12 +129,9 @@ class SPScore:
         sp_gpo_count = 0
         for i in range(seq_len):
             for gap_interval in gap_closing[i]:
-                if i == seq_len - 1 or gap_interval.start == 0:
-                    sp_gp_open += (n - nb_open_gap[gap_interval.start]) * self.gs_cost_extremities
-                    sp_gpo_count += 1
-                else:
-                    sp_gp_open += (n - nb_open_gap[gap_interval.start]) * self.gs_cost
-                    sp_gpo_count += 1
+                gpo_count = n - nb_open_gap[gap_interval.start]
+                sp_gp_open += gpo_count * self.gs_cost
+                sp_gpo_count += gpo_count
             for gap_interval in gap_closing[i]:
                 for k in range(gap_interval.start, gap_interval.end + 1):
                     nb_open_gap[k] -= 1

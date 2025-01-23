@@ -1,9 +1,12 @@
+from classes.config import Configuration
 from classes.msa import MSA
 from pathlib import Path
 from fpdf import FPDF
 from enum import Enum
 
+from classes.sp_score import SPScore
 from dpos import translate_profile_naming, create_hpos_table, get_place_dpos
+from enums import SopCalcTypes, WeightMethods
 
 
 class MSACompare:
@@ -11,6 +14,7 @@ class MSACompare:
     true_msa: MSA
     compared_msa: MSA | None
     is_compared_to_other: bool
+    sop: SPScore
 
     def __init__(self, test_dataset_path: Path, true_dataset_path: Path, compared_dataset_path: Path | None,
                  is_compared_to_other: bool = False):
@@ -23,6 +27,10 @@ class MSACompare:
         self.compared_msa.read_me_from_fasta(compared_dataset_path)
         self.test_msa.order_sequences(self.true_msa.seq_names)
         self.compared_msa.order_sequences(self.true_msa.seq_names)
+        configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
+                                                     SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+        self.sop = SPScore(configuration)
+
 
     @staticmethod
     def compute_dpos_distance_by_percent(profile_a: list[str], profile_b: list[str]):
@@ -52,6 +60,8 @@ class MSACompare:
         return dpos_list, dpos_sum, dpos_count, profile_a_hpos, profile_a_naming
 
     def print_single(self, first_p_th: int, second_p_th: int, file_path: Path, sequences: list[str]):
+        naive_sop_score = self.sop.compute_naive_sp_score(sequences)
+        efficient_sop_score = self.sop.compute_efficient_sp(sequences)
         dict_i_j_color, dpos_grade = self.calc_colors(first_p_th, second_p_th, sequences)
         pdf = FPDF(format='letter', unit='in')
         pdf.add_page()
@@ -138,9 +148,10 @@ def get_i_inx_from_pos(pos: str) -> int:
 
 
 def msa_comp_main():
-    comp: MSACompare = MSACompare(Path('../compThree/PRANK_b1#0018_htT_tree_12_OP_0.35247606317119684_Split_18.fasta'),
-                                  Path('../compThree/NR4A2_TRUE.fas'),
-                                  Path('../compThree/PRANK_b0#0041_hhT_tree_9_OP_0.23758512508472418_Split_41.fasta'))
+    # TODO: calc SoP to all. use different methods, try to understand the diff in SoP, use visual
+    comp: MSACompare = MSACompare(Path('../compThree/PRANK_b1#0015_hhT_tree_10_OP_0.21782315330463242_Split_15.fasta'),
+                                  Path('../compThree/AATF_TRUE.fas'),
+                                  Path('../compThree/MUSCLE_diversified_replicate.none.84.afa'))
     # print(f"{style.RED}{test1} {style.BLUE}{test2}{style.RESET}")
     comp.print_single(5, 20, Path('../output/test1.pdf'), comp.test_msa.sequences)
     comp.print_single(5, 20, Path('../output/comp1.pdf'), comp.compared_msa.sequences)
