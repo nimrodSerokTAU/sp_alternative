@@ -62,6 +62,8 @@ class MSACompare:
     def print_single(self, first_p_th: int, second_p_th: int, file_path: Path, sequences: list[str]):
         naive_sop_score = self.sop.compute_naive_sp_score(sequences)
         efficient_sop_score = self.sop.compute_efficient_sp(sequences)
+        sp_score_subs, sp_score_gap_o, sp_score_gap_e = self.sop.compute_naive_sp_score_per_col(sequences)
+        naive_sop_score_col = sum(sp_score_subs) + sum(sp_score_gap_o) + sum(sp_score_gap_e)
         dict_i_j_color, dpos_grade = self.calc_colors(first_p_th, second_p_th, sequences)
         pdf = FPDF(format='letter', unit='in')
         pdf.add_page()

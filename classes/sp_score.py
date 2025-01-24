@@ -51,6 +51,35 @@ class SPScore:
                         sp_score_gaps[w_option_index] += gap_interval.g_cost(self.gs_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
         return [sp_score_subs[w_op] + sp_score_gaps[w_op] for w_op in range(weight_options_count)]
 
+
+    def compute_naive_sp_score_per_col(self, profile: list[str]) -> tuple[list[float], list[float], list[float]]:
+        seq_len: int = len(profile[0])
+        sp_score_subs: list[float] = [0] * seq_len
+        sp_score_gap_o: list[float] = [0] * seq_len
+        sp_score_gap_e: list[float] = [0] * seq_len
+        for i in range(len(profile)):
+            seq_i = profile[i]
+            for j in range(i + 1, len(profile)):
+                seq_j = profile[j]
+                clean_seq_i: list[str] = []
+                clean_seq_j: list[str] = []
+                for k in range(seq_len):
+                    if not (seq_i[k] == '-' and seq_j[k] == '-'):
+                        clean_seq_i.append(seq_i[k])
+                        clean_seq_j.append(seq_j[k])
+                    if seq_i[k] != '-' and seq_j[k] != '-':
+                        sp_score_subs[k] += self.subst(seq_i[k], seq_j[k])
+                    elif seq_i[k] == '-' and seq_j[k] != '-':
+                        sp_score_gap_e[k] += self.ge_cost
+                        if k == 0 or (clean_seq_i[-2] != '-'):
+                            sp_score_gap_o[k] += self.gs_cost
+                    elif seq_j[k] == '-' and seq_i[k] != '-':
+                        sp_score_gap_e[k] += self.ge_cost
+                        if k == 0 or (clean_seq_j[-2] != '-'):
+                            sp_score_gap_o[k] += self.gs_cost
+        return sp_score_subs, sp_score_gap_o, sp_score_gap_e
+
+
     @staticmethod
     def compute_gap_intervals(seq_i: list[str]) -> list[GapInterval]:
         seq_len: int = len(seq_i)
