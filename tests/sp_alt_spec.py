@@ -40,7 +40,7 @@ keys_case_nj = ['a', 'b', 'c', 'd', 'e']
 
 
 def test_sp_perfect():
-    configuration: Configuration = Configuration(-1, -1, -1, 'Blosum50')
+    configuration: Configuration = Configuration(-1, -1, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDCQEGHI',
@@ -52,7 +52,7 @@ def test_sp_perfect():
 
 
 def test_sp_no_gaps():
-    configuration: Configuration = Configuration(-1, -5, 0, 'Blosum50')
+    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDCQEGHI',
@@ -65,7 +65,7 @@ def test_sp_no_gaps():
 
 
 def test_sp_local_gaps():
-    configuration: Configuration = Configuration(-1, -5, 0, 'Blosum50')
+    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDCQ-GHI',
@@ -77,7 +77,7 @@ def test_sp_local_gaps():
 
 
 def test_naive_algo_case_a_subs_only():
-    configuration: Configuration = Configuration(0, 0, 0, 'Blosum50')
+    configuration: Configuration = Configuration(0, 0, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -89,7 +89,7 @@ def test_naive_algo_case_a_subs_only():
 
 
 def test_naive_algo_case_a_subs_and_ge():
-    configuration: Configuration = Configuration(0, -5, 0, 'Blosum50')
+    configuration: Configuration = Configuration(0, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -101,7 +101,7 @@ def test_naive_algo_case_a_subs_and_ge():
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
+    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -112,7 +112,7 @@ def test_naive_algo_case_a_subs_and_ge_and_gs():
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs_with_weights():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
+    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -123,7 +123,7 @@ def test_naive_algo_case_a_subs_and_ge_and_gs_with_weights():
 
 
 def test_compute_sp_s_and_sp_ge():  # our function
-    configuration: Configuration = Configuration(0, -5, 0, 'Blosum50')
+    configuration: Configuration = Configuration(0, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -133,12 +133,13 @@ def test_compute_sp_s_and_sp_ge():  # our function
     sp_score_subs: int
     sp_score_gap_e: int
     sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_sp_s_and_sp_ge(profile)
-    res = {'sp_score_subs': sp_score_subs, 'sp_score_gap_e': sp_score_gap_e}
-    assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -40}  # this is correct without gs cost
+    naive_score = sp.compute_naive_sp_score(profile)
+    res = {'sp_score_subs': sp_score_subs, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_score_subs + sp_score_gap_e}
+    assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -50, 'total':naive_score[0]}  # this is correct without gs cost
 
 
-def test_onl_gap_open_and_ext_cost_same():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
+def test_only_gap_open_and_ext_cost_same():
+    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
@@ -149,14 +150,29 @@ def test_onl_gap_open_and_ext_cost_same():
 
 
 def test_compute_efficient_sp():
-    configuration: Configuration = Configuration(-1, -5, -1, 'Blosum50')
+    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
         'AA--CQEGHI']
     res: float = sp.compute_efficient_sp(profile)
-    assert res == 45
+    naive_res: list[float] = sp.compute_naive_sp_score(profile)
+    assert res == naive_res[0]
+
+
+def test_compare_naive_sop_to_efficient():
+    configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
+                                                 SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+    sp: SPScore = SPScore(configuration)
+    profile: list[str] = [
+        '-EETTEESLKRIVADNENRAEQVHLYLSTTFVIADPEPKYGIVRSKDMNWYEQKTHKFLGMGPVLGVQFAF',
+        'YEETSEESL-RIAADNENRAE-VHLYLGTNFVIADPEPKW--LRSKDVNWYDQRTH-FLGMGPVLGIQFLI',
+        'YEETSEES----VADNENRAE-VHLILSTNFVIADPEPKWG-LRSKDMNWYDQRTH--LGMGPVLGIQFLF',
+        'YEETSEESLKRIVADNENRAEKVHLILSTNFVIADPEPKWG--RSKDMNWYDQRTHKFLGMGPVLGIQFLF']
+    res_naive: list[int] = sp.compute_naive_sp_score(profile)
+    res_efficient: float = sp.compute_efficient_sp(profile)
+    assert res_naive[0] == res_efficient
 
 
 def test_translate_profile_hpos():
@@ -401,7 +417,7 @@ def test_tree_from_newick():
 
 
 def test_multi():
-    configuration: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+    configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  False, False,
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
@@ -456,7 +472,7 @@ def test_rf_for_nj_using_ours():
     unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
     msa = MSA('AATF')
     msa.read_me_from_fasta(Path('./comparison_files/AATF/MSA.MAFFT.aln.With_Names'))
-    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
     sp_score: SPScore = SPScore(config)
     msa.build_nj_tree()
@@ -534,7 +550,7 @@ def test_msa_stats():
         'AT-CGA-GGA',
         'TTATGCTGGA'
     ]
-    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           False, False,
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
@@ -661,7 +677,7 @@ def test_mid_point_rooting():
         'TTATGCTGGA'
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           False, False)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
@@ -771,7 +787,7 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
 
 
 def test_single_msas():
-    config: Configuration = Configuration(-10, -0.5, 0, 'Blosum62',
+    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  False, False,
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
