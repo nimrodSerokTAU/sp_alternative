@@ -9,7 +9,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score, precision_score,
 import matplotlib.pyplot as plt
 from sklearn.svm import SVR
 from typing import Literal
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, gaussian_kde
 import visualkeras
 import joblib
 import xgboost as xgb
@@ -19,12 +19,14 @@ import shap
 
 import pydot
 import tensorflow as tf
+# import tensorflow_model_optimization as tfmot
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape
 from tensorflow.keras.optimizers import Adam, Nadam, RMSprop
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.initializers import GlorotUniform
+from tensorflow.keras import regularizers
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras import backend as K
@@ -32,6 +34,21 @@ from tensorflow.keras import metrics
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import SMOTE
 from feature_extraction.classes.attention_layer import AttentionLayer
+
+def assign_aligner(row):
+    code = row['code'].lower()
+    no_aligners = ['muscle', 'prank', '_true.fas', 'true_tree.txt', 'bali_phy', 'baliphy', 'original']
+
+    if not any(sub in code for sub in no_aligners):
+        return 'mafft'
+    if 'muscle' in code:
+        return 'muscle'
+    elif 'prank' in code:
+        return 'prank'
+    elif 'bali_phy' in code or 'baliphy' in code:
+        return 'baliphy'
+
+    return 'true'
 
 class Regressor:
     '''
@@ -58,13 +75,21 @@ class Regressor:
         df['code1'] = df['code1'].astype(str)
         # Check for missing values
         print("Missing values in each column:\n", df.isnull().sum())
-        corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
-        print(f"Pearson Correlation of SOP and dpos: {corr_coefficient1:.4f}\n", f"P-value of non-correlation: {p_value1:.6f}\n")
+        # corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
+        # print(f"Pearson Correlation of SOP and dpos: {corr_coefficient1:.4f}\n", f"P-value of non-correlation: {p_value1:.6f}\n")
+        corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df['dpos_dist_from_true'])
+        print(f"Pearson Correlation of SOP and dpos: {corr_coefficient1:.4f}\n",
+              f"P-value of non-correlation: {p_value1:.6f}\n")
 
         # add normalized_rf
         df["normalized_rf"] = df['rf_from_true']/(df['taxa_num']-1)
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
         df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.01, 0, np.where(df['dpos_dist_from_true'] <= 0.05, 1, 2))
+
+        # df['aligner'] = df.apply(assign_aligner, axis=1)
+        # df = df[df['aligner'] != 'true']
+        # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner')
+
 
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
@@ -80,6 +105,10 @@ class Regressor:
 
         if self.predicted_measure == 'msa_distance':
             true_score_name = "dpos_dist_from_true"
+            # true_score_name = "MEAN_RES_PAIR_SCORE"
+            # true_score_name = "MEAN_COL_SCORE"
+            # df['MEAN_RES_PAIR_SCORE'] = df['MEAN_RES_PAIR_SCORE'].astype(float)
+            # df['MEAN_COL_SCORE'] = df['MEAN_COL_SCORE'].astype(float)
         elif self.predicted_measure == 'tree_distance':
             # true_score_name = "rf_from_true"
             true_score_name = 'normalized_rf'
@@ -90,8 +119,8 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
-
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'normalised_sop_score', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
+            # self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 features of SoP
         # if mode == 2:
         #     self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'sp_score_subs_norm', 'sp_score_gap_e_norm',
@@ -101,7 +130,7 @@ class Regressor:
 
         # only 2 features of SoP
         if mode == 3:
-            self.X = df[['k_mer_10_norm', 'entropy_mean', 'constant_sites_pct']]
+            self.X = df[['normalised_sop_score', 'henikoff_with_gaps', 'sp_missmatch_ratio', 'k_mer_10_norm','henikoff_without_gaps','clustal_mid_root','clustal_differential_sum','number_of_gap_segments','num_cols_no_gaps']]
 
         if mode == 4: #test removing features
             self.X = df.drop(
@@ -146,10 +175,11 @@ class Regressor:
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'normalised_sop_score', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
-
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'normalised_sop_score', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
+            # self.X_train =self.train_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
+            # self.X_test = self.test_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 sop
         # if mode == 2:
         #     self.X_train = train_df.drop(
@@ -166,8 +196,8 @@ class Regressor:
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['k_mer_10_norm', 'entropy_mean', 'constant_sites_pct']]
-            self.X_test = self.test_df[['k_mer_10_norm', 'entropy_mean', 'constant_sites_pct']]
+            self.X_train = self.train_df[['normalised_sop_score', 'henikoff_with_gaps', 'sp_missmatch_ratio', 'k_mer_10_norm','henikoff_without_gaps','clustal_mid_root','clustal_differential_sum','number_of_gap_segments','num_cols_no_gaps']]
+            self.X_test = self.test_df[['normalised_sop_score', 'henikoff_with_gaps', 'sp_missmatch_ratio', 'k_mer_10_norm','henikoff_without_gaps','clustal_mid_root','clustal_differential_sum','number_of_gap_segments','num_cols_no_gaps']]
 
 
         if mode == 4:
@@ -219,6 +249,10 @@ class Regressor:
         corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df['dpos_dist_from_true'])
         print(f"Pearson Correlation of SOP and dpos in the TEST set: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.4f}\n")
+
+        # corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df['MEAN_COL_SCORE'])
+        # print(f"Pearson Correlation of SOP and MEAN_COL_SCORE in the TEST set: {corr_coefficient1:.4f}\n",
+        #       f"P-value of non-correlation: {p_value1:.4f}\n")
 
         # Set train and test Labels
         self.y_train = self.train_df[true_score_name]
@@ -353,13 +387,30 @@ class Regressor:
         #     error = y_true - y_pred
         #     return tf.reduce_mean(tf.maximum(q * error, (q - 1) * error))
 
+        # Define pruning schedule
+        # pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
+        #     initial_sparsity=0.0,  # Start with no pruning
+        #     final_sparsity=0.5,  # Final sparsity (50% of weights will be pruned)
+        #     begin_step=200,  # Pruning starts after 2000 steps
+        #     end_step=400,  # Pruning ends after 10000 steps
+        #     frequency=100  # Apply pruning every 100 steps
+        # )
+        # prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
+
+
         # mode for non-negative regression msa_distance task
         if self.predicted_measure == 'msa_distance':
             model = Sequential()
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
             #first hidden
-            model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            model.add(
+                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.0005)))
+            # model.add(prune_low_magnitude(
+            #     Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
+            #     pruning_schedule=pruning_schedule))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
             # model.add(ELU())
@@ -367,7 +418,12 @@ class Regressor:
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # # # second new hidden
-            model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            # model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            model.add(
+                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.0005)))
+            # model.add(prune_low_magnitude(
+            #     Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
+            #     pruning_schedule=pruning_schedule))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
             model.add(BatchNormalization())
@@ -381,7 +437,12 @@ class Regressor:
             # model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
+            # model.add(prune_low_magnitude(
+            #     Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
+            #     pruning_schedule=pruning_schedule))
+            # model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            model.add(
+                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.0005)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
             # model.add(ELU())
             # model.add(Activation('relu'))
@@ -410,6 +471,18 @@ class Regressor:
                 factor=0.7,  # Factor by which the learning rate will be reduced
                 min_lr=1e-6  # Lower bound on the learning rate
             )
+
+            # pruning_callbacks = [
+            #     tfmot.sparsity.keras.UpdatePruningStep(),  # Callback to update pruning schedule during training
+            #     early_stopping,
+            #     lr_scheduler
+            # ]
+
+            callbacks = [
+                early_stopping,
+                lr_scheduler
+            ]
+
             if undersampling == True:
                 # weights = np.where(self.y_train < 0.2, 7, 1)
                 # Define thresholds and weights
@@ -420,11 +493,17 @@ class Regressor:
                 w_mid = self.weights[1]  # Weight for the middle range (between threshold_low and threshold_high)
                 weights = np.where(self.y_train < threshold_low, w_low,
                                    np.where(self.y_train > threshold_high, w_high, w_mid))
-                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler], sample_weight=weights)
+                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=callbacks, sample_weight=weights)
             else:
                 history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
                                     validation_split=validation_split, verbose=verbose,
-                                    callbacks=[early_stopping, lr_scheduler])
+                                    callbacks=callbacks)
+                # history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
+                #                     validation_split=validation_split, verbose=verbose,
+                #                     callbacks=pruning_callbacks)
+
+            # After training, you can optionally strip the pruning wrappers
+            # model = tfmot.sparsity.keras.strip_pruning(model)
 
         # # mode for non-negative regression tree_distance task
         # elif self.predicted_measure == 'tree_distance':
@@ -688,15 +767,14 @@ class Regressor:
     #     return mse
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
-        # Plot results for many features
         plt.figure(figsize=(12, 8))
         plt.scatter(self.y_test, self.y_pred, color='blue', edgecolor='k', alpha=0.7)
         plt.plot([self.y_test.min(), self.y_test.max()], [self.y_test.min(), self.y_test.max()], color='red', linestyle='--')
         corr_coefficient, _ = pearsonr(self.y_test, self.y_pred)
         plt.text(
-            0.05, 0.95,  # Coordinates in relative figure coordinates (0 to 1)
-            f'Pearson Correlation: {corr_coefficient:.2f}, MSE: {mse:.6f}',  # Text with the coefficient
-            transform=plt.gca().transAxes,  # Use axes coordinate system
+            0.05, 0.95,
+            f'Pearson Correlation: {corr_coefficient:.2f}, MSE: {mse:.6f}',
+            transform=plt.gca().transAxes,
             fontsize=18,
             verticalalignment='top'
         )
@@ -717,6 +795,29 @@ class Regressor:
         plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
         plt.show()
         plt.close()
+
+        kde = gaussian_kde([self.y_pred, self.y_test], bw_method=0.1)
+        density = kde([self.y_test, self.y_pred])
+        plt.figure(figsize=(8, 6))
+        r, _ = pearsonr(self.y_pred, self.y_test)
+        plt.text(0.65, 0.95, f'Pearson r = {r:.3f}',
+                 ha='right', va='top',
+                 transform=plt.gca().transAxes,
+                 fontsize=16, color='black', weight='bold', zorder=2)
+
+        plt.ylim(bottom=min(self.y_test), top=max(self.y_test) * 1.1)
+        scatter = plt.scatter(self.y_pred, self.y_test, c=density, cmap='plasma', edgecolors='none',
+                              alpha=0.7)
+        cbar = plt.colorbar(scatter, label='Density')
+        cbar.set_label('Density', fontsize=18, weight='bold', labelpad=10)
+
+        plt.xlabel('Predicted distance', fontsize=16, weight='bold', labelpad=10)
+        plt.ylabel('dpos distance ("true distance")', fontsize=16, weight='bold', labelpad=10)
+        plt.tight_layout()
+        plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.predicted_measure}2.png', format='png')
+        plt.show()
+        plt.close()
+
 
         if model_name == "rf" or model_name == "gbr":
             importances = self.regressor.feature_importances_

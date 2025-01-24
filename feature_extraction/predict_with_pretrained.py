@@ -139,9 +139,9 @@ def construct_test_set(file, mode=1):
     return X_test, test_df, true_score_name, main_codes_test, file_codes_test
 
 
-def use_test_from_origin(features_file, predictions_file):
+def use_test_from_origin(features_file, predictions_file, mode=1, portion=1):
     predicted_measure = 'msa_distance'
-    mode = 1
+    # mode = 1
 
     df = pd.read_csv(features_file)
     # to make sure that all dataset codes are read as strings and not integers
@@ -202,6 +202,9 @@ def use_test_from_origin(features_file, predictions_file):
     # Split the unique 'code1' into training and test sets
     df_codes = pd.read_csv(predictions_file)
     test_code1 = df_codes['code1'].unique()
+
+    test_code1 = np.random.choice(test_code1, size=int(len(test_code1) * portion), replace=False)
+
     print(f"the testing set is: {test_code1} \n")
 
     # Create training and test DataFrames by filtering based on 'code1'

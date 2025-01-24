@@ -1,19 +1,25 @@
+import matplotlib
 import numpy as np
+from matplotlib import pyplot as plt
+
 from classes.regressor import Regressor
 from scipy import stats
 import joblib
 import shap
 import pandas as pd
 from tensorflow.keras.models import load_model
-from feature_extraction.predict_with_pretrained import construct_test_set
+from feature_extraction.predict_with_pretrained import construct_test_set, use_test_from_origin
+
+# plots importance for a portion of original test set (0.1)
 
 if __name__ == '__main__':
     n = 1
     for i in range(n):
-        X_test, test_df, true_score_name, main_codes_test, file_codes_test = construct_test_set(
-            "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/balibase_features_73.csv", mode=1)
+        X_test, test_df, true_score_name, main_codes_test, file_codes_test = use_test_from_origin(features_file=
+            "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/balibase_RV10-50_features_080125_w_foldmason_scores.csv", predictions_file=f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL8_w_foldmason_features/prediction_DL_{i}_mode1_msa_distance.csv', mode=1, portion=0.1)
+
         scaler = joblib.load(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase/DL4_w_SoP_and_importance/scaler_{i}_mode1_msa_distance.pkl')
+            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL8_w_foldmason_features/scaler_{i}_mode1_msa_distance.pkl')
         X_test_scaled = scaler.transform(X_test)
         X_test_scaled = X_test_scaled.astype('float64')
         X_test_scaled_with_names = pd.DataFrame(X_test_scaled, columns=X_test.columns)
@@ -32,7 +38,7 @@ if __name__ == '__main__':
 
         # Load the saved model
         model = load_model(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase/DL4_w_SoP_and_importance/regressor_model_{i}_mode1_msa_distance.keras')
+            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/BaliBase_ALL_10-50/DL8_w_foldmason_features/regressor_model_{i}_mode1_msa_distance.keras')
 
         # Make predictions
         y_pred = model.predict(X_test_scaled)
@@ -45,3 +51,32 @@ if __name__ == '__main__':
                     f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_0_mode1_msa_distance.pkl')
         joblib.dump(shap_values,
                     f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values_0_mode1_msa_distance.pkl')
+
+        matplotlib.use('Agg')
+        # shap_values = joblib.load(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values_0_mode1_msa_distance.pkl')
+
+        feature_names = [
+            a + ": " + str(b) for a, b in zip(X_test.columns, np.abs(shap_values.values).mean(0).round(3))
+        ]
+
+        shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=40, feature_names=feature_names)
+        # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
+        plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/summary_plot.png', dpi=300,
+                    bbox_inches='tight')
+        # plt.show()
+        plt.close()
+
+        shap.plots.waterfall(shap_values[0], max_display=40)
+        plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/waterfall_0_plot.png', dpi=300, bbox_inches='tight')
+        # plt.show()
+        plt.close()
+
+        shap.force_plot(shap_values[0], X_test_scaled[0], matplotlib=True, show=False)
+        plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/force_0_plot.png')
+        # plt.show()
+        plt.close()
+
+        shap.plots.bar(shap_values, max_display=40)
+        plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/bar_plot.png', dpi=300, bbox_inches='tight')
+        # plt.show()
+        plt.close()
