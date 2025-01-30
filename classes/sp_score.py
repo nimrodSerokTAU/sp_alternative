@@ -97,11 +97,11 @@ class SPScore:
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
         return gap_intervals_list
 
-    def compute_sp_s_and_sp_ge(self, profile: list[str], seq_w: list[float] = None) -> tuple[float, float, int, int]:
+    def compute_sp_s_and_sp_ge(self, profile: list[str], seq_w: list[float] = None) -> tuple[float, float, int, int, int]:
         options_count = len(self.w_matrix[0])
         seq_len: int = len(profile[0])
         sp_score_subs: int = 0
-        sp_score_gap_e: int = 0
+        ge_count: int = 0
         sp_match_count: int = 0
         sp_missmatch_count: int = 0
         if seq_w is None:
@@ -132,8 +132,8 @@ class SPScore:
                                              histo[i]['w_sum'] * histo[j]['w_sum'])
                             sp_missmatch_count += histo[i]['count'] * histo[j]['count']
             if histo[-1]['count'] > 0:
-                sp_score_gap_e += (len(profile) - histo[-1]['count']) * histo[-1]['count']
-        return sp_score_subs, sp_score_gap_e * self.ge_cost, sp_match_count, sp_missmatch_count
+                ge_count += (len(profile) - histo[-1]['count']) * histo[-1]['count']
+        return sp_score_subs, ge_count * self.ge_cost, sp_match_count, sp_missmatch_count, ge_count
 
     def subst(self, a: str, b: str) -> int:
         return self.w_matrix[
@@ -167,11 +167,11 @@ class SPScore:
         return sp_gp_open, sp_gpo_count
 
     def compute_efficient_sp(self, profile: list[str]) -> float:
-        sp_score_subs, sp_score_gap_e, a, b = self.compute_sp_s_and_sp_ge(profile)
+        sp_score_subs, sp_score_gap_e, a, b, ge_count = self.compute_sp_s_and_sp_ge(profile)
         go_score, sp_gpo_count = self.compute_sp_gap_open(profile)
         return sp_score_subs + sp_score_gap_e + go_score
 
-    def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, int, int, int]:
-        sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count = self.compute_sp_s_and_sp_ge(profile)
+    def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, int, int, int, int]:
+        sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = self.compute_sp_s_and_sp_ge(profile)
         go_score, go_count = self.compute_sp_gap_open(profile)
-        return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count
+        return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count, ge_count

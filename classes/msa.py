@@ -66,12 +66,12 @@ class MSA:
             self.sequences = ordered_seq
             self.seq_names = ordered_seq_names
 
-    def set_my_sop_score_parts(self, sp_score_subs: float, go_score: float,
-                               sp_score_gap_e: float, sp_match_count: int, sp_missmatch_count: int, sp_go_count: int):
+    def set_my_sop_score_parts(self, sp_score_subs: float, go_score: float, sp_score_gap_e: float, sp_match_count: int,
+                               sp_missmatch_count: int, sp_go_count: int, sp_ge_count: int):
         self.stats.set_my_sop_score_parts(seqs_count=len(self.sequences), alignment_length=len(self.sequences[0]),
                                           sp_score_subs=sp_score_subs, go_score=go_score, sp_score_gap_e=sp_score_gap_e,
                                           sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count,
-                                          sp_go_count=sp_go_count)
+                                          sp_go_count=sp_go_count, sp_ge_count=sp_ge_count)
 
     def set_w(self, sop_w_options: list[float]):
         sop_w_options_dict: dict[str, float] = {}

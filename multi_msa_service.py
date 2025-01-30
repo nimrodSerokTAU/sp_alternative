@@ -83,9 +83,9 @@ def calc_multiple_msa_sp_scores(config: Configuration):
             if config.sop_clac_type == SopCalcTypes.NAIVE:
                 inferred_msa.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences)[0])
             else:
-                sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
+                sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count, ge_count = sp.compute_efficient_sp_parts(inferred_msa.sequences)
                 inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                                    sp_missmatch_count, go_count)
+                                                    sp_missmatch_count, go_count, ge_count)
                 if len(inferred_msa.weight_names) > 0:
                     inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
             inferred_msa.order_sequences(true_msa.seq_names)

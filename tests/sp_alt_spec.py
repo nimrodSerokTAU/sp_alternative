@@ -132,7 +132,7 @@ def test_compute_sp_s_and_sp_ge():  # our function
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
     sp_score_subs: int
     sp_score_gap_e: int
-    sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count = sp.compute_sp_s_and_sp_ge(profile)
+    sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(profile)
     naive_score = sp.compute_naive_sp_score(profile)
     res = {'sp_score_subs': sp_score_subs, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_score_subs + sp_score_gap_e}
     assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -50, 'total':naive_score[0]}  # this is correct without gs cost
@@ -171,6 +171,21 @@ def test_compare_naive_sop_to_efficient():
         'YEETSEES----VADNENRAE-VHLILSTNFVIADPEPKWG-LRSKDMNWYDQRTH--LGMGPVLGIQFLF',
         'YEETSEESLKRIVADNENRAEKVHLILSTNFVIADPEPKWG--RSKDMNWYDQRTHKFLGMGPVLGIQFLF']
     res_naive: list[int] = sp.compute_naive_sp_score(profile)
+    res_efficient: float = sp.compute_efficient_sp(profile)
+    assert res_naive[0] == res_efficient
+
+
+def test_compare_naive_sop_to_efficient_min_example():
+    configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
+                                                 SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+    sp: SPScore = SPScore(configuration)
+    profile: list[str] = [
+        'LLKYR-K',
+        'Y--ERAK',
+        'YL----K',
+        'YLKE-AK']
+    res_naive: list[int] = sp.compute_naive_sp_score(profile)
+    sp_score_subs, sp_score_gap_o, sp_score_gap_e = sp.compute_naive_sp_score_per_col(profile)
     res_efficient: float = sp.compute_efficient_sp(profile)
     assert res_naive[0] == res_efficient
 
@@ -560,10 +575,10 @@ def test_msa_stats():
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config)
-    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count = sp.compute_efficient_sp_parts(
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count, ge_count = sp.compute_efficient_sp_parts(
         inferred_msa.sequences)
     inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                        sp_missmatch_count, sp_gpo_count)
+                                        sp_missmatch_count, sp_gpo_count, ge_count)
     inferred_msa.order_sequences(true_msa.seq_names)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
@@ -575,9 +590,9 @@ def test_msa_stats():
     inferred_msa.calc_seq_weights(config.additional_weights)
     inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
     assert inferred_msa.stats.get_my_features() == (
-        'inferred,-3.5,-0.035,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
-        '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.045,-0.045,0.47,0.22,1,5,1.676,0.183,0.086,0.399,0.031,0.323,'
-        '-1.544351155944117,0.176,0.491,0.033,0,0,0,0,0,0,0,0,0,0,0,0,0,0,')
+        'inferred,-12.0,-0.12,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
+        '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.13,-0.13,0.47,0.22,1,5,1.676,0.183,0.093,0.396,0.03,0.304,'
+        '-1.5226555580702366,0.174,0.491,0.026,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,22,-1.135,-0.586,-7.131,-6.979,251.0,26,')
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
@@ -683,7 +698,7 @@ def test_mid_point_rooting():
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config)
-    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count = sp.compute_efficient_sp_parts(
+    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count, ge_count = sp.compute_efficient_sp_parts(
         inferred_msa.sequences)
     inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
                                         sp_missmatch_count, sp_gpo_count)
