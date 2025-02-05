@@ -55,7 +55,7 @@ class Regressor:
     features_file: file with all features and labels
     test_size: portion of the codes to be separated into a test set; all MSAs for that specific code would be on the same side of the train-test split
     mode: 1 is all features, 2 is all except SoP features, 3 is only 2 SoP features'''
-    def __init__(self, features_file: str, test_size: float, mode: int = 1, predicted_measure: Literal['msa_distance', 'tree_distance', 'class_label'] = 'msa_distance', i=0) -> None:
+    def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False, predicted_measure: Literal['msa_distance', 'tree_distance', 'class_label'] = 'msa_distance' ,i=0) -> None:
         self.features_file = features_file
         self.test_size = test_size
         self.predicted_measure = predicted_measure
@@ -84,11 +84,11 @@ class Regressor:
         # add normalized_rf
         df["normalized_rf"] = df['rf_from_true']/(df['taxa_num']-1)
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
-        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.01, 0, np.where(df['dpos_dist_from_true'] <= 0.05, 1, 2))
+        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
-        # df['aligner'] = df.apply(assign_aligner, axis=1)
-        # df = df[df['aligner'] != 'true']
-        # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner')
+        df['aligner'] = df.apply(assign_aligner, axis=1)
+        df = df[df['aligner'] != 'true']
+        df = pd.get_dummies(df, columns=['aligner'], prefix='aligner')
 
 
         class_label_counts = df['class_label'].dropna().value_counts()
@@ -116,6 +116,7 @@ class Regressor:
             true_score_name = 'class_label'
 
         self.y = df[true_score_name]
+
 
         # all features
         if mode == 1:
@@ -146,6 +147,23 @@ class Regressor:
 
 
         # self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=self.test_size)
+
+        if remove_correlated_features:
+            correlation_matrix = self.X.corr().abs()
+
+            # Create a mask to select upper triangle of the correlation matrix
+            upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
+
+            # Get columns to drop based on correlation threshold
+            to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.9)]
+
+            print(to_drop)
+
+            # Drop correlated columns
+            self.X = self.X.drop(columns=to_drop)
+
+            print(self.X)
+
 
         # Get unique 'code1' values
         unique_code1 = df['code1'].unique()
@@ -411,7 +429,7 @@ class Regressor:
             # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
             # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(
-                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.0005)))
+                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             # model.add(prune_low_magnitude(
             #     Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
@@ -424,7 +442,7 @@ class Regressor:
             # # # second new hidden
             # model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.0005)))
+                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             # model.add(prune_low_magnitude(
             #     Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
@@ -445,8 +463,11 @@ class Regressor:
             #     Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
             # model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            # model.add(
+            #     Dense(16, kernel_initializer=GlorotUniform(),
+            #           kernel_regularizer=regularizers.l2(0.0005)))
             model.add(
-                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=0.0005, l2=0.0005)))
+                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
             # model.add(ELU())
             # model.add(Activation('relu'))
@@ -466,7 +487,7 @@ class Regressor:
 
             #set call-backs
             # 1. Implement early stopping
-            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+            early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
             # 2. learning rate scheduler
             lr_scheduler = ReduceLROnPlateau(
                 monitor='val_loss',  # Metric to monitor
@@ -490,8 +511,8 @@ class Regressor:
             if undersampling == True:
                 # weights = np.where(self.y_train < 0.2, 7, 1)
                 # Define thresholds and weights
-                threshold_low = 0.01
-                threshold_high = 0.05
+                threshold_low = 0.015
+                threshold_high = 0.1
                 w_low = self.weights[0] # Weight for the lower tail (values < threshold_low)
                 w_high = self.weights[2]  # Weight for the upper tail (values > threshold_high)
                 w_mid = self.weights[1]  # Weight for the middle range (between threshold_low and threshold_high)

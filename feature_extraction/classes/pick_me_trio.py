@@ -328,7 +328,7 @@ class PickMeGameTrio:
             # else:
             #     overall_winner = np.nan
 
-
+            # result_map = {0: "default", 1: "predicted", 2: "sop"}
             if mafft_scores:
                 if mafft_scores[1] < mafft_scores[0] and mafft_scores[1] < mafft_scores[2]:  # predicted < default and predicted < sop
                     mafft_winner = "predicted"
@@ -579,7 +579,7 @@ class PickMeGameTrio:
         print(len(self.pickme_df), len(self.winners_df), len(self.overall_winners_df))
 
     def save_to_csv(self, i: int):
-        filename = f'./out/pick_me_program_v{i}.csv'
+        filename = f'./out/pick_me_trio_v{i}.csv'
         self.pickme_df.to_csv(filename, index=False)
         # filename = f'./out/pick_me_SoP_program_v{i}.csv'
         # self.pickme_sop_df.to_csv(filename, index=False)
@@ -607,7 +607,7 @@ class PickMeGameTrio:
         plt.show()
 
     def plot_overall_results(self, i: int):
-        plotname = f'./out/pick_me_overall_plot_v{i}.png'
+        plotname = f'./out/pick_me_trio_overall_plot_v{i}.png'
         df = self.overall_winners_df
         # counts = df.apply(lambda x: x.value_counts()).fillna(0)
         legend = ["min predicted", "max sop", "default mafft", "default prank", "default muscle", "default baliphy"]  # Add 'D' to ensure it gets counted as 0 if missing
@@ -651,22 +651,34 @@ class PickMeAggregator:
             if not any(item['code'] == result['code'] for item in self.overall_win):
                 self.overall_win.append(result)
 
+    def save_to_csv(self):
+        leng = len(self.pickme_df)
+        filename = f'./out/pick_me_Results_ALL_{leng}.csv'
+        self.pickme_df.to_csv(filename, index=False)
+        leng = len(self.winners_df)
+        filename = f'./out/pick_me_Winners_ALL_{leng}.csv'
+        self.winners_df.to_csv(filename, index=False)
+        leng = len(self.overall_winners_df)
+        filename = f'./out/pick_me_overall_Winners_ALL_{leng}.csv'
+        self.overall_winners_df.to_csv(filename, index=False)
+
     def summarize(self):
         # Create a DataFrame from the results
         results_df = pd.DataFrame(self.results)
-        results_df = results_df.drop('code', axis=1)
+        # results_df = results_df.drop('code', axis=1)
         winners_df = pd.DataFrame(self.winners)
-        winners_df = winners_df.drop('code', axis=1)
+        # winners_df = winners_df.drop('code', axis=1)
         overall_winners_df = pd.DataFrame(self.overall_win)
-        overall_winners_df = overall_winners_df.drop('code', axis=1)
+        # overall_winners_df = overall_winners_df.drop('code', axis=1)
         self.pickme_df = results_df
         self.winners_df = winners_df
         self.overall_winners_df = overall_winners_df
         print(len(self.pickme_df), len(self.winners_df), len(self.overall_winners_df))
 
-    def plot_results(self, i: int):
-        plotname = f'./out/pick_me_trio_plot_v{i}.png'
+    def plot_results(self):
+        plotname = f'./out/pick_me_trio_plot_ALL.png'
         df = self.winners_df
+        df = df.drop('code', axis=1)
         counts = df.apply(lambda x: x.value_counts()).fillna(0)
         percentages = counts / len(df) * 100
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -686,9 +698,10 @@ class PickMeAggregator:
         plt.savefig(fname=plotname, format='png')
         plt.show()
 
-    def plot_overall_results(self, i: int):
-        plotname = f'./out/pick_me_overall_plot_v{i}.png'
+    def plot_overall_results(self):
+        plotname = f'./out/pick_me_overall_plot_ALL.png'
         df = self.overall_winners_df
+        df = df.drop('code', axis=1)
         # counts = df.apply(lambda x: x.value_counts()).fillna(0)
         legend = ["min predicted", "max sop", "default mafft", "default prank", "default muscle",
                   "default baliphy"]  # Add 'D' to ensure it gets counted as 0 if missing

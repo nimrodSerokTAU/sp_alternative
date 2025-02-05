@@ -9,7 +9,7 @@ from scipy import stats
 
 if __name__ == '__main__':
     aggregator = PickMeAggregator()
-    n = 2
+    n = 5
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
@@ -24,8 +24,8 @@ if __name__ == '__main__':
         #                            prediction_file=f'./out/BaliBase_ALL_10-50/DL8_w_foldmason_features/prediction_DL_{i}_mode1_msa_distance.csv',
         #                            error=0)
 
-        pickme = PickMeGameTrio(features_file='./out/orthomam_features_251224.csv',
-                                prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
+        pickme = PickMeGameTrio(features_file='./out/orthomam_features_240125.csv',
+                                prediction_file=f'./out/orthomam_NEW/L1L2_1e-5/prediction_DL_{i}_mode1_msa_distance.csv',
                                 error=0)
 
         # pickme = PickMeGameTrio(features_file='./out/orthomam_features_251224.csv',
@@ -43,8 +43,9 @@ if __name__ == '__main__':
         # pickme.plot_overall_results(i)
 
     aggregator.summarize()
-    pickme.plot_results(i)
-    pickme.plot_overall_results(i)
+    aggregator.save_to_csv()
+    aggregator.plot_results()
+    aggregator.plot_overall_results()
 
 
 

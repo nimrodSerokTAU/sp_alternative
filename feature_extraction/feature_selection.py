@@ -7,7 +7,7 @@ from tensorflow.keras.models import load_model
 from sklearn.feature_selection import RFE
 
 
-features_file = '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_features_251224.csv'
+features_file = '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_features_240125.csv'
 
 # X = pd.read_csv(features_file)
 # features = X.drop(columns=['',''])
@@ -30,21 +30,21 @@ X = df.drop(
         columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty',
                  'class_label', 'class_label2'])
 
-# # Assuming X is your feature matrix as a pandas DataFrame
-# correlation_matrix = X.corr().abs()
-#
-# # Create a mask to select upper triangle of the correlation matrix
-# upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
-#
-# # Get columns to drop based on correlation threshold
-# to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.9)]
-#
-# print(to_drop)
-#
-# # Drop correlated columns
-# X_cleaned = X.drop(columns=to_drop)
-#
-# print(X_cleaned)
+# Assuming X is your feature matrix as a pandas DataFrame
+correlation_matrix = X.corr().abs()
+
+# Create a mask to select upper triangle of the correlation matrix
+upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
+
+# Get columns to drop based on correlation threshold
+to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.9)]
+
+print(to_drop)
+
+# Drop correlated columns
+X_cleaned = X.drop(columns=to_drop)
+
+print(X_cleaned)
 
 unique_code1 = df['code1'].unique()
 

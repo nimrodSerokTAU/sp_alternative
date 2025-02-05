@@ -442,7 +442,7 @@ class RegressorPortion:
 if __name__ == '__main__':
     correlations = []
     mse_values = []
-    for portion in [0.4]:
+    for portion in [0.1,0.2,0.4]:
         regressor = RegressorPortion("./out/orthomam_features_251224.csv", 0.2, mode=1,
                               predicted_measure='msa_distance', i=0, portion=portion)
         mse, corr_coefficient = regressor.deep_learning(i=0, epochs=50, batch_size=32, learning_rate=1e-4, undersampling = False)
