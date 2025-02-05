@@ -92,6 +92,8 @@ class MSAStats:
     henikoff_without_gaps: float
     clustal_mid_root: float
     clustal_differential_sum: float
+    sp_score_subs: float
+    sp_ge_count: int
 
     def __init__(self, code: str):
         self.code = code
@@ -176,6 +178,8 @@ class MSAStats:
         self.henikoff_without_gaps = 0
         self.clustal_mid_root = 0
         self.clustal_differential_sum = 0
+        self.sp_score_subs = 0
+        self.sp_ge_count = 0
         self.ordered_col_names = [
             'code', 'sop_score', 'normalised_sop_score', 'rf_from_true', 'dpos_dist_from_true', 'taxa_num',
             'constant_sites_pct', 'n_unique_sites', 'pypythia_msa_difficulty', 'entropy_mean',
@@ -192,7 +196,7 @@ class MSAStats:
             'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',
             'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm',
             'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root',
-            'clustal_differential_sum'
+            'clustal_differential_sum', 'sp_score_subs', 'sp_ge_count'
         ]
 
     def set_my_sop_score(self, sop_score: float):
@@ -200,7 +204,7 @@ class MSAStats:
 
     def set_my_sop_score_parts(self, seqs_count: int, alignment_length: int, sp_score_subs: float, go_score: float,
                                sp_score_gap_e: float, sp_match_count: int, sp_missmatch_count: int,
-                               sp_go_count: int):
+                               sp_go_count: int, sp_ge_count: int):
         number_of_pairs = seqs_count * (seqs_count - 1) / 2 * alignment_length
         self.sop_score = sp_score_subs + go_score + sp_score_gap_e
         self.normalised_sop_score = self.sop_score / number_of_pairs
@@ -211,6 +215,8 @@ class MSAStats:
         self.sp_missmatch_ratio = sp_missmatch_count / number_of_pairs
         self.number_of_mismatches = sp_missmatch_count
         self.number_of_gap_segments = sp_go_count
+        self.sp_score_subs = sp_score_subs
+        self.sp_ge_count = sp_ge_count
 
     def set_my_w_sop(self, sop_w_options_dict: dict[str, float]): # TODO: continue from here. use default
         self.henikoff_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
