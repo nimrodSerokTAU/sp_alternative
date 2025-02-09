@@ -1,15 +1,16 @@
 import numpy as np
-from classes.regressor import Regressor
+# from classes.regressor import Regressor
+from classes.regressor_grouped import Regressor
 from scipy import stats
 
 if __name__ == '__main__':
 
     mse_values = []
-    for i in range(5):
-        regressor = Regressor("./out/orthomam_features_240125.csv", 0.2, mode=1,
+    for i in range(1):
+        regressor = Regressor("./out/orthomam_features_050225.csv", 0.2, mode=1,
                               predicted_measure='msa_distance', i=i)
         # mse = regressor.random_forest(i=i)
-        mse = regressor.deep_learning(i=i, epochs=50, batch_size=32, learning_rate=1e-4, undersampling=False)
+        mse = regressor.deep_learning(i=i, epochs=20, batch_size=32, learning_rate=1e-4, undersampling=False)
         mse_values.append(mse)
         # regressor.plot_results("rf", mse, i)
         regressor.plot_results("dl", mse, i)

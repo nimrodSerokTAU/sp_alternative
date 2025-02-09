@@ -11,10 +11,12 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.initializers import GlorotUniform
-from tensorflow.keras.regularizers import l2
+from tensorflow.keras.regularizers import l2, l1, l1_l2
 from regressor import Regressor
+from scipy.stats import pearsonr
+from sklearn.metrics import mean_squared_error
 
-regressor = Regressor("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_treebase_combined_features_w_balify2.csv", 0.2, mode=2, predicted_measure='msa_distance')
+regressor = Regressor("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_features_050225.csv", 0.2, mode=1, predicted_measure='msa_distance')
 
 # Define a function to create the model
 def create_model(optimizer='adam', learning_rate=0.001, dropout_rate=0.2, neurons=[64,32,16], kernel_init=GlorotUniform(), kernel_reg=l2(1e-4), activations=['leaky_relu', 'leaky_relu', 'leaky_relu']):
@@ -83,7 +85,8 @@ param_grid = {
     'dropout_rate': [0.2, 0.4],
     'neurons': neuron_combinations,
     'validation_split': 0.2,
-    'learning_rate': [0.001, 0.0001, 0.00001]
+    'learning_rate': [0.001, 0.0001, 0.00001],
+    'regularizer': [l2(1e-4), l2(1e-5), l1(1e-4), l1(1e-5), l1_l2(l1=1e-5, l2=1e-5), l1_l2(l1=1e-4, l2=1e-4)]
 }
 
 # Manual hyperparameter tuning
@@ -133,11 +136,13 @@ for round in range(100):
     activation_combo = random.choice(param_grid['activations'])
     dropout_rate =  random.choice(param_grid['dropout_rate'])
     epochs =  random.choice(param_grid['epochs'])
-    # learning_rate = random.choice(param_grid['learning_rate'])
-    learning_rate = 0.001
+    learning_rate = random.choice(param_grid['learning_rate'])
+    # learning_rate = 0.001
     neurons_combo =  random.choice(param_grid['neurons'])
+    regularizer = random.choice(param_grid['regularizer'])
+
     try:
-        model = create_model(optimizer='adam', learning_rate=learning_rate, dropout_rate=dropout_rate, neurons=neurons_combo, kernel_init=GlorotUniform(), kernel_reg=l2(1e-4), activations=activation_combo)
+        model = create_model(optimizer='adam', learning_rate=learning_rate, dropout_rate=dropout_rate, neurons=neurons_combo, kernel_init=GlorotUniform(), kernel_reg=regularizer, activations=activation_combo)
         lr_scheduler = ReduceLROnPlateau(
             monitor='val_loss',  # Metric to monitor
             patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
@@ -145,32 +150,42 @@ for round in range(100):
             factor=0.7,  # Factor by which the learning rate will be reduced
             min_lr=1e-5  # Lower bound on the learning rate
         )
-        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-        model.fit(regressor.X_train_scaled, regressor.y_train, validation_split=param_grid['validation_split'], batch_size=batch_size, epochs=epochs, verbose=1, callbacks=[early_stopping, lr_scheduler])
-        score = model.evaluate(regressor.X_test_scaled, regressor.y_test, verbose=0)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        history = model.fit(regressor.X_train_scaled, regressor.y_train, validation_split=param_grid['validation_split'], batch_size=batch_size, epochs=epochs, verbose=1, callbacks=[early_stopping, lr_scheduler])
+        loss = model.evaluate(regressor.X_test_scaled, regressor.y_test, verbose=0)
+
+        regressor.y_pred = model.predict(regressor.X_test_scaled)
+        regressor.y_pred = np.ravel(regressor.y_pred)  # flatten multi-dimensional array into one-dimensional
+        regressor.y_pred = regressor.y_pred.astype('float64')
+        mse = mean_squared_error(regressor.y_test, regressor.y_pred)
+        print(f"Mean Squared Error: {mse:.4f}\n")
+        corr_coefficient, p_value = pearsonr(regressor.y_test, regressor.y_pred)
+        print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
+
         print(
-            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Score: {score}")
+            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {regularizer}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
 
         with open('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt', 'a') as f:
-            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Score: {score}\n")
+            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {regularizer}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
 
-        if score < best_score:
-            best_score = score
+        if loss < best_score:
+            best_score = loss
             best_params = {
                 'activation': activation_combo,
                 'batch_size': batch_size,
                 'epochs': epochs,
                 'dropout_rate': dropout_rate,
                 'neurons': neurons_combo,
-                'optimizer': {param_grid['optimizer'][0]},
-                'learning rate': {learning_rate},
-                'validation split': {param_grid['validation_split']}
+                'optimizer': param_grid['optimizer'][0],
+                'learning rate': learning_rate,
+                'validation split': param_grid['validation_split'],
+                'regularizer': regularizer
             }
             with open(
-                    '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search_new.txt',
+                    '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt',
                     'a') as f:
                 f.write(
                     f"NEW BEST\n")
     except Exception as e:
-        print(f'Failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}. Error: {e}')
+        print(f'Failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Regularizer: {regularizer}. Error: {e}')
 print(f"Best Score: {best_score} using {best_params}")

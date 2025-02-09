@@ -120,7 +120,7 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'normalised_sop_score'])
             # self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 features of SoP
         # if mode == 2:
@@ -131,7 +131,7 @@ class Regressor:
 
         # only 2 features of SoP
         if mode == 3:
-            self.X = df[['normalised_sop_score', 'henikoff_with_gaps', 'sp_missmatch_ratio', 'k_mer_10_norm','henikoff_without_gaps','clustal_mid_root','clustal_differential_sum','number_of_gap_segments','num_cols_no_gaps']]
+            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
 
         if mode == 4: #test removing features
             self.X = df.drop(
@@ -193,9 +193,9 @@ class Regressor:
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
             # self.X_train =self.train_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
             # self.X_test = self.test_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 sop
@@ -214,8 +214,8 @@ class Regressor:
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['normalised_sop_score', 'henikoff_with_gaps', 'sp_missmatch_ratio', 'k_mer_10_norm','henikoff_without_gaps','clustal_mid_root','clustal_differential_sum','number_of_gap_segments','num_cols_no_gaps']]
-            self.X_test = self.test_df[['normalised_sop_score', 'henikoff_with_gaps', 'sp_missmatch_ratio', 'k_mer_10_norm','henikoff_without_gaps','clustal_mid_root','clustal_differential_sum','number_of_gap_segments','num_cols_no_gaps']]
+            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
 
 
         if mode == 4:
@@ -254,7 +254,8 @@ class Regressor:
         self.X_test_scaled = self.scaler.transform(self.X_test)
 
         # saving the scaler that was used for training
-        joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        # joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
 
         self.main_codes_train = self.train_df['code1']
         self.file_codes_train = self.train_df['code']
@@ -405,9 +406,57 @@ class Regressor:
             weighted_loss = mse_loss * weights
             return weighted_loss
 
-        # def quantile_loss(q, y_true, y_pred):
-        #     error = y_true - y_pred
-        #     return tf.reduce_mean(tf.maximum(q * error, (q - 1) * error))
+        def weighted_mse_loss(y_true, y_pred):
+            # Simple weight based on the true values
+            weights = K.exp(-y_true)  # Example: Higher weights for lower scores
+            mse_loss = K.mean(weights * K.square(y_true - y_pred))  # Weighted MSE
+            return mse_loss
+
+        def focal_loss(y_true, y_pred, gamma=2.0, alpha=0.25):
+            # Focal loss penalizes predictions that are farther from the true value
+            error = K.abs(y_true - y_pred)
+            loss = alpha * K.pow(1 - error, gamma) * K.square(error)
+            return K.mean(loss)
+
+        # Custom rank-based loss function using tf.argsort
+        # Custom rank-based loss function using tf.argsort
+        # def rank_loss(y_true, y_pred, top_k=100):
+        #     true_rank = tf.argsort(y_true, axis=-1, direction='ASCENDING')
+        #     pred_rank = tf.argsort(y_pred, axis=-1, direction='ASCENDING')
+        #     true_top_k = true_rank[:, :top_k]
+        #     pred_top_k = pred_rank[:, :top_k]
+        #
+        #     # rank_diff = tf.abs(true_rank - pred_rank)
+        #     rank_diff = tf.reduce_sum(tf.abs(true_top_k - pred_top_k), axis=-1)
+        #
+        #     return K.mean(rank_diff)
+        #     # return tf.reduce_min(rank_diff)
+
+        def rank_loss(y_true, y_pred, top_k):
+
+            paired = tf.stack([y_true, y_pred], axis=-1)
+            sorted_paired = tf.sort(paired, axis=-2, direction='ASCENDING', name='sort_true')
+
+            true_top_k = sorted_paired[:, :top_k, 0]
+            pred_top_k = sorted_paired[:, :top_k, 1]
+            # rank_diff = tf.reduce_mean(K.square(true_top_k - pred_top_k), axis=-1)
+            rank_diff = K.mean(K.square(K.cast(true_top_k - pred_top_k, dtype=tf.float32)))
+
+            return rank_diff
+
+        def mse_with_rank_loss(y_true, y_pred, top_k=20, mse_weight=0.5, ranking_weight=0.5):
+            mse_loss = K.mean(K.square(K.cast(y_true - y_pred, dtype=tf.float32)))  # MSE loss
+            # mse_loss = tf.keras.losses.MSE(y_true, y_pred)
+            top_k_rank_loss = rank_loss(y_true, y_pred, top_k)
+
+            mse_weight = tf.cast(mse_weight, dtype=tf.float32)
+            ranking_weight = tf.cast(ranking_weight, dtype=tf.float32)
+            top_k_rank_loss = tf.cast(top_k_rank_loss, dtype=tf.float32)
+
+            total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
+
+            return total_loss
+
 
         # Define pruning schedule
         # pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
@@ -452,11 +501,11 @@ class Regressor:
             model.add(Dropout(0.2))  # Dropout for regularization
 
             # second hidden
-            # model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=l2(1e-4)))
-            # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
-            # model.add(BatchNormalization())
-            # model.add(Dropout(0.2))  # Dropout for regularization
+            model.add(BatchNormalization())
+            model.add(Dropout(0.2))  # Dropout for regularization
 
             # third hidden
             # model.add(prune_low_magnitude(
@@ -481,7 +530,10 @@ class Regressor:
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            model.compile(optimizer=optimizer, loss='mean_squared_error')
+            # model.compile(optimizer=optimizer, loss='mean_squared_error')
+            # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
+            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=5, mse_weight=0.3,
+                                                        ranking_weight=0.7))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: quantile_loss(0.02, y_true, y_pred))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
 

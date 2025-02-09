@@ -3,13 +3,14 @@ from classes.pick_me import PickMeGame
 from classes.pick_me_per_program import PickMeGameProgram
 from classes.pick_me_per_program_max import PickMeGameProgramMax
 from classes.pick_me_trio import PickMeGameTrio, PickMeAggregator
+from classes.pick_me_average import PickMeGameAverage
 from scipy import stats
 
 
 
 if __name__ == '__main__':
     aggregator = PickMeAggregator()
-    n = 5
+    n = 1
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
@@ -23,10 +24,14 @@ if __name__ == '__main__':
         # pickme = PickMeGameTrio(features_file='./out/balibase_RV10-50_features_080125_w_foldmason_scores.csv',
         #                            prediction_file=f'./out/BaliBase_ALL_10-50/DL8_w_foldmason_features/prediction_DL_{i}_mode1_msa_distance.csv',
         #                            error=0)
-
-        pickme = PickMeGameTrio(features_file='./out/orthomam_features_240125.csv',
-                                prediction_file=f'./out/orthomam_NEW/L1L2_1e-5/prediction_DL_{i}_mode1_msa_distance.csv',
+        #
+        pickme = PickMeGameTrio(features_file='./out/orthomam_features_050225.csv',
+                                prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
                                 error=0)
+
+        # pickme = PickMeGameAverage(features_file='./out/orthomam_features_050225.csv',
+        #                         prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
+        #                         error=0)
 
         # pickme = PickMeGameTrio(features_file='./out/orthomam_features_251224.csv',
         #                            prediction_file=f'./out/orthomam_all_w_balify_no_ancestors/DL14_L1L2_bs32/prediction_DL_{i}_mode1_msa_distance.csv',
@@ -36,16 +41,16 @@ if __name__ == '__main__':
         #                            prediction_file=f'./out/orthomam_all_w_balify_no_ancestors/DL8_new_features_w_SoP/prediction_DL_{i}_mode1_msa_distance.csv',
         #                            error=0)
 
-        aggregator.add(pickme)
+        # aggregator.add(pickme)
         pickme.summarize()
         pickme.save_to_csv(i)
-        # pickme.plot_results(i)
-        # pickme.plot_overall_results(i)
+        pickme.plot_results(i)
+        pickme.plot_overall_results(i)
 
-    aggregator.summarize()
-    aggregator.save_to_csv()
-    aggregator.plot_results()
-    aggregator.plot_overall_results()
+    # aggregator.summarize()
+    # aggregator.save_to_csv()
+    # aggregator.plot_results()
+    # aggregator.plot_overall_results()
 
 
 

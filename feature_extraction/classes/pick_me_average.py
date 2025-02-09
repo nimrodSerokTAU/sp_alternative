@@ -364,28 +364,60 @@ class PickMeGameAverage:
         plotname = f'./out/pick_me_avg_plot_v{i}.png'
         # summary_df = pd.DataFrame
 
-        overall_avg_scores = [self.max_sop_true_scores, self.min_predicted_true_scores, self.default_mafft_scores, self.default_prank_scores, self.default_muscle_scores, self.default_baliphy_scores]
-        mafft_avg_scores = [self.default_mafft_scores,self.predicted_mafft_scores, self.sop_mafft_scores]
-        prank_avg_scores = [self.default_prank_scores, self.predicted_prank_scores, self.sop_prank_scores]
-        muscle_avg_scores = [self.default_muscle_scores, self.predicted_muscle_scores, self.sop_muscle_scores]
-        baliphy_avg_scores = [self.default_baliphy_scores, self.predicted_baliphy_scores, self.sop_baliphy_scores]
+        # overall_avg_scores = [np.mean(self.max_sop_true_scores), np.mean(self.min_predicted_true_scores), np.mean(self.default_mafft_scores), np.mean(self.default_prank_scores), np.mean(self.default_muscle_scores), np.mean(self.default_baliphy_scores)]
+        mafft_avg_scores = [np.nanmean(self.default_mafft_scores),np.nanmean(self.predicted_mafft_scores), np.nanmean(self.sop_mafft_scores)]
+        prank_avg_scores = [np.nanmean(self.default_prank_scores), np.nanmean(self.predicted_prank_scores), np.nanmean(self.sop_prank_scores)]
+        muscle_avg_scores = [np.nanmean(self.default_muscle_scores), np.nanmean(self.predicted_muscle_scores), np.nanmean(self.sop_muscle_scores)]
+        baliphy_avg_scores = [np.nanmean(self.default_baliphy_scores), np.nanmean(self.predicted_baliphy_scores), np.nanmean(self.sop_baliphy_scores)]
 
-        # df = self.winners_df
-        # counts = df.apply(lambda x: x.value_counts()).fillna(0)
-        # percentages = counts / len(df) * 100
-        # fig, ax = plt.subplots(figsize=(10, 6))
-        # percentages.T.plot(kind='bar', stacked=True, ax=ax)
+        # categories = ['default', 'predicted', 'sop']
+        methods = ['MAFFT', 'PRANK', 'MUSCLE', 'BALIPHY']
 
-        # ax.set_ylabel('Percentage (%)')
-        # ax.set_xlabel('MSA Aligner')
-        # ax.set_title('Distribution of Winners for Each MSA Aligner')
 
-        # for p in ax.patches:
-        #     ax.annotate(f'{p.get_height():.1f}%',
-        #                 (p.get_x() + p.get_width() / 2., p.get_y() + p.get_height() / 2.),
-        #                 ha='center', va='center', color='black', fontsize=10)
-        #
-        # plt.xticks(rotation=45)
-        # plt.tight_layout()
-        # plt.savefig(fname=plotname, format='png')
-        # plt.show()
+        x = np.arange(len(methods))
+        width = 0.2
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.bar(x - width, [mafft_avg_scores[0], prank_avg_scores[0], muscle_avg_scores[0], baliphy_avg_scores[0]],
+               width, label='default', color='b')
+        ax.bar(x, [mafft_avg_scores[1], prank_avg_scores[1], muscle_avg_scores[1], baliphy_avg_scores[1]], width,
+               label='predicted', color='g')
+        ax.bar(x + width, [mafft_avg_scores[2], prank_avg_scores[2], muscle_avg_scores[2], baliphy_avg_scores[2]],
+               width, label='sop', color='r')
+
+        ax.set_xlabel('Method')
+        ax.set_ylabel('Average Score')
+        ax.set_title('Average Scores by Method for Different Categories')
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(methods)
+
+        ax.legend(title='Score Type')
+
+        plt.tight_layout()
+        plt.savefig(fname=plotname, format='png')
+        plt.show()
+
+    def plot_overall_results(self, i: int):
+        plotname = f'./out/pick_me_avg_overall_plot_v{i}.png'
+        overall_avg_scores = [np.nanmean(self.max_sop_true_scores), np.nanmean(self.min_predicted_true_scores), np.nanmean(self.default_mafft_scores), np.nanmean(self.default_prank_scores), np.nanmean(self.default_muscle_scores), np.nanmean(self.default_baliphy_scores)]
+        categories = ["max sop", "min predicted", "default mafft", "default prank", "default muscle", "default baliphy"]
+
+        plt.figure(figsize=(10, 6))
+        plt.bar(categories, overall_avg_scores, color='skyblue')
+
+        # Add labels and title
+        plt.xlabel('Categories')
+        plt.ylabel('Average Scores')
+        plt.title('Average Scores for Different Categories')
+
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha='right')
+
+        # Optionally, add a grid for better visibility of the bars
+        plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+
+        # Show the plot
+        plt.tight_layout()
+        plt.savefig(fname=plotname, format='png')
+        plt.show()
