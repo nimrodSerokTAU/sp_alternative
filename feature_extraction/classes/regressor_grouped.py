@@ -1,3 +1,6 @@
+import math
+
+import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -53,92 +56,87 @@ def assign_aligner(row):
     return 'true'
 
 class BatchGenerator(Sequence):
-    def __init__(self, features, true_labels, true_msa_ids, batch_size,validation_split=0.2, is_validation=False):
+    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, batch_size, validation_split=0.2, is_validation=False):
         self.features = features
-        self.true_labels = true_labels
+        self.true_labels = np.asarray(true_labels)
         self.msa_ids = true_msa_ids  # TRUE MSA IDs (categorical)
         self.batch_size = batch_size
         self.unique_msa_ids = np.unique(true_msa_ids)  # Get unique TRUE MSA IDs
         self.validation_split = validation_split
         self.is_validation = is_validation
+        self.val_msa_ids = val_msa_ids
+        self.train_msa_ids = train_msa_ids
 
-        # num_samples = len(self.features)
-        split_idx = int(len(self.unique_msa_ids) * (1 - self.validation_split))
+        # np.random.shuffle(self.unique_msa_ids) #can't do that as the order will be different in training and in validation
 
-        if self.is_validation:
-            self.val_msa_ids = self.unique_msa_ids[split_idx:]  # First part is validation
-            # self.train_msa_ids = self.unique_msa_ids[split_idx:]  # The rest is training
-        else:
-            # self.val_msa_ids = self.unique_msa_ids[split_idx:]  # First part is validation
-            self.train_msa_ids = self.unique_msa_ids[:split_idx]
+        # split_idx = int(len(self.unique_msa_ids) * (1 - self.validation_split))
 
         if self.is_validation:
+            # self.val_msa_ids = self.unique_msa_ids[split_idx:]
             self.features = self.features[np.isin(self.msa_ids, self.val_msa_ids)]
             self.true_labels = self.true_labels[np.isin(self.msa_ids, self.val_msa_ids)]
             self.msa_ids = self.msa_ids[np.isin(self.msa_ids, self.val_msa_ids)]
         else:
-            # Filter for training data
+            # self.train_msa_ids = self.unique_msa_ids[:split_idx]
             self.features = self.features[np.isin(self.msa_ids, self.train_msa_ids)]
             self.true_labels = self.true_labels[np.isin(self.msa_ids, self.train_msa_ids)]
             self.msa_ids = self.msa_ids[np.isin(self.msa_ids, self.train_msa_ids)]
 
         self.unique_msa_ids = np.unique(self.msa_ids)
+        self.batches = self._precompute_batches()
+
+    def _precompute_batches(self):
+        batches = []
+        batches_mix = []
+        remaining_samples_set = []
+        # leaving_out = 5
+
+        for msa_id in self.unique_msa_ids:
+            try:
+                idx = np.where(self.msa_ids == msa_id)[0]
+                np.random.shuffle(idx)
+                num_samples = len(idx)
+                num_full_batches = num_samples // self.batch_size
+                remaining_samples = num_samples % self.batch_size
+                leaving_out = math.floor(0.5 * num_full_batches)
+
+                for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
+                    batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
+                    batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
+
+                if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
+                    remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
+                # np.random.shuffle(remaining_samples_set)
+                # for i in range(len(remaining_samples_set)):
+
+                # np.random.shuffle(batches)
+
+            except Exception as e:
+                print(f"Exception {e}\n")
+
+        remaining_samples_set = np.array(remaining_samples_set)
+        np.random.shuffle(remaining_samples_set)
+
+        for i in range(0, len(remaining_samples_set), self.batch_size):
+            batch_idx = remaining_samples_set[i: i + self.batch_size]
+            if len(batch_idx) == self.batch_size:  # Ensure full batch size
+                batches_mix.append((self.features[batch_idx], self.true_labels[batch_idx]))
+
+        final_batches = batches + batches_mix
+        np.random.shuffle(final_batches)
+
+        return final_batches
 
     def __len__(self):
-        # return len(self.unique_msa_ids)
-        batch_count = 0
-        for msa_id in self.unique_msa_ids:
-            batch_count += len(self.features[self.msa_ids == msa_id]) // self.batch_size  # Whole batches per MSA ID
-            # If there are remaining samples that don't fill a batch, count that as 1 more batch
-            if len(self.features[self.msa_ids == msa_id]) % self.batch_size != 0:
-                batch_count += 1
-        return batch_count
+        return len(self.batches)
 
     def __getitem__(self, idx):
-        # msa_id = self.unique_msa_ids[idx]
-        #
-        # batch_features = self.features[self.msa_ids == msa_id]
-        # batch_labels = self.true_labels[self.msa_ids == msa_id]
-        #
-        # if len(batch_features) < self.batch_size:
-        #     repeat_times = (self.batch_size // len(batch_features)) + 1
-        #     batch_features = np.tile(batch_features, (repeat_times, 1))[:self.batch_size]
-        #     batch_labels = np.tile(batch_labels, (repeat_times, 1))[:self.batch_size]
-        #
-        # return batch_features, batch_labels
-        batch_start = 0
-        for msa_id in self.unique_msa_ids:
-            msa_id_samples = len(self.features[self.msa_ids == msa_id])
-            # Check how many batches we have for this MSA ID
-            num_batches_for_msa_id = msa_id_samples // self.batch_size
-            if msa_id_samples % self.batch_size != 0:
-                num_batches_for_msa_id += 1
+        return self.batches[idx]
 
-            # Check if the batch index falls within the range of batches for this MSA ID
-            if idx < batch_start + num_batches_for_msa_id:
-                # We're in the right MSA ID, calculate the batch index within this ID's samples
-                local_idx = idx - batch_start
-                batch_features, batch_labels = self.get_batch_for_msa_id(msa_id, local_idx)
-                return batch_features, batch_labels
-            batch_start += num_batches_for_msa_id
-
-    def get_batch_for_msa_id(self, msa_id, batch_idx):
-        # Get all samples for the MSA ID
-        batch_features = self.features[self.msa_ids == msa_id]
-        batch_labels = self.true_labels[self.msa_ids == msa_id]
-
-        # Number of full batches for this MSA ID
-        num_full_batches = len(batch_features) // self.batch_size
-
-        if batch_idx < num_full_batches:
-            # Standard batch (full batch of size `self.batch_size`)
-            start_idx = batch_idx * self.batch_size
-            end_idx = start_idx + self.batch_size
-            return batch_features[start_idx:end_idx], batch_labels[start_idx:end_idx]
-        else:
-            # Last batch (fewer than `self.batch_size` samples)
-            start_idx = batch_idx * self.batch_size
-            return batch_features[start_idx:], batch_labels[start_idx:]
+    def on_epoch_end(self):
+        if not self.is_validation:
+            self.batches = self._precompute_batches()
+        np.random.shuffle(self.batches)
 
     def __iter__(self):
         for idx in range(len(self)):
@@ -168,6 +166,12 @@ class Regressor:
         df = pd.read_csv(self.features_file)
         # to make sure that all dataset codes are read as strings and not integers
         df['code1'] = df['code1'].astype(str)
+
+        #filter BALIPHY ONLY
+        # df = df[df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
+        # df = df[df['code'].str.contains('prank', case=False, na=False, regex=True)]
+        # df = df[~df['code'].str.contains('prank|bali_phy|BALIPHY', case=False, na=False, regex=True)]
+
         # Check for missing values
         print("Missing values in each column:\n", df.isnull().sum())
         corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
@@ -181,9 +185,9 @@ class Regressor:
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
         df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
-        df['aligner'] = df.apply(assign_aligner, axis=1)
-        df = df[df['aligner'] != 'true'] #removed true MSAs from the data
-        df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."
+        # df['aligner'] = df.apply(assign_aligner, axis=1)
+        # df = df[df['aligner'] != 'true'] #removed true MSAs from the data
+        # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."; the aligner column is automatically replaced/removed
 
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
@@ -275,7 +279,6 @@ class Regressor:
             self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
             self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
 
-
         if mode == 4:
             self.X_train = self.train_df.drop(
                 columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
@@ -304,9 +307,13 @@ class Regressor:
                          'seq_min_len']
             )
 
+        if remove_correlated_features:
+            self.X_train = self.X_train.drop(columns=to_drop)
+            self.X_test = self.X_test.drop(columns=to_drop)
+
         self.scaler = MinMaxScaler()
-        self.X_train_scaled = self.scaler.fit_transform(self.X_train)
-        self.X_test_scaled = self.scaler.transform(self.X_test)
+        self.X_train_scaled = self.scaler.fit_transform(self.X_train) #calculate scaling parameters (fit)
+        self.X_test_scaled = self.scaler.transform(self.X_test) #use the same scaling parameters as in train scaling
         joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
 
         self.main_codes_train = self.train_df['code1']
@@ -347,48 +354,7 @@ class Regressor:
         print(f"Training set size (final): {self.X_train_scaled.shape}")
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
 
-
-    def random_forest(self, n_estimators: int = 100, i: int = 0) -> float:
-        # Create and fit the Random Forest Regressor
-        self.regressor = RandomForestRegressor(n_estimators=n_estimators)
-        self.regressor.fit(self.X_train, self.y_train)
-
-        # Make predictions
-        y_train_pred = self.regressor.predict(self.X_train)
-        self.y_pred = self.regressor.predict(self.X_test)
-
-        if self.predicted_measure == "tree_distance":
-            self.y_pred = np.round(self.y_pred).astype(int)
-
-        # Calculate accuracy
-        train_accuracy = mean_squared_error(self.y_train, y_train_pred)
-        test_accuracy = mean_squared_error(self.y_test, self.y_pred)
-        print(f"Training Accuracy: {train_accuracy:.4f}")
-        print(f"Test Accuracy: {test_accuracy:.4f}")
-
-        # Create a DataFrame
-        df_res = pd.DataFrame({
-            'code1': self.main_codes_test,
-            'code': self.file_codes_test,
-            'predicted_score': self.y_pred
-        })
-
-        # Save the DataFrame to a CSV file
-        df_res.to_csv(f'./out/rf_prediction_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
-
-        # Assuming 'model' is your trained RandomForestRegressor
-        with open(f'./out/random_forest_model_{i}.pkl', 'wb') as file:
-            pickle.dump(self.regressor, file)
-
-        # Evaluate the model
-        mse = mean_squared_error(self.y_test, self.y_pred)
-        print(f"Mean Squared Error: {mse:.4f}")
-        corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
-        print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
-        return mse
-
-
-    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
+    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -403,34 +369,99 @@ class Regressor:
             return mse_loss
 
         def rank_loss(y_true, y_pred, top_k):
+            tf.compat.v1.enable_eager_execution()
+            @tf.function
+            def print_func(y_true, y_pred, paired, sorted_paired):
+                tf.print("y_true:", y_true)
+                tf.print("y_pred:", y_pred)
+                tf.print("y_paired:", paired)
+                tf.print("sorted_paired:", sorted_paired)
+                return y_true, y_pred, paired, sorted_paired
 
-            paired = tf.stack([y_true, y_pred], axis=-1)
-            sorted_paired = tf.sort(paired, axis=-2, direction='ASCENDING', name='_')
+            paired = tf.stack([y_true, y_pred], axis=1)
+
+            sorted_indices = tf.argsort(paired[:, 0], axis=0, direction='ASCENDING')
+            sorted_paired = tf.gather(paired, sorted_indices, axis=0)
+            # print_func(y_true, y_pred, paired, sorted_paired)
 
             true_top_k = sorted_paired[:, :top_k, 0]
             pred_top_k = sorted_paired[:, :top_k, 1]
+            # tf.print("true_top_k:", true_top_k)
+            # tf.print("pred_top_k:", pred_top_k)
 
             rank_diff = K.mean(K.square(K.cast(true_top_k - pred_top_k, dtype=tf.float32)))
+            # tf.print("Rank Diff:", rank_diff)
 
             return rank_diff
 
+        def spearman_rank_loss(y_true, y_pred):
+            tf.compat.v1.enable_eager_execution()
+            rank_true = tf.argsort(y_true)
+            rank_pred = tf.argsort(y_pred)
+            # tf.print("rank_true:", rank_true)
+            # tf.print("rank_pred:", rank_pred)
+            return 1 - tf.reduce_mean(tf.cast(rank_true == rank_pred, dtype=tf.float32))
+
+        @tf.function
+        def pairwise_rank_loss(y_true, y_pred, margin=0.0, top_k = 3):
+            n = tf.shape(y_true)[0]
+
+            y_true_flat = tf.reshape(y_true, [-1])
+            _, top_k_indices = tf.math.top_k(-y_true_flat, k=top_k, sorted=True)  # Use negative to get smallest values
+            mask = tf.reduce_any(tf.equal(tf.reshape(tf.range(n), [-1, 1]), tf.reshape(top_k_indices, [1, -1])), axis=1)
+
+            i_indices = tf.reshape(tf.range(n), [-1, 1])
+            j_indices = tf.reshape(tf.range(n), [1, -1])
+            i_indices_flat = tf.reshape(i_indices, [-1])
+            j_indices_flat = tf.reshape(j_indices, [-1])
+            y_true_i = tf.gather(y_true, i_indices_flat)
+            y_true_j = tf.gather(y_true, j_indices_flat)
+            y_pred_i = tf.gather(y_pred, i_indices_flat)
+            y_pred_j = tf.gather(y_pred, j_indices_flat)
+
+            y_true_diff = tf.cast(y_true_i < y_true_j, tf.float32)
+            pairwise_loss = tf.maximum(0.0, y_pred_i - y_pred_j + margin)
+
+            loss = tf.reduce_sum(pairwise_loss * y_true_diff * tf.cast(tf.reshape(mask, [-1, 1]), tf.float32))
+
+            return loss
+
         # Combine MSE loss with rank-based loss
-        def mse_with_rank_loss(y_true, y_pred, top_k=3, mse_weight=0.5, ranking_weight=0.5):
+        def mse_with_rank_loss(y_true, y_pred, top_k=3, mse_weight=1, ranking_weight=0.3):
+
             mse_loss = K.mean(K.square(K.cast(y_true - y_pred, dtype=tf.float32)))  # MSE loss
             # mse_loss = tf.keras.losses.MSE(y_true, y_pred)
             top_k_rank_loss = rank_loss(y_true, y_pred, top_k)
-
+            # rank_loss = pairwise_rank_loss(y_true, y_pred, margin=1.0, top_k=top_k)
+            # rank_loss = spearman_rank_loss(y_true, y_pred)
             mse_weight = tf.cast(mse_weight, dtype=tf.float32)
-            # rank_loss_value = rank_loss(y_true, y_pred)
             ranking_weight = tf.cast(ranking_weight, dtype=tf.float32)
-            # rank_loss_value = tf.cast(rank_loss_value, dtype=tf.float32)
             top_k_rank_loss = tf.cast(top_k_rank_loss, dtype=tf.float32)
-
+            # total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
+            # rank_loss = tf.cast(rank_loss, dtype=tf.float32)
+            # total_loss = mse_weight * mse_loss + ranking_weight * rank_loss
             total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
 
-            # return mse_loss + rank_weight * rank_loss_value  # Combine them with a weight
             return total_loss
 
+        @tf.function
+        def min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=10.0):
+            # mse_loss = K.mean(K.square(y_true - y_pred))
+            mse_loss = K.mean(K.abs(y_true - y_pred))
+
+            min_true_index = tf.argmin(y_true, axis=0)
+
+            min_pred = tf.gather(y_pred, min_true_index)
+            min_true = tf.gather(y_true, min_true_index)
+
+            # min_penalty = tf.maximum(0.0,
+            #                          min_pred - min_true)  # penalize if prediction is greater than true minimum
+            min_penalty = tf.abs(min_pred - min_true)
+            # min_penalty = K.square(min_pred - min_true)
+
+            total_loss = mse_weight * mse_loss + min_penalty_weight * min_penalty
+
+            return total_loss
 
         # non-negative regression msa_distance task
         if self.predicted_measure == 'msa_distance':
@@ -439,85 +470,81 @@ class Regressor:
 
             #first hidden
             model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))
+            model.add(Dropout(dropout_rate))
 
             # second hidden
             model.add(
-                Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))
+            model.add(Dropout(dropout_rate))
 
             # third hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))
+            model.add(Dropout(dropout_rate))
 
             # fourth hidden
             model.add(
-                Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+                Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))
+            model.add(Dropout(dropout_rate))
+
+            # third hidden
+            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
+            model.add(LeakyReLU(negative_slope=0.01))
+            model.add(BatchNormalization())
+            model.add(Dropout(dropout_rate))
 
             model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
 
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                             true_msa_ids=self.main_codes_train, batch_size=batch_size, validation_split=validation_split, is_validation=False)
-
-            val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, true_msa_ids=self.main_codes_train,
-                                             batch_size=batch_size, validation_split=validation_split, is_validation=True)
-
             # model.compile(optimizer=optimizer, loss='mean_squared_error')
+            # model.compile(optimizer=optimizer, loss='mean_absolute_error')
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
-            # model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=20, mse_weight=0.5,
-            #                                             ranking_weight=0.5))
-            model.compile(optimizer=optimizer,
-                          loss=lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=3, mse_weight=0.5,
-                                                                         ranking_weight=0.5))
+            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=10, mse_weight=1,
+                                                        ranking_weight=8))
+            # model.compile(optimizer=optimizer,
+            #               loss=lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=3, mse_weight=1,
+            #                                                              ranking_weight=0.5))
+
+            # model.compile(optimizer=optimizer,
+            #               loss=lambda y_true, y_pred: min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=2.0))
+
+            unique_train_codes = self.main_codes_train.unique()
+            train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
+            batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
+                                             true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, batch_size=batch_size,
+                                             validation_split=validation_split, is_validation=False)
+
+            val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
+                                           true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids,
+                                           batch_size=batch_size, validation_split=validation_split, is_validation=True)
 
             # Callback 1: early stopping
-            early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
             # Callback 2: learning rate scheduler
             lr_scheduler = ReduceLROnPlateau(
-                monitor='val_loss',  # Metric to monitor
-                patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
-                verbose=1,  # Print messages when learning rate is reduced
-                factor=0.7,  # Factor by which the learning rate will be reduced
-                min_lr=1e-6  # Lower bound on the learning rate
+                monitor='val_loss',  # to monitor
+                patience=3,  # number of epochs with no improvement before reducing the learning rate
+                verbose=1,
+                factor=0.5,  # factor by which the learning rate will be reduced
+                min_lr=1e-6,  # lower bound on the learning rate
+                min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
             )
-
             callbacks = [
                 early_stopping,
                 lr_scheduler
             ]
-
-            if undersampling == True:
-                # weights = np.where(self.y_train < 0.2, 7, 1)
-                # Define thresholds and weights
-                threshold_low = 0.015
-                threshold_high = 0.1
-                w_low = self.weights[0] # Weight for the lower tail (values < threshold_low)
-                w_high = self.weights[2]  # Weight for the upper tail (values > threshold_high)
-                w_mid = self.weights[1]  # Weight for the middle range (between threshold_low and threshold_high)
-                weights = np.where(self.y_train < threshold_low, w_low,
-                                   np.where(self.y_train > threshold_high, w_high, w_mid))
-                # history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=callbacks, sample_weight=weights)
-                history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
-                                    callbacks=callbacks, sample_weight=weights)
-            else:
-                # history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
-                #                     validation_split=validation_split, verbose=verbose,
-                #                     callbacks=callbacks)
-                history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
+            history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
                                     callbacks=callbacks)
 
         plt.plot(history.history['loss'], label='Training Loss')
@@ -546,9 +573,6 @@ class Regressor:
         self.y_pred = np.ravel(self.y_pred)  # flatten multi-dimensional array into one-dimensional
         self.y_pred = self.y_pred.astype('float64')
 
-        if self.predicted_measure == "tree_distance":
-            self.y_pred = np.round(self.y_pred).astype(int)
-
         df_res = pd.DataFrame({
             'code1': self.main_codes_test,
             'code': self.file_codes_test,
@@ -562,17 +586,49 @@ class Regressor:
         corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
 
-        # # explain features importance
-        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        # X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
-        # explainer = shap.Explainer(model, X_test_subset)
-        # shap_values = explainer(X_test_subset)
-        # # explainer = shap.Explainer(model, X_test_scaled_with_names)
-        # # shap_values = explainer(X_test_scaled_with_names)
-        # joblib.dump(explainer,
-        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-        # joblib.dump(shap_values,
-        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        try:
+            # # explain features importance
+            X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+            X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
+            explainer = shap.Explainer(model, X_test_subset)
+            shap_values = explainer(X_test_subset)
+            # explainer = shap.Explainer(model, X_test_scaled_with_names)
+            # shap_values = explainer(X_test_scaled_with_names)
+            joblib.dump(explainer,
+                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+            joblib.dump(shap_values,
+                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+            matplotlib.use('Agg')
+
+            feature_names = [
+                a + ": " + str(b) for a, b in zip(X_test_subset.columns, np.abs(shap_values.values).mean(0).round(3))
+            ]
+
+            shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
+            # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
+            plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/summary_plot.png', dpi=300,
+                        bbox_inches='tight')
+            # plt.show()
+            plt.close()
+
+            shap.plots.waterfall(shap_values[0], max_display=40)
+            plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/waterfall_0_plot.png', dpi=300,
+                        bbox_inches='tight')
+            # plt.show()
+            plt.close()
+
+            shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
+            plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/force_0_plot.png')
+            # plt.show()
+            plt.close()
+
+            shap.plots.bar(shap_values, max_display=40)
+            plt.savefig('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/bar_plot.png', dpi=300,
+                        bbox_inches='tight')
+            # plt.show()
+            plt.close()
+        except Exception as e:
+            print(f"Did not manage to get features importance\n")
 
         return mse
 

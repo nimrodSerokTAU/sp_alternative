@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.neighbors import KNeighborsRegressor
@@ -73,6 +73,11 @@ class Regressor:
         df = pd.read_csv(self.features_file)
         # to make sure that all dataset codes are read as strings and not integers
         df['code1'] = df['code1'].astype(str)
+
+        # df = df[df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
+        # df = df[df['code'].str.contains('prank', case=False, na=False, regex=True)]
+        # df = df[~df['code'].str.contains('prank|bali_phy|BALIPHY', case=False, na=False, regex=True)]
+
         # Check for missing values
         print("Missing values in each column:\n", df.isnull().sum())
         corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
@@ -86,9 +91,9 @@ class Regressor:
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
         df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
-        df['aligner'] = df.apply(assign_aligner, axis=1)
-        df = df[df['aligner'] != 'true']
-        df = pd.get_dummies(df, columns=['aligner'], prefix='aligner')
+        # df['aligner'] = df.apply(assign_aligner, axis=1)
+        # df = df[df['aligner'] != 'true']
+        # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner')
 
 
         class_label_counts = df['class_label'].dropna().value_counts()
@@ -317,42 +322,44 @@ class Regressor:
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
 
 
-    def random_forest(self, n_estimators: int = 100, i: int = 0) -> float:
-        # Create and fit the Random Forest Regressor
-        self.regressor = RandomForestRegressor(n_estimators=n_estimators)
-        self.regressor.fit(self.X_train, self.y_train)
+    def random_forest(self, n_estimators: int = 100, i: int = 0, n_jobs=-1, cv=5) -> float:
+        self.regressor = RandomForestRegressor(n_estimators=n_estimators, n_jobs=n_jobs)
 
-        # Make predictions
-        y_train_pred = self.regressor.predict(self.X_train)
-        self.y_pred = self.regressor.predict(self.X_test)
+        cv_scores = cross_val_score(self.regressor, self.X_train_scaled, self.y_train, cv=cv,
+                                    scoring='neg_mean_squared_error')
+
+        # cross_val_score returns negative MSE by default, convert to positive
+        cv_scores = -cv_scores
+        cv_mean_mse = cv_scores.mean()
+        cv_std_mse = cv_scores.std()
+        print(f"Cross-Validation Mean MSE: {cv_mean_mse:.4f}")
+        print(f"Cross-Validation Std MSE: {cv_std_mse:.4f}")
+
+        self.regressor.fit(self.X_train_scaled, self.y_train)
+
+        y_train_pred = self.regressor.predict(self.X_train_scaled)
+        self.y_pred = self.regressor.predict(self.X_test_scaled)
 
         if self.predicted_measure == "tree_distance":
             self.y_pred = np.round(self.y_pred).astype(int)
 
-        # Calculate accuracy
         train_accuracy = mean_squared_error(self.y_train, y_train_pred)
         test_accuracy = mean_squared_error(self.y_test, self.y_pred)
         print(f"Training Accuracy: {train_accuracy:.4f}")
         print(f"Test Accuracy: {test_accuracy:.4f}")
 
-        # Create a DataFrame
         df_res = pd.DataFrame({
             'code1': self.main_codes_test,
             'code': self.file_codes_test,
             'predicted_score': self.y_pred
         })
 
-        # Save the DataFrame to a CSV file
         df_res.to_csv(f'./out/rf_prediction_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
 
-        # save the model
         import pickle
-
-        # Assuming 'model' is your trained RandomForestRegressor
         with open(f'./out/random_forest_model_{i}.pkl', 'wb') as file:
             pickle.dump(self.regressor, file)
 
-        # Evaluate the model
         mse = mean_squared_error(self.y_test, self.y_pred)
         print(f"Mean Squared Error: {mse:.4f}")
         corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
@@ -398,7 +405,7 @@ class Regressor:
     #     print(f"Mean Squared Error: {mse:.4f}")
     #     return mse
 
-    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, i=0, undersampling = False):
+    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l2=1e-4, undersampling = False):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -478,7 +485,7 @@ class Regressor:
             # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
             # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(
-                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             # model.add(prune_low_magnitude(
             #     Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
@@ -486,26 +493,26 @@ class Regressor:
             # model.add(Activation('relu'))
             # model.add(ELU())
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))  # Dropout for regularization
+            model.add(Dropout(dropout_rate))  # Dropout for regularization
 
             # # # second new hidden
             # model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             # model.add(prune_low_magnitude(
             #     Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))  # Dropout for regularization
+            model.add(Dropout(dropout_rate))  # Dropout for regularization
 
             # second hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))  # Dropout for regularization
+            model.add(Dropout(dropout_rate))  # Dropout for regularization
 
             # third hidden
             # model.add(prune_low_magnitude(
@@ -516,12 +523,12 @@ class Regressor:
             #     Dense(16, kernel_initializer=GlorotUniform(),
             #           kernel_regularizer=regularizers.l2(0.0005)))
             model.add(
-                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
+                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
             # model.add(ELU())
             # model.add(Activation('relu'))
             model.add(BatchNormalization())
-            model.add(Dropout(0.2))  # Dropout for regularization
+            model.add(Dropout(dropout_rate))  # Dropout for regularization
 
             # model.add(Dense(1, activation='exponential')) #exponential ensures no negative values
             # model.add(Dense(1, activation='softplus'))  #ensures non-negative values
@@ -530,10 +537,10 @@ class Regressor:
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            # model.compile(optimizer=optimizer, loss='mean_squared_error')
+            model.compile(optimizer=optimizer, loss='mean_squared_error')
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=5, mse_weight=0.3,
-                                                        ranking_weight=0.7))
+            # model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=5, mse_weight=0.3,
+            #                                             ranking_weight=0.7))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: quantile_loss(0.02, y_true, y_pred))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
 

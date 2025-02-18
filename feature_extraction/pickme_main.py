@@ -25,14 +25,14 @@ if __name__ == '__main__':
         #                            prediction_file=f'./out/BaliBase_ALL_10-50/DL8_w_foldmason_features/prediction_DL_{i}_mode1_msa_distance.csv',
         #                            error=0)
         #
-        pickme = PickMeGameTrio(features_file='./out/orthomam_features_050225.csv',
+        pickme = PickMeGameTrio(features_file='./out/orthomam_features_150225.csv',
                                 prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
                                 error=0)
 
-        # pickme = PickMeGameAverage(features_file='./out/orthomam_features_050225.csv',
+        # pickme = PickMeGameAverage(features_file='./out/orthomam_features_150225.csv',
         #                         prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
         #                         error=0)
-
+        #
         # pickme = PickMeGameTrio(features_file='./out/orthomam_features_251224.csv',
         #                            prediction_file=f'./out/orthomam_all_w_balify_no_ancestors/DL14_L1L2_bs32/prediction_DL_{i}_mode1_msa_distance.csv',
         #                            error=0)

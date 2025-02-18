@@ -44,6 +44,9 @@ class PickMeGameTrio:
             # if not code.startswith(groups[5]):
             #     continue
             code_df = df[df['code1'] == code]
+            substrings = ['original', 'concat']
+            mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
+            code_df = code_df[~mask]
 
 
             # True_score for 'MSA.MAFFT.aln.With_Names'
@@ -330,9 +333,9 @@ class PickMeGameTrio:
 
             # result_map = {0: "default", 1: "predicted", 2: "sop"}
             if mafft_scores:
-                if mafft_scores[1] < mafft_scores[0] and mafft_scores[1] < mafft_scores[2]:  # predicted < default and predicted < sop
+                if mafft_scores[1] <= mafft_scores[0] and mafft_scores[1] < mafft_scores[2]:  # predicted <= default and predicted < sop
                     mafft_winner = "predicted"
-                elif mafft_scores[2] < mafft_scores[0] and mafft_scores[2] < mafft_scores[1]:  # sop < default and sop < predicted
+                elif mafft_scores[2] <= mafft_scores[0] and mafft_scores[2] < mafft_scores[1]:  # sop <= default and sop < predicted
                     mafft_winner = "sop"
                 elif mafft_scores[0] < mafft_scores[1] and mafft_scores[0] < mafft_scores[2]:  # default < predicted and default < sop
                     mafft_winner = "default"
@@ -340,15 +343,15 @@ class PickMeGameTrio:
                     mafft_winner = "tie(all three)"
                 elif mafft_scores[1] < mafft_scores[0] and mafft_scores[1] == mafft_scores[2]:  # predicted = sop < default
                     mafft_winner = "tie(predicted and sop)"
-                elif mafft_scores[1] == mafft_scores[0] and mafft_scores[1] < mafft_scores[2]:  # predicted = default < sop
-                    # mafft_winner = "tie(predicted and default)"
-                    mafft_winner = "predicted"
-                elif mafft_scores[2] == mafft_scores[0] and mafft_scores[2] < mafft_scores[1]:  # sop = default < predicted
-                    # mafft_winner = "tie(sop and default)"
-                    mafft_winner = "sop"
-                elif mafft_scores[1] == mafft_scores[2] and mafft_scores[0] < mafft_scores[1]:  # sop = default < predicted
-                    # mafft_winner = "tie(sop and predicted)"
-                    mafft_winner = "default"
+                # elif mafft_scores[1] == mafft_scores[0] and mafft_scores[1] < mafft_scores[2]:  # predicted = default < sop
+                #     # mafft_winner = "tie(predicted and default)"
+                #     mafft_winner = "predicted"
+                # elif mafft_scores[2] == mafft_scores[0] and mafft_scores[2] < mafft_scores[1]:  # sop = default < predicted
+                #     # mafft_winner = "tie(sop and default)"
+                #     mafft_winner = "sop"
+                # elif mafft_scores[1] == mafft_scores[2] and mafft_scores[0] < mafft_scores[1]:  # sop = default < predicted
+                #     # mafft_winner = "tie(sop and predicted)"
+                #     mafft_winner = "default"
                 else:
                     print(f"who are you mafft? {mafft_scores}\n")
                     mafft_winner = np.nan
@@ -356,9 +359,9 @@ class PickMeGameTrio:
                 mafft_winner = np.nan
 
             if prank_scores:
-                if prank_scores[1] < prank_scores[0] and prank_scores[1] < prank_scores[2]:  # predicted < default and predicted < sop
+                if prank_scores[1] <= prank_scores[0] and prank_scores[1] < prank_scores[2]:  # predicted < default and predicted < sop
                     prank_winner = "predicted"
-                elif prank_scores[2] < prank_scores[0] and prank_scores[2] < prank_scores[1]:  # sop < default and sop < predicted
+                elif prank_scores[2] <= prank_scores[0] and prank_scores[2] < prank_scores[1]:  # sop < default and sop < predicted
                     prank_winner = "sop"
                 elif prank_scores[0] < prank_scores[1] and prank_scores[0] < prank_scores[2]:  # default < predicted and default < sop
                     prank_winner = "default"
@@ -366,15 +369,15 @@ class PickMeGameTrio:
                     prank_winner = "tie(all three)"
                 elif prank_scores[1] < prank_scores[0] and prank_scores[1] == prank_scores[2]:  # predicted = sop < default
                     prank_winner = "tie(predicted and sop)"
-                elif prank_scores[1] == prank_scores[0] and prank_scores[1] < prank_scores[2]:  # predicted = default < sop
-                    # prank_winner = "tie(predicted and default)"
-                    prank_winner = "predicted"
-                elif prank_scores[2] == prank_scores[0] and prank_scores[2] < prank_scores[1]:  # sop = default < predicted
-                    # prank_winner = "tie(sop and default)"
-                    prank_winner = "sop"
-                elif prank_scores[1] == prank_scores[2] and prank_scores[0] < prank_scores[1]:  # sop = default < predicted
-                    # mafft_winner = "tie(sop and predicted)"
-                    prank_winner = "default"
+                # elif prank_scores[1] == prank_scores[0] and prank_scores[1] < prank_scores[2]:  # predicted = default < sop
+                #     # prank_winner = "tie(predicted and default)"
+                #     prank_winner = "predicted"
+                # elif prank_scores[2] == prank_scores[0] and prank_scores[2] < prank_scores[1]:  # sop = default < predicted
+                #     # prank_winner = "tie(sop and default)"
+                #     prank_winner = "sop"
+                # elif prank_scores[1] == prank_scores[2] and prank_scores[0] < prank_scores[1]:  # sop = default < predicted
+                #     # mafft_winner = "tie(sop and predicted)"
+                #     prank_winner = "default"
                 else:
                     print(f"who are you prank? {prank_scores}\n")
                     prank_winner = np.nan
@@ -382,9 +385,9 @@ class PickMeGameTrio:
                 prank_winner = np.nan
 
             if muscle_scores:
-                if muscle_scores[1] < muscle_scores[0] and muscle_scores[1] < muscle_scores[2]:  # predicted < default and predicted < sop
+                if muscle_scores[1] <= muscle_scores[0] and muscle_scores[1] < muscle_scores[2]:  # predicted < default and predicted < sop
                     muscle_winner = "predicted"
-                elif muscle_scores[2] < muscle_scores[0] and muscle_scores[2] < muscle_scores[1]:  # sop < default and sop < predicted
+                elif muscle_scores[2] <= muscle_scores[0] and muscle_scores[2] < muscle_scores[1]:  # sop < default and sop < predicted
                     muscle_winner = "sop"
                 elif muscle_scores[0] < muscle_scores[1] and muscle_scores[0] < muscle_scores[2]:  # default < predicted and default < sop
                     muscle_winner = "default"
@@ -392,15 +395,15 @@ class PickMeGameTrio:
                     muscle_winner = "tie(all three)"
                 elif muscle_scores[1] < muscle_scores[0] and muscle_scores[1] == muscle_scores[2]:  # predicted = sop < default
                     muscle_winner = "tie(predicted and sop)"
-                elif muscle_scores[1] == muscle_scores[0] and muscle_scores[1] < muscle_scores[2]:  # predicted = default < sop
-                    # muscle_winner = "tie(predicted and default)"
-                    muscle_winner = "predicted"
-                elif muscle_scores[2] == muscle_scores[0] and muscle_scores[2] < muscle_scores[1]:  # sop = default < predicted
-                    # muscle_winner = "tie(sop and default)"
-                    muscle_winner = "sop"
-                elif muscle_scores[1] == muscle_scores[2] and muscle_scores[0] < muscle_scores[1]:  # sop = default < predicted
-                    # mafft_winner = "tie(sop and predicted)"
-                    muscle_winner = "default"
+                # elif muscle_scores[1] == muscle_scores[0] and muscle_scores[1] < muscle_scores[2]:  # predicted = default < sop
+                #     # muscle_winner = "tie(predicted and default)"
+                #     muscle_winner = "predicted"
+                # elif muscle_scores[2] == muscle_scores[0] and muscle_scores[2] < muscle_scores[1]:  # sop = default < predicted
+                #     # muscle_winner = "tie(sop and default)"
+                #     muscle_winner = "sop"
+                # elif muscle_scores[1] == muscle_scores[2] and muscle_scores[0] < muscle_scores[1]:  # sop = default < predicted
+                #     # mafft_winner = "tie(sop and predicted)"
+                #     muscle_winner = "default"
                 else:
                     print(f"who are you muscle? {muscle_scores}\n")
                     muscle_winner = np.nan
@@ -408,9 +411,9 @@ class PickMeGameTrio:
                 muscle_winner = np.nan
 
             if baliphy_scores:
-                if baliphy_scores[1] < baliphy_scores[0] and baliphy_scores[1] < baliphy_scores[2]:  # predicted < default and predicted < sop
+                if baliphy_scores[1] <= baliphy_scores[0] and baliphy_scores[1] < baliphy_scores[2]:  # predicted < default and predicted < sop
                     baliphy_winner = "predicted"
-                elif baliphy_scores[2] < baliphy_scores[0] and baliphy_scores[2] < baliphy_scores[1]:  # sop < default and sop < predicted
+                elif baliphy_scores[2] <= baliphy_scores[0] and baliphy_scores[2] < baliphy_scores[1]:  # sop < default and sop < predicted
                     baliphy_winner = "sop"
                 elif baliphy_scores[0] < baliphy_scores[1] and baliphy_scores[0] < baliphy_scores[2]:  # default < predicted and default < sop
                     baliphy_winner = "default"
@@ -418,15 +421,15 @@ class PickMeGameTrio:
                     baliphy_winner = "tie(all three)"
                 elif baliphy_scores[1] < baliphy_scores[0] and baliphy_scores[1] == baliphy_scores[2]:  # predicted = sop < default
                     baliphy_winner = "tie(predicted and sop)"
-                elif baliphy_scores[1] == baliphy_scores[0] and baliphy_scores[1] < baliphy_scores[2]:  # predicted = default < sop
-                    # baliphy_winner = "tie(predicted and default)"
-                    baliphy_winner = "predicted"
-                elif baliphy_scores[2] == baliphy_scores[0] and baliphy_scores[2] < baliphy_scores[1]:  # sop = default < predicted
-                    # baliphy_winner = "tie(sop and default)"
-                    baliphy_winner = "sop"
-                elif baliphy_scores[1] == baliphy_scores[2] and baliphy_scores[0] < baliphy_scores[1]:  # sop = default < predicted
-                    # mafft_winner = "tie(sop and predicted)"
-                    baliphy_winner = "default"
+                # elif baliphy_scores[1] == baliphy_scores[0] and baliphy_scores[1] < baliphy_scores[2]:  # predicted = default < sop
+                #     # baliphy_winner = "tie(predicted and default)"
+                #     baliphy_winner = "predicted"
+                # elif baliphy_scores[2] == baliphy_scores[0] and baliphy_scores[2] < baliphy_scores[1]:  # sop = default < predicted
+                #     # baliphy_winner = "tie(sop and default)"
+                #     baliphy_winner = "sop"
+                # elif baliphy_scores[1] == baliphy_scores[2] and baliphy_scores[0] < baliphy_scores[1]:  # sop = default < predicted
+                #     # mafft_winner = "tie(sop and predicted)"
+                #     baliphy_winner = "default"
                 else:
                     print(f"who are you baliphy? {baliphy_scores}\n")
                     baliphy_winner = np.nan

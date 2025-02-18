@@ -54,6 +54,9 @@ class PickMeGameAverage:
             # if not code.startswith(groups[5]):
             #     continue
             code_df = df[df['code1'] == code]
+            substrings = ['original', 'concat']
+            mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
+            code_df = code_df[~mask]
 
 
             # True_score for 'MSA.MAFFT.aln.With_Names'
@@ -83,7 +86,7 @@ class PickMeGameAverage:
             self.default_baliphy_scores.append(default_baliphy_true_score)
 
             # Minimum true_score and filename among MAFFT alternative MSAs
-            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy', 'BALIPHY', 'original']
+            substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy', 'BALIPHY', 'original', 'concat']
             mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
             mafft_df = code_df[~mask]
             # mafft_scores = []
