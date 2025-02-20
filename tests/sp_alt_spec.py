@@ -4,6 +4,7 @@ from pathlib import Path
 from classes.compare_msas import msa_comp_main
 from classes.config import Configuration
 from classes.gap_interval import GapInterval
+from classes.global_alignment import GlobalAlign
 from classes.msa import MSA
 from classes.msa_stats import calc_parsimony, MSAStats
 from classes.neighbor_joining import NeighborJoining
@@ -810,6 +811,28 @@ def test_single_msas():
                                                   WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
 
     calc_single_msas(config)
+
+def test_global_alignment_blosum_affine_gap_case_a():
+    config: Configuration = Configuration(-4, -0.5, 'Blosum62',
+                                          SopCalcTypes.EFFICIENT, 'tests/comparison_files',
+                                          False, False,
+                                          {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                           WeightMethods.CLUSTAL_MID_ROOT,
+                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+    ga = GlobalAlign('PAWHEAE', 'HEAGAWGHEE', config)
+    ga.print_matrix()
+    ga.get_score()
+    res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
+    assert res_seq == [
+        {'seq_a': ['-', '-', '-', 'P', 'A', 'W', 'H', 'E', 'A', 'E'],
+         'seq_b': ['H', 'E', 'A', 'G', 'A', 'W', 'G', 'H', 'E', 'E']},
+        {'seq_a': ['-', '-', '-', 'P', 'A', 'W', '-', 'H', 'E', 'A', 'E'],
+         'seq_b': ['H', 'E', 'A', 'G', 'A', 'W', 'G', 'H', 'E', '-', 'E']},
+        {'seq_a': ['P', '-', '-', '-', 'A', 'W', 'H', 'E', 'A', 'E'],
+         'seq_b': ['H', 'E', 'A', 'G', 'A', 'W', 'G', 'H', 'E', 'E']},
+        {'seq_a': ['P', '-', '-', '-', 'A', 'W', '-', 'H', 'E', 'A', 'E'],
+         'seq_b': ['H', 'E', 'A', 'G', 'A', 'W', 'G', 'H', 'E', '-', 'E']}
+    ]
 
 
 def calc_single_msas(config: Configuration):

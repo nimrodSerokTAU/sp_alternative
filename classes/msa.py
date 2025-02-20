@@ -1,4 +1,5 @@
 from pathlib import Path
+from random import randrange
 
 from classes.msa_stats import MSAStats
 from classes.neighbor_joining import NeighborJoining
@@ -160,5 +161,20 @@ class MSA:
             if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
                 self.seq_weights_options.append(self.get_weight_list(RootingMethods.MIN_DIFFERENTIAL_SUM))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
+
+    def create_alternative_msa(self, alt_msa_i):
+        get_seq_inx_to_realign_a: int = randrange(len(self.seq_names) - 1)
+        get_seq_inx_to_realign_b: int = randrange(get_seq_inx_to_realign_a + 1, len(self.seq_names))
+        seq_a: str = self.sequences[get_seq_inx_to_realign_a]
+        seq_b: str = self.sequences[get_seq_inx_to_realign_b]
+        # TODO: remove all gaps from both?
+        # TODO: align b to a including gaps?
+        seq_a.replace('-','')
+        seq_b.replace('-','')
+
+
+
+
+
 
 

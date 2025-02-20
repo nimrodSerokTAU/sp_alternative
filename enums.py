@@ -14,3 +14,8 @@ class WeightMethods(Enum):
     HENIKOFF_WOG = 'henikoff_without_gaps'
     CLUSTAL_MID_ROOT = 'clustal_mid_root'
     CLUSTAL_DIFFERENTIAL_SUM = 'clustal_differential_sum'
+
+class AffineGapMatrixTypes(Enum):
+    M = 'm'
+    X = 'x'
+    Y = 'y'

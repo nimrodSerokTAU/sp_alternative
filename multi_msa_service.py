@@ -75,6 +75,9 @@ def calc_multiple_msa_sp_scores(config: Configuration):
         else:
             true_msa.build_nj_tree()
         true_msa.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
+        alternative_msas: list[MSA] = []
+        # for alt_msa_i in range(config.number_of_alternatives):
+        #     alternative_msas.append(create_alternative_msa(alt_msa_i, true_msa))
         for inferred_file_name in inferred_file_names:
             msa_name = inferred_file_name if config.is_analyze_per_dir else dir_name
             print(msa_name)
