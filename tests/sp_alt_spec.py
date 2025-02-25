@@ -834,6 +834,81 @@ def test_global_alignment_blosum_affine_gap_case_a():
          'seq_b': ['H', 'E', 'A', 'G', 'A', 'W', 'G', 'H', 'E', '-', 'E']}
     ]
 
+def test_create_alternative_msas_by_realign():
+    aln: list[str] = [
+        'AT-CGC-GG-TT',
+        'ACATG-T-GAAT',
+        'AT-CG--GGATT',
+        'ATC-GA-GG-AT',
+        'TTATGCTGG-A-'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    true_aln: list[str] = [
+        'AT-CGC-GG-TT',
+        'ACATG-TG-AAT',
+        'AT-CG--GGATT',
+        'AT-CGA-GG-AT',
+        'TTATGCTGG-A-'
+    ]
+    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+                                          SopCalcTypes.EFFICIENT, 'comparison_files',
+                                          False, False,
+                                          {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                           WeightMethods.CLUSTAL_MID_ROOT,
+                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+    true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    res = inferred_msa.create_alternative_msas_by_realign(config)
+    msa_list: list[MSA] = []
+    for msa_data in res:
+        alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
+        dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
+        alt_msa.stats.set_my_dpos_dist_from_true(dpos)
+        msa_list.append(alt_msa)
+    dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
+    inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+    dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
+    assert dpos_ratio <= 3
+
+
+def test_create_alternative_msas_by_moving_smallest():
+    aln: list[str] = [
+        'AT-CGC-GG-TT',
+        'ACATG-T-GAAT',
+        'AT-CG--GGATT',
+        'ATC-GA-GG-AT',
+        'TTATGCTGG-A-'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    true_aln: list[str] = [
+        'AT-CGC-GG-TT',
+        'ACATG-TG-AAT',
+        'AT-CG--GGATT',
+        'AT-CGA-GG-AT',
+        'TTATGCTGG-A-'
+    ]
+    # config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    #                                       SopCalcTypes.EFFICIENT, 'comparison_files',
+    #                                       False, False,
+    #                                       {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+    #                                        WeightMethods.CLUSTAL_MID_ROOT,
+    #                                        WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+    true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    res = inferred_msa.create_alternative_msas_by_moving_smallest()
+    msa_list: list[MSA] = []
+    # for msa_data in res:
+    msa_data = res
+    alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
+    dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
+    alt_msa.stats.set_my_dpos_dist_from_true(dpos)
+    msa_list.append(alt_msa)
+    ####################################
+    dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
+    inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+    dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
+    assert dpos_ratio <= 1
+
 
 def calc_single_msas(config: Configuration):
     all_msa_ws: list[list[int]] = []

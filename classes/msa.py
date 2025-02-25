@@ -1,6 +1,9 @@
+from random import shuffle
 from pathlib import Path
 from random import randrange
 
+from classes.config import Configuration
+from classes.global_alignment import GlobalAlign
 from classes.msa_stats import MSAStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
@@ -162,15 +165,86 @@ class MSA:
                 self.seq_weights_options.append(self.get_weight_list(RootingMethods.MIN_DIFFERENTIAL_SUM))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
 
-    def create_alternative_msa(self, alt_msa_i):
+    def create_alternative_msas_by_realign(self, config: Configuration) -> list[list[str]]:
         get_seq_inx_to_realign_a: int = randrange(len(self.seq_names) - 1)
         get_seq_inx_to_realign_b: int = randrange(get_seq_inx_to_realign_a + 1, len(self.seq_names))
         seq_a: str = self.sequences[get_seq_inx_to_realign_a]
         seq_b: str = self.sequences[get_seq_inx_to_realign_b]
-        # TODO: remove all gaps from both?
-        # TODO: align b to a including gaps?
-        seq_a.replace('-','')
-        seq_b.replace('-','')
+        seq_a = seq_a.replace('-','')
+        seq_b = seq_b.replace('-','')
+        ga = GlobalAlign(seq_a, seq_b, config)
+        res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
+        res: list[list[str]] = []
+        for option in res_seq:
+            inx_on_a: int = 0
+            inx_on_msa: int  = 0
+            new_cols_on_msa: list[int] = []
+            while inx_on_a < len(option['seq_a']):
+                if option['seq_a'][inx_on_a] == self.sequences[get_seq_inx_to_realign_a][inx_on_msa]:
+                    inx_on_msa += 1
+                elif self.sequences[get_seq_inx_to_realign_a][inx_on_msa] == '-':
+                    option['seq_a'].insert(inx_on_a, '-')
+                    option['seq_b'].insert(inx_on_a, '-')
+                    inx_on_msa += 1
+                elif option['seq_a'][inx_on_a] == '-':
+                    new_cols_on_msa.append(inx_on_msa)
+                inx_on_a += 1
+            seq_a = ''.join(option['seq_a'])
+            seq_b = ''.join(option['seq_b'])
+            new_msa_seqs: list[str] = []
+            for s in self.sequences:
+                seq = list(s)
+                for gap_inx in new_cols_on_msa:
+                    seq.insert(gap_inx, '-')
+                new_msa_seqs.append(''.join(seq))
+            new_msa_seqs[get_seq_inx_to_realign_a] = seq_a
+            new_msa_seqs[get_seq_inx_to_realign_b] = seq_b
+            res.append(new_msa_seqs)
+        return res
+
+
+    def create_alternative_msas_by_moving_smallest(self) -> list[str] | None:
+        ignored_indices: list[int] = []
+        chars: list[dict] = []
+        partial_seq = {'start': -1, 'length': 0}
+        while len(ignored_indices) < len(self.seq_names):
+            rand_num: int = randrange(len(self.seq_names) - len(ignored_indices))
+            get_seq_inx_to_update: int = rand_num - len([x for x in ignored_indices if x < rand_num])
+            seq: str = self.sequences[get_seq_inx_to_update]
+
+            is_gap: bool = True
+            current_seq = partial_seq.copy()
+            if seq[0] != '-':
+                current_seq['start'] = 0
+                is_gap = False
+
+            for index, c in enumerate(seq):
+                if c == '-':
+                    if not is_gap:
+                        current_seq['length'] = index - current_seq['start']
+                        chars.append(current_seq)
+                        is_gap = True
+                else:
+                    if is_gap:
+                        current_seq = partial_seq.copy()
+                        current_seq['start'] = index
+                        is_gap = False
+            if len(chars) == 1:
+                ignored_indices.append(get_seq_inx_to_update)
+            else:
+                shuffle(chars)
+                chars.sort(key=lambda cp: cp['length'])
+                cp_to_move: dict = chars[0]
+                new_seq_as_list: list[str] = list(seq)
+                index_to_insert: int = cp_to_move['start']
+                del new_seq_as_list[index_to_insert + cp_to_move['length']]
+                new_seq_as_list.insert(index_to_insert, '-')
+                new_seq: str = ''.join(new_seq_as_list)
+                new_msa_seqs = self.sequences.copy()
+                new_msa_seqs[get_seq_inx_to_update] = new_seq
+                return new_msa_seqs
+        return None
+
 
 
 
