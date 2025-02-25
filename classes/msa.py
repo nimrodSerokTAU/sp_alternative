@@ -37,6 +37,10 @@ class MSA:
         self.sequences.append(sequence)
         self.seq_names.append(seq_name)
 
+    def set_sequences_to_me(self, sequences: list[str], seq_names: list[str]):
+        self.sequences = sequences.copy()
+        self.seq_names = seq_names.copy()
+
     def read_me_from_fasta(self, file_path: Path):
         seq: str = ''
         seq_name: str = ''
@@ -122,6 +126,16 @@ class MSA:
         self.rooted_trees[rooting_method.value].calc_seq_w()
         return [self.rooted_trees[rooting_method.value].seq_weight_dict[s_name] for s_name in self.seq_names]
 
+    def set_my_features(self, weights: set[WeightMethods], sop_w_options: list[float], true_tree: UnrootedTree,
+                        dpos: float):
+        self.set_my_alignment_features()
+        self.build_nj_tree()
+        self.calc_seq_weights(weights)
+        if len(sop_w_options) > 0:
+            self.set_w(sop_w_options)
+        self.set_rf_from_true(true_tree)
+        self.stats.set_my_dpos_dist_from_true(dpos)
+
     def compute_seq_w_henikoff_vars(self) -> tuple[list[float], list[float]]:
         seq_len: int = len(self.sequences[0])
         seq_num: int = len(self.sequences)
@@ -203,21 +217,17 @@ class MSA:
         return res
 
 
-    def create_alternative_msas_by_moving_smallest(self) -> list[str] | None:
-        ignored_indices: list[int] = []
-        chars: list[dict] = []
+    def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
+        res_msas: list[list[str]] = []
         partial_seq = {'start': -1, 'length': 0}
-        while len(ignored_indices) < len(self.seq_names):
-            rand_num: int = randrange(len(self.seq_names) - len(ignored_indices))
-            get_seq_inx_to_update: int = rand_num - len([x for x in ignored_indices if x < rand_num])
-            seq: str = self.sequences[get_seq_inx_to_update]
-
+        for seq_inx_to_update in range(len(self.seq_names)):
+            chars: list[dict] = []
+            seq: str = self.sequences[seq_inx_to_update]
             is_gap: bool = True
             current_seq = partial_seq.copy()
             if seq[0] != '-':
                 current_seq['start'] = 0
                 is_gap = False
-
             for index, c in enumerate(seq):
                 if c == '-':
                     if not is_gap:
@@ -229,22 +239,24 @@ class MSA:
                         current_seq = partial_seq.copy()
                         current_seq['start'] = index
                         is_gap = False
-            if len(chars) == 1:
-                ignored_indices.append(get_seq_inx_to_update)
-            else:
-                shuffle(chars)
-                chars.sort(key=lambda cp: cp['length'])
-                cp_to_move: dict = chars[0]
-                new_seq_as_list: list[str] = list(seq)
-                index_to_insert: int = cp_to_move['start']
-                del new_seq_as_list[index_to_insert + cp_to_move['length']]
-                new_seq_as_list.insert(index_to_insert, '-')
-                new_seq: str = ''.join(new_seq_as_list)
-                new_msa_seqs = self.sequences.copy()
-                new_msa_seqs[get_seq_inx_to_update] = new_seq
-                return new_msa_seqs
-        return None
+            if len(chars) > 1:
+                for cp in chars:
+                    new_seq_as_list: list[str] = list(seq)
+                    index_to_insert: int = cp['start']
+                    del new_seq_as_list[index_to_insert + cp['length']]
+                    new_seq_as_list.insert(index_to_insert, '-')
+                    new_seq: str = ''.join(new_seq_as_list)
+                    new_msa_seqs = self.sequences.copy()
+                    new_msa_seqs[seq_inx_to_update] = new_seq
+                    res_msas.append(new_msa_seqs)
+        return res_msas
 
+    def print_me_to_fasta_file(self, dir_path: Path):
+        output_file_path = Path(f'{str(dir_path)}/{self.dataset_name}.fas')
+        with (open(output_file_path, 'w') as outfile):
+            for i, seq in enumerate(self.sequences):
+                print(f'>{self.seq_names[i]}', file=outfile)
+                print(seq, file=outfile)
 
 
 

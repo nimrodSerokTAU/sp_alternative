@@ -701,8 +701,9 @@ def test_mid_point_rooting():
     sp: SPScore = SPScore(config)
     sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count, ge_count = sp.compute_efficient_sp_parts(
         inferred_msa.sequences)
-    inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                        sp_missmatch_count, sp_gpo_count)
+    inferred_msa.set_my_sop_score_parts(sp_score_subs=sp_score_subs, go_score=go_score, sp_score_gap_e=sp_score_gap_e,
+                                        sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count,
+                                        sp_go_count=sp_gpo_count, sp_ge_count=ge_count)
     inferred_msa.build_nj_tree()
     path, max_dist = inferred_msa.tree.longest_path()
     tree = RootedTree.root_tree(inferred_msa.tree, RootingMethods.LONGEST_PATH_MID)
@@ -887,23 +888,18 @@ def test_create_alternative_msas_by_moving_smallest():
         'AT-CGA-GG-AT',
         'TTATGCTGG-A-'
     ]
-    # config: Configuration = Configuration(-10, -0.5, 'Blosum62',
-    #                                       SopCalcTypes.EFFICIENT, 'comparison_files',
-    #                                       False, False,
-    #                                       {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
-    #                                        WeightMethods.CLUSTAL_MID_ROOT,
-    #                                        WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
-    res = inferred_msa.create_alternative_msas_by_moving_smallest()
+    res = inferred_msa.create_alternative_msas_by_moving_one_part()
     msa_list: list[MSA] = []
-    # for msa_data in res:
-    msa_data = res
-    alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
-    dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
-    alt_msa.stats.set_my_dpos_dist_from_true(dpos)
-    msa_list.append(alt_msa)
-    ####################################
+    dpos_list: list[float] = []
+    for inx, msa_data in enumerate(res):
+        print(inx)
+        alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
+        dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
+        alt_msa.stats.set_my_dpos_dist_from_true(dpos)
+        dpos_list.append(dpos)
+        msa_list.append(alt_msa)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
     inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
     dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
