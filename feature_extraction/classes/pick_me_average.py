@@ -274,7 +274,8 @@ class PickMeGameAverage:
                 top_20_baliphy_SoP_scores = []
                 min_baliphy_SoP_filename = np.nan
 
-
+            if 'AATF' in code:
+                continue
             min_true_score_row = code_df.loc[code_df[self.true_score].idxmin()]
             min_true_score_code_filename = min_true_score_row['code']
             min_true_score_value = min_true_score_row[self.true_score]

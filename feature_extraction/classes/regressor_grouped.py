@@ -93,23 +93,22 @@ class BatchGenerator(Sequence):
 
         for msa_id in self.unique_msa_ids:
             try:
-                idx = np.where(self.msa_ids == msa_id)[0]
-                np.random.shuffle(idx)
-                num_samples = len(idx)
-                num_full_batches = num_samples // self.batch_size
-                remaining_samples = num_samples % self.batch_size
-                leaving_out = math.floor(0.5 * num_full_batches)
+                for k in range(8): #testing an option to produce different batch mixes
+                    idx = np.where(self.msa_ids == msa_id)[0]
+                    np.random.shuffle(idx)
+                    num_samples = len(idx)
+                    num_full_batches = num_samples // self.batch_size
+                    remaining_samples = num_samples % self.batch_size
+                    leaving_out = math.floor(0.3 * num_full_batches)
 
-                for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
-                    batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
-                    batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
+                    for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
+                        batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
+                        batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
 
-                if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
-                    remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
-                # np.random.shuffle(remaining_samples_set)
-                # for i in range(len(remaining_samples_set)):
-
-                # np.random.shuffle(batches)
+                    if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
+                        remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
+                    # np.random.shuffle(remaining_samples_set)
+                    # np.random.shuffle(batches)
 
             except Exception as e:
                 print(f"Exception {e}\n")
@@ -185,9 +184,9 @@ class Regressor:
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
         df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
-        # df['aligner'] = df.apply(assign_aligner, axis=1)
-        # df = df[df['aligner'] != 'true'] #removed true MSAs from the data
-        # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."; the aligner column is automatically replaced/removed
+        df['aligner'] = df.apply(assign_aligner, axis=1)
+        df = df[df['aligner'] != 'true'] #removed true MSAs from the data
+        df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."; the aligner column is automatically replaced/removed
 
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
@@ -217,7 +216,7 @@ class Regressor:
         if mode == 2:
             self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'sop_score', 'normalised_sop_score'])
         if mode == 3:
-            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'normalised_sop_score', 'constant_sites_pct', 'n_unique_sites','entropy_mean','entropy_var','entropy_pct_75','av_gaps','msa_len','seq_max_len','seq_min_len','total_gaps','gaps_len_one','gaps_len_three_plus','avg_unique_gap','num_unique_gaps','num_cols_no_gaps','num_cols_1_gap','num_cols_all_gaps_except1','sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio','bl_sum','bl_std','k_mer_10_max','k_mer_10_mean','k_mer_10_var','k_mer_10_pct_95','k_mer_10_pct_90','k_mer_10_norm','k_mer_10_top_10_norm','number_of_gap_segments','number_of_mismatches','henikoff_with_gaps']]
         if mode == 4:
             self.X = df.drop(
                 columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
@@ -276,8 +275,8 @@ class Regressor:
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'normalised_sop_score', 'constant_sites_pct', 'n_unique_sites','entropy_mean','entropy_var','entropy_pct_75','av_gaps','msa_len','seq_max_len','seq_min_len','total_gaps','gaps_len_one','gaps_len_three_plus','avg_unique_gap','num_unique_gaps','num_cols_no_gaps','num_cols_1_gap','num_cols_all_gaps_except1','sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio','bl_sum','bl_std','k_mer_10_max','k_mer_10_mean','k_mer_10_var','k_mer_10_pct_95','k_mer_10_pct_90','k_mer_10_norm','k_mer_10_top_10_norm','number_of_gap_segments','number_of_mismatches','henikoff_with_gaps']]
+            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'normalised_sop_score', 'constant_sites_pct', 'n_unique_sites','entropy_mean','entropy_var','entropy_pct_75','av_gaps','msa_len','seq_max_len','seq_min_len','total_gaps','gaps_len_one','gaps_len_three_plus','avg_unique_gap','num_unique_gaps','num_cols_no_gaps','num_cols_1_gap','num_cols_all_gaps_except1','sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio','bl_sum','bl_std','k_mer_10_max','k_mer_10_mean','k_mer_10_var','k_mer_10_pct_95','k_mer_10_pct_90','k_mer_10_norm','k_mer_10_top_10_norm','number_of_gap_segments','number_of_mismatches','henikoff_with_gaps']]
 
         if mode == 4:
             self.X_train = self.train_df.drop(
@@ -362,9 +361,9 @@ class Regressor:
             weighted_loss = mse_loss * weights
             return weighted_loss
 
-        def weighted_mse_loss(y_true, y_pred):
-            # Simple weight based on the true values
-            weights = K.exp(-y_true)  # Example: Higher weights for lower scores
+        def weighted_mse_loss(y_true, y_pred, factor):
+            weights = K.exp(-y_true)  # Op1: Higher weights for lower scores
+            # weights = 1/(1 + K.exp(factor*(y_true-0.5)))  # Op2: Higher weights for lower scores
             mse_loss = K.mean(weights * K.square(y_true - y_pred))  # Weighted MSE
             return mse_loss
 
@@ -393,14 +392,6 @@ class Regressor:
             # tf.print("Rank Diff:", rank_diff)
 
             return rank_diff
-
-        def spearman_rank_loss(y_true, y_pred):
-            tf.compat.v1.enable_eager_execution()
-            rank_true = tf.argsort(y_true)
-            rank_pred = tf.argsort(y_pred)
-            # tf.print("rank_true:", rank_true)
-            # tf.print("rank_pred:", rank_pred)
-            return 1 - tf.reduce_mean(tf.cast(rank_true == rank_pred, dtype=tf.float32))
 
         @tf.function
         def pairwise_rank_loss(y_true, y_pred, margin=0.0, top_k = 3):
@@ -433,20 +424,17 @@ class Regressor:
             # mse_loss = tf.keras.losses.MSE(y_true, y_pred)
             top_k_rank_loss = rank_loss(y_true, y_pred, top_k)
             # rank_loss = pairwise_rank_loss(y_true, y_pred, margin=1.0, top_k=top_k)
-            # rank_loss = spearman_rank_loss(y_true, y_pred)
             mse_weight = tf.cast(mse_weight, dtype=tf.float32)
             ranking_weight = tf.cast(ranking_weight, dtype=tf.float32)
             top_k_rank_loss = tf.cast(top_k_rank_loss, dtype=tf.float32)
-            # total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
-            # rank_loss = tf.cast(rank_loss, dtype=tf.float32)
-            # total_loss = mse_weight * mse_loss + ranking_weight * rank_loss
             total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
 
             return total_loss
 
         @tf.function
-        def min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=10.0):
+        def min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0):
             # mse_loss = K.mean(K.square(y_true - y_pred))
+            #absolute error
             mse_loss = K.mean(K.abs(y_true - y_pred))
 
             min_true_index = tf.argmin(y_true, axis=0)
@@ -456,6 +444,7 @@ class Regressor:
 
             # min_penalty = tf.maximum(0.0,
             #                          min_pred - min_true)  # penalize if prediction is greater than true minimum
+            # absolute error of top1
             min_penalty = tf.abs(min_pred - min_true)
             # min_penalty = K.square(min_pred - min_true)
 
@@ -495,12 +484,6 @@ class Regressor:
             model.add(BatchNormalization())
             model.add(Dropout(dropout_rate))
 
-            # third hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
-
             model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
 
             optimizer = Adam(learning_rate=learning_rate)
@@ -509,18 +492,17 @@ class Regressor:
             # model.compile(optimizer=optimizer, loss='mean_squared_error')
             # model.compile(optimizer=optimizer, loss='mean_absolute_error')
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
+            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse_loss(y_true, y_pred, factor=7))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=10, mse_weight=1,
-                                                        ranking_weight=8))
+            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=4, mse_weight=0,
+                                                        ranking_weight=50))
             # model.compile(optimizer=optimizer,
-            #               loss=lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=3, mse_weight=1,
-            #                                                              ranking_weight=0.5))
-
-            # model.compile(optimizer=optimizer,
-            #               loss=lambda y_true, y_pred: min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=2.0))
+            #               loss=lambda y_true, y_pred: min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0))
 
             unique_train_codes = self.main_codes_train.unique()
             train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
+            print(f"the training set is: {train_msa_ids} \n")
+            print(f"the validation set is: {val_msa_ids} \n")
             batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
                                              true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, batch_size=batch_size,
                                              validation_split=validation_split, is_validation=False)
@@ -566,6 +548,10 @@ class Regressor:
         model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
         plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
 
+        # substrings = ['original', 'concat']
+        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+        # mask = X_test_scaled_with_names['code'].str.contains('|'.join(substrings), case=False, na=False)
+        # self.X_test_scaled = self.X_test_scaled[~mask]
         loss = model.evaluate(self.X_test_scaled, self.y_test)
         print(f"Test Loss: {loss}")
 

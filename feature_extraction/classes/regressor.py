@@ -405,7 +405,7 @@ class Regressor:
     #     print(f"Mean Squared Error: {mse:.4f}")
     #     return mse
 
-    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l2=1e-4, undersampling = False):
+    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-4, l2=1e-4, undersampling = False):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -485,7 +485,7 @@ class Regressor:
             # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)))
             # model.add(Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(
-                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=l1,l2=l2)))
             # model.add(prune_low_magnitude(
             #     Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
@@ -498,7 +498,7 @@ class Regressor:
             # # # second new hidden
             # model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-5)))
             model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=l1,l2=l2)))
             # model.add(prune_low_magnitude(
             #     Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=l2(1e-5)),
             #     pruning_schedule=pruning_schedule))
@@ -508,7 +508,7 @@ class Regressor:
             model.add(Dropout(dropout_rate))  # Dropout for regularization
 
             # second hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
+            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l1_l2(l1=l1,l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
             # model.add(Activation('relu'))
             model.add(BatchNormalization())
@@ -523,7 +523,7 @@ class Regressor:
             #     Dense(16, kernel_initializer=GlorotUniform(),
             #           kernel_regularizer=regularizers.l2(0.0005)))
             model.add(
-                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+                Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=l1,l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
             # model.add(ELU())
             # model.add(Activation('relu'))
@@ -537,10 +537,10 @@ class Regressor:
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            model.compile(optimizer=optimizer, loss='mean_squared_error')
+            # model.compile(optimizer=optimizer, loss='mean_squared_error')
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
-            # model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=5, mse_weight=0.3,
-            #                                             ranking_weight=0.7))
+            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=8, mse_weight=1,
+                                                        ranking_weight=10))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: quantile_loss(0.02, y_true, y_pred))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
 
