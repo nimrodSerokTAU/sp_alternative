@@ -54,7 +54,7 @@ class PickMeGameAverage:
             # if not code.startswith(groups[5]):
             #     continue
             code_df = df[df['code1'] == code]
-            substrings = ['original', 'concat']
+            substrings = ['original', 'concat', '_alt_']
             mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
             code_df = code_df[~mask]
 

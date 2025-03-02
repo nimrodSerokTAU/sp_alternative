@@ -1,5 +1,9 @@
+from random import shuffle
 from pathlib import Path
+from random import randrange
 
+from classes.config import Configuration
+from classes.global_alignment import GlobalAlign
 from classes.msa_stats import MSAStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
@@ -32,6 +36,10 @@ class MSA:
     def add_sequence_to_me(self, sequence: str, seq_name: str):
         self.sequences.append(sequence)
         self.seq_names.append(seq_name)
+
+    def set_sequences_to_me(self, sequences: list[str], seq_names: list[str]):
+        self.sequences = sequences.copy()
+        self.seq_names = seq_names.copy()
 
     def read_me_from_fasta(self, file_path: Path):
         seq: str = ''
@@ -118,6 +126,16 @@ class MSA:
         self.rooted_trees[rooting_method.value].calc_seq_w()
         return [self.rooted_trees[rooting_method.value].seq_weight_dict[s_name] for s_name in self.seq_names]
 
+    def set_my_features(self, weights: set[WeightMethods], sop_w_options: list[float], true_tree: UnrootedTree,
+                        dpos: float):
+        self.set_my_alignment_features()
+        self.build_nj_tree()
+        self.calc_seq_weights(weights)
+        if len(sop_w_options) > 0:
+            self.set_w(sop_w_options)
+        self.set_rf_from_true(true_tree)
+        self.stats.set_my_dpos_dist_from_true(dpos)
+
     def compute_seq_w_henikoff_vars(self) -> tuple[list[float], list[float]]:
         seq_len: int = len(self.sequences[0])
         seq_num: int = len(self.sequences)
@@ -160,5 +178,89 @@ class MSA:
             if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
                 self.seq_weights_options.append(self.get_weight_list(RootingMethods.MIN_DIFFERENTIAL_SUM))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
+
+    def create_alternative_msas_by_realign(self, config: Configuration) -> list[list[str]]:
+        get_seq_inx_to_realign_a: int = randrange(len(self.seq_names) - 1)
+        get_seq_inx_to_realign_b: int = randrange(get_seq_inx_to_realign_a + 1, len(self.seq_names))
+        seq_a: str = self.sequences[get_seq_inx_to_realign_a]
+        seq_b: str = self.sequences[get_seq_inx_to_realign_b]
+        seq_a = seq_a.replace('-','')
+        seq_b = seq_b.replace('-','')
+        ga = GlobalAlign(seq_a, seq_b, config)
+        res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
+        res: list[list[str]] = []
+        for option in res_seq:
+            inx_on_a: int = 0
+            inx_on_msa: int  = 0
+            new_cols_on_msa: list[int] = []
+            while inx_on_a < len(option['seq_a']):
+                if option['seq_a'][inx_on_a] == self.sequences[get_seq_inx_to_realign_a][inx_on_msa]:
+                    inx_on_msa += 1
+                elif self.sequences[get_seq_inx_to_realign_a][inx_on_msa] == '-':
+                    option['seq_a'].insert(inx_on_a, '-')
+                    option['seq_b'].insert(inx_on_a, '-')
+                    inx_on_msa += 1
+                elif option['seq_a'][inx_on_a] == '-':
+                    new_cols_on_msa.append(inx_on_msa)
+                inx_on_a += 1
+            seq_a = ''.join(option['seq_a'])
+            seq_b = ''.join(option['seq_b'])
+            new_msa_seqs: list[str] = []
+            for s in self.sequences:
+                seq = list(s)
+                for gap_inx in new_cols_on_msa:
+                    seq.insert(gap_inx, '-')
+                new_msa_seqs.append(''.join(seq))
+            new_msa_seqs[get_seq_inx_to_realign_a] = seq_a
+            new_msa_seqs[get_seq_inx_to_realign_b] = seq_b
+            res.append(new_msa_seqs)
+        return res
+
+
+    def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
+        res_msas: list[list[str]] = []
+        partial_seq = {'start': -1, 'length': 0}
+        for seq_inx_to_update in range(len(self.seq_names)):
+            chars: list[dict] = []
+            seq: str = self.sequences[seq_inx_to_update]
+            is_gap: bool = True
+            current_seq = partial_seq.copy()
+            if seq[0] != '-':
+                current_seq['start'] = 0
+                is_gap = False
+            for index, c in enumerate(seq):
+                if c == '-':
+                    if not is_gap:
+                        current_seq['length'] = index - current_seq['start']
+                        chars.append(current_seq)
+                        is_gap = True
+                else:
+                    if is_gap:
+                        current_seq = partial_seq.copy()
+                        current_seq['start'] = index
+                        is_gap = False
+            if len(chars) > 1:
+                for cp in chars:
+                    new_seq_as_list: list[str] = list(seq)
+                    index_to_insert: int = cp['start']
+                    del new_seq_as_list[index_to_insert + cp['length']]
+                    new_seq_as_list.insert(index_to_insert, '-')
+                    new_seq: str = ''.join(new_seq_as_list)
+                    new_msa_seqs = self.sequences.copy()
+                    new_msa_seqs[seq_inx_to_update] = new_seq
+                    res_msas.append(new_msa_seqs)
+        return res_msas
+
+    def print_me_to_fasta_file(self, dir_path: Path):
+        output_file_path = Path(f'{str(dir_path)}/{self.dataset_name}.fas')
+        with (open(output_file_path, 'w') as outfile):
+            for i, seq in enumerate(self.sequences):
+                print(f'>{self.seq_names[i]}', file=outfile)
+                print(seq, file=outfile)
+
+
+
+
+
 
 

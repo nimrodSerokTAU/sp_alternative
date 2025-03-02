@@ -56,7 +56,7 @@ def assign_aligner(row):
     return 'true'
 
 class BatchGenerator(Sequence):
-    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, batch_size, validation_split=0.2, is_validation=False):
+    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3):
         self.features = features
         self.true_labels = np.asarray(true_labels)
         self.msa_ids = true_msa_ids  # TRUE MSA IDs (categorical)
@@ -66,6 +66,8 @@ class BatchGenerator(Sequence):
         self.is_validation = is_validation
         self.val_msa_ids = val_msa_ids
         self.train_msa_ids = train_msa_ids
+        self.repeats = repeats
+        self.mixed_portion = mixed_portion
 
         # np.random.shuffle(self.unique_msa_ids) #can't do that as the order will be different in training and in validation
 
@@ -93,13 +95,13 @@ class BatchGenerator(Sequence):
 
         for msa_id in self.unique_msa_ids:
             try:
-                for k in range(8): #testing an option to produce different batch mixes
+                for k in range(self.repeats): #testing an option to produce different batch mixes
                     idx = np.where(self.msa_ids == msa_id)[0]
                     np.random.shuffle(idx)
                     num_samples = len(idx)
                     num_full_batches = num_samples // self.batch_size
                     remaining_samples = num_samples % self.batch_size
-                    leaving_out = math.floor(0.3 * num_full_batches)
+                    leaving_out = math.floor(self.mixed_portion * num_full_batches)
 
                     for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
                         batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
@@ -162,8 +164,11 @@ class Regressor:
         # self.train_codes, self.test_codes = None, None
 
 
-        df = pd.read_csv(self.features_file)
+        # df = pd.read_csv(self.features_file)
+        # df_extra = pd.read_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_extra900_features_260225.csv")
+        # df = pd.concat([df, df_extra], ignore_index=True)
         # to make sure that all dataset codes are read as strings and not integers
+        df = pd.read_parquet(self.features_file, engine='pyarrow')
         df['code1'] = df['code1'].astype(str)
 
         #filter BALIPHY ONLY
@@ -184,9 +189,9 @@ class Regressor:
         df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
         df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
-        df['aligner'] = df.apply(assign_aligner, axis=1)
-        df = df[df['aligner'] != 'true'] #removed true MSAs from the data
-        df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."; the aligner column is automatically replaced/removed
+        # df['aligner'] = df.apply(assign_aligner, axis=1)
+        # df = df[df['aligner'] != 'true'] #removed true MSAs from the data
+        # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."; the aligner column is automatically replaced/removed
 
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
@@ -216,7 +221,7 @@ class Regressor:
         if mode == 2:
             self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'sop_score', 'normalised_sop_score'])
         if mode == 3:
-            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'normalised_sop_score', 'constant_sites_pct', 'n_unique_sites','entropy_mean','entropy_var','entropy_pct_75','av_gaps','msa_len','seq_max_len','seq_min_len','total_gaps','gaps_len_one','gaps_len_three_plus','avg_unique_gap','num_unique_gaps','num_cols_no_gaps','num_cols_1_gap','num_cols_all_gaps_except1','sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio','bl_sum','bl_std','k_mer_10_max','k_mer_10_mean','k_mer_10_var','k_mer_10_pct_95','k_mer_10_pct_90','k_mer_10_norm','k_mer_10_top_10_norm','number_of_gap_segments','number_of_mismatches','henikoff_with_gaps']]
+            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
         if mode == 4:
             self.X = df.drop(
                 columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
@@ -275,8 +280,8 @@ class Regressor:
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'normalised_sop_score', 'constant_sites_pct', 'n_unique_sites','entropy_mean','entropy_var','entropy_pct_75','av_gaps','msa_len','seq_max_len','seq_min_len','total_gaps','gaps_len_one','gaps_len_three_plus','avg_unique_gap','num_unique_gaps','num_cols_no_gaps','num_cols_1_gap','num_cols_all_gaps_except1','sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio','bl_sum','bl_std','k_mer_10_max','k_mer_10_mean','k_mer_10_var','k_mer_10_pct_95','k_mer_10_pct_90','k_mer_10_norm','k_mer_10_top_10_norm','number_of_gap_segments','number_of_mismatches','henikoff_with_gaps']]
-            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'normalised_sop_score', 'constant_sites_pct', 'n_unique_sites','entropy_mean','entropy_var','entropy_pct_75','av_gaps','msa_len','seq_max_len','seq_min_len','total_gaps','gaps_len_one','gaps_len_three_plus','avg_unique_gap','num_unique_gaps','num_cols_no_gaps','num_cols_1_gap','num_cols_all_gaps_except1','sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio','bl_sum','bl_std','k_mer_10_max','k_mer_10_mean','k_mer_10_var','k_mer_10_pct_95','k_mer_10_pct_90','k_mer_10_norm','k_mer_10_top_10_norm','number_of_gap_segments','number_of_mismatches','henikoff_with_gaps']]
+            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
 
         if mode == 4:
             self.X_train = self.train_df.drop(
@@ -353,7 +358,7 @@ class Regressor:
         print(f"Training set size (final): {self.X_train_scaled.shape}")
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
 
-    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False):
+    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -494,8 +499,8 @@ class Regressor:
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse_loss(y_true, y_pred, factor=7))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=4, mse_weight=0,
-                                                        ranking_weight=50))
+            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
+                                                        ranking_weight=ranking_weight))
             # model.compile(optimizer=optimizer,
             #               loss=lambda y_true, y_pred: min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0))
 
@@ -505,11 +510,11 @@ class Regressor:
             print(f"the validation set is: {val_msa_ids} \n")
             batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
                                              true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, batch_size=batch_size,
-                                             validation_split=validation_split, is_validation=False)
+                                             validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion)
 
             val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
                                            true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids,
-                                           batch_size=batch_size, validation_split=validation_split, is_validation=True)
+                                           batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion)
 
             # Callback 1: early stopping
             early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)

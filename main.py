@@ -9,7 +9,7 @@ from multi_msa_service import calc_multiple_msa_sp_scores
 #                                              SopCalcTypes.EFFICIENT, '/Users/kpolonsky/Downloads/TEST/MSAs_ALL_200K', True, False)
 
 configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                             SopCalcTypes.EFFICIENT, '/Users/kpolonsky/Downloads/COL9A1',  True, False,
+                                             SopCalcTypes.EFFICIENT, '/Users/kpolonsky/Downloads/ACMSD',  True, False,
                                              {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT,
                                               WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
 

@@ -1,9 +1,12 @@
+import os
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.tree import plot_tree, export_text
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, average_precision_score, classification_report, precision_recall_curve, roc_curve
 import matplotlib.pyplot as plt
@@ -70,8 +73,12 @@ class Regressor:
         self.file_codes_test = None
 
 
-        df = pd.read_csv(self.features_file)
+        # df = pd.read_csv(self.features_file)
+        # df_extra = pd.read_csv(
+        #     "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_extra900_features_260225.csv")
+        # df = pd.concat([df, df_extra], ignore_index=True)
         # to make sure that all dataset codes are read as strings and not integers
+        df = pd.read_parquet(self.features_file, engine='pyarrow')
         df['code1'] = df['code1'].astype(str)
 
         # df = df[df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
@@ -322,8 +329,19 @@ class Regressor:
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
 
 
-    def random_forest(self, n_estimators: int = 100, i: int = 0, n_jobs=-1, cv=5) -> float:
-        self.regressor = RandomForestRegressor(n_estimators=n_estimators, n_jobs=n_jobs)
+    def random_forest(self, n_estimators: int = 100, i: int = 0, n_jobs=-1, cv: int = 5, criterion: Literal['poisson', 'squared_error', 'friedman_mse', 'absolute_error'] = "squared_error", bootstrap=True, verbose=0) -> float:
+        '''
+        n_estimators: number of trees
+        i: run number
+        n_jobs = -1 is parallel running with max number multiple workers (default is the same as the number of cores), n_jobs = 4 is define custom number of workers is equal to 4
+        cv: portion of data to be assigned for validation, default is cv=5, that is 1/5=20% of training data is used for validation
+        criterion: loss function, the choice is among 'poisson', 'squared_error', 'friedman_mse', 'absolute_error', default is squared_error
+        bootstrap: boolean value , default is True; True -  means that each tree is trained on a bootstrap sample of the data (a random subset drawn with replacement); False - means that each tree is trained on the entire dataset (no bootstrapping), where each tree sees the entire dataset once
+        verbose: 0 is no progress printed to the console, 1 progress is printed to the console; default is 0
+
+        Returned value: value of MSE between predicted and true values is returned
+        '''
+        self.regressor = RandomForestRegressor(n_estimators=n_estimators, n_jobs=n_jobs, random_state=42, criterion=criterion, bootstrap=bootstrap, verbose=verbose)
 
         cv_scores = cross_val_score(self.regressor, self.X_train_scaled, self.y_train, cv=cv,
                                     scoring='neg_mean_squared_error')
@@ -339,6 +357,27 @@ class Regressor:
 
         y_train_pred = self.regressor.predict(self.X_train_scaled)
         self.y_pred = self.regressor.predict(self.X_test_scaled)
+
+        if not os.path.exists(f"./out/random_forest_trees_{criterion}_{bootstrap}"):
+            os.makedirs(f"./out/random_forest_trees_{criterion}_{bootstrap}")
+
+        for counter, tree in enumerate(self.regressor.estimators_): #export trees as text, each tree in a separate text file
+            tree_rules = export_text(tree, feature_names=[f"Feature {counter + 1}" for i in range(self.X_train_scaled.shape[1])])
+            with open(f"./out/random_forest_trees_{criterion}_{bootstrap}/tree_{counter + 1}.txt", "w") as f:
+                f.write(tree_rules)
+            print(f"Tree {counter + 1} saved as text.")
+
+        # for i, tree in enumerate(self.regressor.estimators_):
+        #     plt.figure(figsize=(20, 10))
+        #     plot_tree(tree, feature_names=[f"Feature {i + 1}" for i in range(self.X_train_scaled.shape[1])], filled=True)
+        #     plt.savefig(f"./out/random_forest_trees_{criterion}_{bootstrap}/tree_{i + 1}.png")
+        #     plt.show()
+        #     plt.close()
+        #     print(f"Tree {i + 1} saved as image.")
+
+        # plt.figure(figsize=(20, 10))
+        # plot_tree(self.regressor.estimators_[0], feature_names=[f"Feature {i + 1}" for i in range(self.X_train_scaled.shape[1])], filled=True)
+        # plt.show()
 
         if self.predicted_measure == "tree_distance":
             self.y_pred = np.round(self.y_pred).astype(int)
@@ -366,46 +405,7 @@ class Regressor:
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
         return mse
 
-    # def gradient_boost(self, n_estimators: int = 100, learning_rate: float = 0.1, max_depth: int = 3) -> float:
-    #     # Create and fit the Gradient Boosting Regressor
-    #     self.regressor = GradientBoostingRegressor(n_estimators=n_estimators, learning_rate=learning_rate, max_depth=max_depth)
-    #     self.regressor.fit(self.X_train, self.y_train)
-    #
-    #     # Make predictions
-    #     self.y_pred = self.regressor.predict(self.X_test)
-    #
-    #     # Evaluate the model
-    #     mse = mean_squared_error(self.y_test, self.y_pred)
-    #     print(f"Mean Squared Error: {mse:.4f}")
-    #     return mse
-
-    # def support_vector(self, kernel: str = 'rbf', c_param: int = 100, gamma: float = 0.1) -> float:
-    #     # Create and fit the Support Vector Regressor
-    #     self.regressor = SVR(kernel=kernel, C=c_param, gamma=gamma)
-    #     self.regressor.fit(self.X_train, self.y_train)
-    #
-    #     # Make predictions
-    #     self.y_pred = self.regressor.predict(self.X_test)
-    #
-    #     # Evaluate the model
-    #     mse = mean_squared_error(self.y_test, self.y_pred)
-    #     print(f"Mean Squared Error: {mse:.4f}")
-    #     return mse
-    #
-    # def k_nearest_neighbors(self, n_neighbors: int = 5) -> float:
-    #     # Create and fit the K-Nearest Neighbors Regressor
-    #     self.regressor = KNeighborsRegressor(n_neighbors=n_neighbors)
-    #     self.regressor.fit(self.X_train, self.y_train)
-    #
-    #     # Make predictions
-    #     self.y_pred = self.regressor.predict(self.X_test)
-    #
-    #     # Evaluate the model
-    #     mse = mean_squared_error(self.y_test, self.y_pred)
-    #     print(f"Mean Squared Error: {mse:.4f}")
-    #     return mse
-
-    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-4, l2=1e-4, undersampling = False):
+    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-4, l2=1e-4, undersampling = False, repeats=1, mixed_portion=0.3):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -463,17 +463,6 @@ class Regressor:
             total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
 
             return total_loss
-
-
-        # Define pruning schedule
-        # pruning_schedule = tfmot.sparsity.keras.PolynomialDecay(
-        #     initial_sparsity=0.0,  # Start with no pruning
-        #     final_sparsity=0.5,  # Final sparsity (50% of weights will be pruned)
-        #     begin_step=200,  # Pruning starts after 2000 steps
-        #     end_step=400,  # Pruning ends after 10000 steps
-        #     frequency=100  # Apply pruning every 100 steps
-        # )
-        # prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
 
 
         # mode for non-negative regression msa_distance task
@@ -555,12 +544,6 @@ class Regressor:
                 factor=0.7,  # Factor by which the learning rate will be reduced
                 min_lr=1e-6  # Lower bound on the learning rate
             )
-
-            # pruning_callbacks = [
-            #     tfmot.sparsity.keras.UpdatePruningStep(),  # Callback to update pruning schedule during training
-            #     early_stopping,
-            #     lr_scheduler
-            # ]
 
             callbacks = [
                 early_stopping,
@@ -912,7 +895,7 @@ class Regressor:
                 'Importance': importances
             })
 
-            top_n = 15
+            top_n = 40
             top_features = importances_df.iloc[indices].head(top_n)
 
             # Plot feature importances
