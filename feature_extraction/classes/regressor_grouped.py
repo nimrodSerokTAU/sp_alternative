@@ -1,4 +1,5 @@
 import math
+import os
 
 import matplotlib
 import numpy as np
@@ -54,6 +55,32 @@ def assign_aligner(row):
         return 'baliphy'
 
     return 'true'
+
+def check_file_type(file_path):
+    _, file_extension = os.path.splitext(file_path)
+    if file_extension == '.parquet':
+        return 'parquet'
+    elif file_extension == '.csv':
+        return 'csv'
+    else:
+        return 'unknown'
+
+def assign_class_label(group):
+    max_sop_row = group.loc[group['sop_score'].idxmax()]
+    sop_dpos = max_sop_row['dpos_dist_from_true']
+    group['class_label'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
+    return group
+
+def assign_class_label_test(group):
+    mask = group['code'].str.contains("concat|_alt", case=False, na=False)
+    group_without_extra = group[~mask]
+    if not group_without_extra.empty:
+        max_sop_row = group_without_extra.loc[group_without_extra['sop_score'].idxmax()]
+        sop_dpos = max_sop_row['dpos_dist_from_true']
+        group['class_label_test'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
+    else:
+        group['class_label_test'] = np.nan
+    return group
 
 class BatchGenerator(Sequence):
     def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3):
@@ -168,8 +195,20 @@ class Regressor:
         # df_extra = pd.read_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_extra900_features_260225.csv")
         # df = pd.concat([df, df_extra], ignore_index=True)
         # to make sure that all dataset codes are read as strings and not integers
-        df = pd.read_parquet(self.features_file, engine='pyarrow')
+        # df = pd.read_parquet(self.features_file, engine='pyarrow')
+        file_type = check_file_type(self.features_file)
+        if file_type == 'parquet':
+            df = pd.read_parquet(self.features_file, engine='pyarrow')
+        elif file_type =='csv':
+            df = pd.read_csv(self.features_file)
+        else:
+            print(f"features file is of unknown format\n")
+
         df['code1'] = df['code1'].astype(str)
+        df = df.groupby('code1').apply(assign_class_label)
+        df = df.reset_index(drop=True)
+        df = df.groupby('code1').apply(assign_class_label_test)
+        df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_label.csv', index=False)
 
         #filter BALIPHY ONLY
         # df = df[df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
@@ -186,8 +225,8 @@ class Regressor:
 
         # add normalized_rf
         df["normalized_rf"] = df['rf_from_true']/(df['taxa_num']-1)
-        df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
-        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
+        # df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
+        # df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
         # df['aligner'] = df.apply(assign_aligner, axis=1)
         # df = df[df['aligner'] != 'true'] #removed true MSAs from the data
@@ -196,12 +235,12 @@ class Regressor:
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
 
-        class_label2_counts_train = df['class_label2'].dropna().value_counts()
-        print(class_label2_counts_train)
+        # class_label2_counts_train = df['class_label2'].dropna().value_counts()
+        # print(class_label2_counts_train)
 
         df = df.dropna()
 
-        unique_code1 = df['code1'].unique()
+        # unique_code1 = df['code1'].unique()
         # encoder = OneHotEncoder(sparse=False)
         # encoded_msa_ids = encoder.fit_transform(unique_code1.reshape(-1, 1))
         # df['true_msa_ids_embed'] = encoded_msa_ids
@@ -217,11 +256,12 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test'])
         if mode == 2:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'sop_score', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score'])
         if mode == 3:
-            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            # self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X = df[['sop_score']]
         if mode == 4:
             self.X = df.drop(
                 columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
@@ -242,8 +282,9 @@ class Regressor:
             print("Correlated features to drop:", to_drop)
             self.X = self.X.drop(columns=to_drop)
 
-        # Split the unique 'code1' into training and test sets
-        train_code1, test_code1 = train_test_split(unique_code1, test_size=0.2)
+        unique_code1 = df['code1'].unique()
+
+        train_code1, test_code1 = train_test_split(unique_code1, test_size=test_size, random_state=42)
         print(f"the training set is: {train_code1} \n")
         print(f"the testing set is: {test_code1} \n")
 
@@ -256,32 +297,34 @@ class Regressor:
         class_label_counts_train = self.train_df['class_label'].dropna().value_counts()
         print(class_label_counts_train)
 
-        class_label2_counts_train = self.train_df['class_label2'].dropna().value_counts()
-        print(class_label2_counts_train)
+        # class_label2_counts_train = self.train_df['class_label2'].dropna().value_counts()
+        # print(class_label2_counts_train)
 
         class_label_counts_test = self.test_df['class_label'].dropna().value_counts()
         print(class_label_counts_test)
 
-        class_label2_counts_test = self.test_df['class_label2'].dropna().value_counts()
-        print(class_label2_counts_test)
+        # class_label2_counts_test = self.test_df['class_label2'].dropna().value_counts()
+        # print(class_label2_counts_test)
 
 
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test'])
         if mode == 2:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label2', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label2', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            # self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            # self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X_train = self.train_df[['sop_score']]
+            self.X_test = self.test_df[['sop_score']]
 
         if mode == 4:
             self.X_train = self.train_df.drop(
@@ -322,7 +365,7 @@ class Regressor:
 
         self.main_codes_train = self.train_df['code1']
         self.file_codes_train = self.train_df['code']
-        class_weights = compute_class_weight('balanced', classes=np.unique(self.train_df['class_label2']), y=self.train_df['class_label2'])
+        class_weights = compute_class_weight('balanced', classes=np.unique(self.train_df['class_label']), y=self.train_df['class_label'])
         self.weights = dict(enumerate(class_weights))
         print(self.weights)
         self.main_codes_test = self.test_df['code1']
@@ -357,6 +400,30 @@ class Regressor:
 
         print(f"Training set size (final): {self.X_train_scaled.shape}")
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
+
+        # writing train set into csv
+        x_train_scaled_to_save = pd.DataFrame(self.X_train_scaled)
+        x_train_scaled_to_save.columns = self.X_train.columns
+        x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
+        x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label_test'] = self.y_train.reset_index(drop=True)
+        x_train_scaled_to_save.to_csv(
+            '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_scaled.csv', index=False)
+        self.train_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_unscaled.csv',
+                             index=False)
+
+        # writing test set into csv
+        x_test_scaled_to_save = pd.DataFrame(self.X_test_scaled)
+        x_test_scaled_to_save.columns = self.X_test.columns
+        x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
+        x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
+        x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True)
+        x_test_scaled_to_save['class_label_test'] = self.y_test.reset_index(drop=True)
+        x_test_scaled_to_save.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_scaled.csv',
+                                     index=False)
+        self.test_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_unscaled.csv',
+                            index=False)
 
     def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50):
         history = None
@@ -494,13 +561,13 @@ class Regressor:
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            # model.compile(optimizer=optimizer, loss='mean_squared_error')
+            model.compile(optimizer=optimizer, loss='mean_squared_error')
             # model.compile(optimizer=optimizer, loss='mean_absolute_error')
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse_loss(y_true, y_pred, factor=7))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
-                                                        ranking_weight=ranking_weight))
+            # model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
+            #                                             ranking_weight=ranking_weight))
             # model.compile(optimizer=optimizer,
             #               loss=lambda y_true, y_pred: min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0))
 
@@ -701,3 +768,214 @@ class Regressor:
             plt.savefig(fname=f'./out/features_importances_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
             plt.show()
             plt.close()
+
+    def dl_classifier(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50, threshold=0.5):
+
+        # def weighted_binary_crossentropy(w0=1.0, w1=1.0):
+        #     def loss(y_true, y_pred):
+        #         epsilon = tf.keras.backend.epsilon()
+        #         y_pred = tf.clip_by_value(y_pred, epsilon, 1. - epsilon)  # Prevent log(0)
+        #
+        #         # Compute the binary cross-entropy loss with weights
+        #         loss = - (w1 * y_true * tf.keras.backend.log(y_pred) +
+        #                   2 * w0 * (1 - y_true) * tf.keras.backend.log(1 - y_pred))
+        #
+        #         return tf.reduce_mean(loss)  # Mean loss over the batch
+        #
+        #     return loss
+
+        def weighted_binary_crossentropy(w0=1.0, w1=1.0):
+            def loss(y_true, y_pred):
+                loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
+                weights = y_true * w1 + (1 - y_true) * w0 #would it help me to make class1 5 times more important?
+                return tf.reduce_mean(loss_fn(y_true, y_pred) * weights)
+
+            return loss
+
+
+        model = Sequential()
+        model.add(Input(shape=(self.X_train_scaled.shape[1],)))
+
+        # first hidden
+        model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+        # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+        model.add(Activation('relu'))
+        # model.add(ELU())
+        model.add(BatchNormalization())
+        model.add(Dropout(dropout_rate))  # Dropout for regularization
+
+        # second hidden
+        model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+        # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
+        model.add(Activation('relu'))
+        model.add(BatchNormalization())
+        model.add(Dropout(dropout_rate))  # Dropout for regularization
+
+        # third hidden
+        model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+        # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
+        # model.add(ELU())
+        model.add(Activation('relu'))
+        model.add(BatchNormalization())
+        model.add(Dropout(dropout_rate))  # Dropout for regularization
+
+        model.add(Dense(1, activation='sigmoid'))  # limits output to 0 to 1 range
+
+
+        class_weights = compute_class_weight('balanced', classes=np.unique(self.y_train), y=self.y_train)
+        class_weight_dict = dict(enumerate(class_weights))
+        print(class_weight_dict)
+
+        optimizer = Adam(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=weighted_binary_crossentropy(w0=class_weight_dict[0], w1=class_weight_dict[1]),
+                      metrics=['accuracy', metrics.AUC(), metrics.AUC(name='auc_weighted')])
+        # model.compile(optimizer=optimizer, loss='binary_crossentropy',
+        #               metrics=['accuracy', metrics.AUC(), metrics.AUC(name='auc_weighted')])
+
+
+        unique_train_codes = self.main_codes_train.unique()
+        train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
+        print(f"the training set is: {train_msa_ids} \n")
+        print(f"the validation set is: {val_msa_ids} \n")
+        batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
+                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, batch_size=batch_size,
+                                         validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion)
+
+        val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
+                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids,
+                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion)
+
+
+        # 1. Implement early stopping
+        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+        # 2. learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(
+            monitor='val_loss',  # Metric to monitor
+            patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
+            verbose=1,  # Print messages when learning rate is reduced
+            factor=0.7,  # Factor by which the learning rate will be reduced
+            min_lr=1e-5  # Lower bound on the learning rate
+        )
+        callbacks = [early_stopping, lr_scheduler]
+        history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
+                            callbacks=callbacks)
+        # history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler])
+
+        plot_model(model, to_file=f'./out/classifier_model_architecture_{i}_mode{self.mode}_{self.predicted_measure}.png',
+                   show_shapes=True, show_layer_names=True,
+                   show_layer_activations=True)
+        model.save(f'./out/classifer_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
+        plot_model(model, to_file='./out/classifier_model_architecture.dot', show_shapes=True, show_layer_names=True)
+
+        plt.plot(history.history['loss'], label='Training Loss')
+        plt.plot(history.history['val_loss'], label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+
+        # Set integer ticks on the x-axis
+        epochs = range(1, len(history.history['loss']) + 1)  # Integer epoch numbers
+        plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
+
+        plt.legend()
+        plt.savefig(fname=f'./out/classification_loss_graph_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
+        plt.show()
+        plt.close()
+
+        self.y_prob = model.predict(self.X_test_scaled).flatten()
+
+        if self.y_prob is not None:
+            auc = roc_auc_score(self.y_test, self.y_prob)
+            print(f"AUC-ROC: {auc:.4f}")
+            auc_pr = average_precision_score(self.y_test, self.y_prob)
+            print(f"AUC-PR: {auc_pr:.4f}")
+
+        self.y_pred = (self.y_prob >= threshold).astype(int)
+        print(classification_report(self.y_test, self.y_pred))
+
+        # explain features importance
+        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+        # explainer = shap.Explainer(model, X_test_scaled_with_names)
+        # shap_values = explainer(X_test_scaled_with_names)
+        # joblib.dump(explainer,
+        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        # joblib.dump(shap_values,
+        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+
+        # Create a DataFrame
+        df_res = pd.DataFrame({
+            'code1': self.main_codes_test,
+            'code': self.file_codes_test,
+            'predicted_score': self.y_pred,
+            'probabilities': self.y_prob
+        })
+
+        # Save the DataFrame to a CSV file
+        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
+
+        # Confusion Matrix
+        cm = confusion_matrix(self.y_test, self.y_pred)
+        print("Confusion Matrix:")
+        print(cm)
+
+        # Plot Confusion Matrix
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Pred: 0', 'Pred: 1'],
+                    yticklabels=['True: 0', 'True: 1'])
+        plt.title('Confusion Matrix')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.savefig(fname=f'./out/confusion_matrix.png', format='png')
+        plt.show()
+
+        # Plot precision-recall curve
+        precision, recall, thresholds = precision_recall_curve(self.y_test, self.y_prob)
+        target_thresholds = [0.3, 0.4, 0.5, 0.52, 0.55, 0.57, 0.6, 0.7]
+        plt.plot(recall, precision, color='b', lw=2)
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title('Precision-Recall Curve')
+
+
+        for target_threshold in target_thresholds:
+            threshold_idx = (abs(thresholds - target_threshold)).argmin()
+            threshold_recall = recall[threshold_idx]
+            threshold_precision = precision[threshold_idx]
+            plt.scatter(threshold_recall, threshold_precision, label=f'Threshold {target_threshold}', s=100, marker='x')
+
+        plt.legend()
+        plt.savefig(fname=f'./out/precision_recall.png', format='png')
+        plt.show()
+
+        roc_auc = roc_auc_score(self.y_test, self.y_prob)
+        fpr, tpr, _ = roc_curve(self.y_test, self.y_prob)
+
+        # Plot ROC curve
+        plt.figure()
+        plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+        plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic (ROC)')
+        plt.legend(loc="lower right")
+        plt.savefig(fname=f'./out/ROC_curve.png', format='png')
+        plt.show()
+
+        mask = self.file_codes_test.str.contains("concat|_alt", regex=True)
+        self.y_pred_filtered = self.y_pred[~mask]
+        self.y_prob_filtered = self.y_prob[~mask]
+        self.y_test_filtered = self.y_test[~mask]
+
+        # Confusion Matrix #2
+        cm = confusion_matrix(self.y_test_filtered, self.y_pred_filtered)
+        print("Confusion Matrix:")
+        print(cm)
+
+        # Plot Confusion Matrix
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Pred: 0', 'Pred: 1'],
+                    yticklabels=['True: 0', 'True: 1'])
+        plt.title('Confusion Matrix2')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.savefig(fname=f'./out/confusion_matrix2.png', format='png')
+        plt.show()
+
+        return auc

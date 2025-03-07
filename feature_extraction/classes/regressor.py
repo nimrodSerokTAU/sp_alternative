@@ -53,11 +53,38 @@ def assign_aligner(row):
 
     return 'true'
 
+def check_file_type(file_path):
+    _, file_extension = os.path.splitext(file_path)
+    if file_extension == '.parquet':
+        return 'parquet'
+    elif file_extension == '.csv':
+        return 'csv'
+    else:
+        return 'unknown'
+
+# def assign_class_label(group, test):
+def assign_class_label(group):
+    max_sop_row = group.loc[group['sop_score'].idxmax()]
+    sop_dpos = max_sop_row['dpos_dist_from_true']
+    group['class_label'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
+    return group
+
+def assign_class_label_test(group):
+    mask = group['code'].str.contains("concat|_alt", case=False, na=False)
+    group_without_extra = group[~mask]
+    if not group_without_extra.empty:
+        max_sop_row = group_without_extra.loc[group_without_extra['sop_score'].idxmax()]
+        sop_dpos = max_sop_row['dpos_dist_from_true']
+        group['class_label_test'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
+    else:
+        group['class_label_test'] = np.nan
+    return group
+
 class Regressor:
     '''
-    features_file: file with all features and labels
+    features_file: file with all features and labels in csv or parquet format
     test_size: portion of the codes to be separated into a test set; all MSAs for that specific code would be on the same side of the train-test split
-    mode: 1 is all features, 2 is all except SoP features, 3 is only 2 SoP features'''
+    mode: 1 is all features, 2 is all except SoP features, 3 chosen 9 features'''
     def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False, predicted_measure: Literal['msa_distance', 'tree_distance', 'class_label'] = 'msa_distance' ,i=0) -> None:
         self.features_file = features_file
         self.test_size = test_size
@@ -78,9 +105,21 @@ class Regressor:
         #     "/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/orthomam_extra900_features_260225.csv")
         # df = pd.concat([df, df_extra], ignore_index=True)
         # to make sure that all dataset codes are read as strings and not integers
-        df = pd.read_parquet(self.features_file, engine='pyarrow')
-        df['code1'] = df['code1'].astype(str)
+        file_type = check_file_type(self.features_file)
+        if file_type == 'parquet':
+            df = pd.read_parquet(self.features_file, engine='pyarrow')
+        elif file_type =='csv':
+            df = pd.read_csv(self.features_file)
+        else:
+            print(f"features file is of unknown format\n")
 
+        df['code1'] = df['code1'].astype(str)
+        df = df.groupby('code1').apply(assign_class_label)
+        df = df.reset_index(drop=True)
+        df = df.groupby('code1').apply(assign_class_label_test)
+        df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_label.csv', index=False)
+
+        # if I want to choose only MSAs from one aligner
         # df = df[df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
         # df = df[df['code'].str.contains('prank', case=False, na=False, regex=True)]
         # df = df[~df['code'].str.contains('prank|bali_phy|BALIPHY', case=False, na=False, regex=True)]
@@ -95,8 +134,13 @@ class Regressor:
 
         # add normalized_rf
         df["normalized_rf"] = df['rf_from_true']/(df['taxa_num']-1)
-        df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
-        df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
+        # df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
+        # df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
+
+
+        df['sp_ge_count_norm'] = df['sp_ge_count']/(df['msa_len'])
+        df['sp_score_subs_norm'] = df['sp_score_subs']/(df['msa_len'])
+        df['number_of_gap_segments_norm'] = df['number_of_gap_segments']/(df['msa_len'])
 
         # df['aligner'] = df.apply(assign_aligner, axis=1)
         # df = df[df['aligner'] != 'true']
@@ -106,8 +150,8 @@ class Regressor:
         class_label_counts = df['class_label'].dropna().value_counts()
         print(class_label_counts)
 
-        class_label2_counts_train = df['class_label2'].dropna().value_counts()
-        print(class_label2_counts_train)
+        # class_label2_counts_train = df['class_label2'].dropna().value_counts()
+        # print(class_label2_counts_train)
 
         # Handle missing values (if any)
         # Example: Filling missing values with the mean (for numerical columns)
@@ -132,18 +176,19 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test'])
             # self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 features of SoP
         # if mode == 2:
         #     self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'sp_score_subs_norm', 'sp_score_gap_e_norm',
         #     'sp_match_ratio', 'sp_missmatch_ratio'])
         if mode == 2:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'sop_score', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score'])
 
         # only 2 features of SoP
         if mode == 3:
-            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'sp_ge_count_norm', 'sp_score_subs_norm', 'number_of_gap_segments_norm', 'normalised_sop_score', 'msa_len']]
+            # self.X = df[['sop_score']]
 
         if mode == 4: #test removing features
             self.X = df.drop(
@@ -162,26 +207,17 @@ class Regressor:
 
         if remove_correlated_features:
             correlation_matrix = self.X.corr().abs()
-
-            # Create a mask to select upper triangle of the correlation matrix
             upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
-
-            # Get columns to drop based on correlation threshold
             to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.9)]
-
             print(to_drop)
-
-            # Drop correlated columns
             self.X = self.X.drop(columns=to_drop)
-
             print(self.X)
 
 
-        # Get unique 'code1' values
         unique_code1 = df['code1'].unique()
 
         # Split the unique 'code1' into training and test sets
-        train_code1, test_code1 = train_test_split(unique_code1, test_size=0.2)
+        train_code1, test_code1 = train_test_split(unique_code1, test_size=self.test_size)
         print(f"the training set is: {train_code1} \n")
         print(f"the testing set is: {test_code1} \n")
 
@@ -192,22 +228,22 @@ class Regressor:
         class_label_counts_train = self.train_df['class_label'].dropna().value_counts()
         print(class_label_counts_train)
 
-        class_label2_counts_train = self.train_df['class_label2'].dropna().value_counts()
-        print(class_label2_counts_train)
+        # class_label2_counts_train = self.train_df['class_label2'].dropna().value_counts()
+        # print(class_label2_counts_train)
 
         class_label_counts_test = self.test_df['class_label'].dropna().value_counts()
         print(class_label_counts_test)
 
-        class_label2_counts_test = self.test_df['class_label2'].dropna().value_counts()
-        print(class_label2_counts_test)
+        # class_label2_counts_test = self.test_df['class_label2'].dropna().value_counts()
+        # print(class_label2_counts_test)
 
 
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label2', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test'])
             # self.X_train =self.train_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
             # self.X_test = self.test_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 sop
@@ -220,15 +256,16 @@ class Regressor:
         #     'sp_match_ratio', 'sp_missmatch_ratio'])
         if mode == 2:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label2', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label2', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-
+            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'sp_ge_count_norm', 'sp_score_subs_norm', 'number_of_gap_segments_norm', 'normalised_sop_score', 'msa_len']]
+            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score', 'sp_ge_count_norm', 'sp_score_subs_norm', 'number_of_gap_segments_norm', 'normalised_sop_score', 'msa_len']]
+            # self.X_train = self.train_df[['sop_score']]
+            # self.X_test = self.test_df[['sop_score']]
 
         if mode == 4:
             self.X_train = self.train_df.drop(
@@ -260,10 +297,10 @@ class Regressor:
 
         self.scaler = MinMaxScaler()
         # scaler = StandardScaler()
-        # self.X_train_scaled = self.X_train
-        # self.X_test_scaled = self.X_test
-        self.X_train_scaled = self.scaler.fit_transform(self.X_train)
-        self.X_test_scaled = self.scaler.transform(self.X_test)
+        self.X_train_scaled = self.X_train
+        self.X_test_scaled = self.X_test
+        # self.X_train_scaled = self.scaler.fit_transform(self.X_train)
+        # self.X_test_scaled = self.scaler.transform(self.X_test)
 
         # saving the scaler that was used for training
         # joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
@@ -271,7 +308,7 @@ class Regressor:
 
         self.main_codes_train = self.train_df['code1']
         self.file_codes_train = self.train_df['code']
-        class_weights = compute_class_weight('balanced', classes=np.unique(self.train_df['class_label2']), y=self.train_df['class_label2'])
+        class_weights = compute_class_weight('balanced', classes=np.unique(self.train_df['class_label']), y=self.train_df['class_label'])
         self.weights = dict(enumerate(class_weights))
         print(self.weights)
         self.main_codes_test = self.test_df['code1']
@@ -293,7 +330,7 @@ class Regressor:
         self.y_train = self.train_df[true_score_name]
         self.y_test = self.test_df[true_score_name]
 
-        self.binary_feature = self.train_df['class_label'].astype('float64')
+        # self.binary_feature = self.train_df['class_label'].astype('float64')
         # self.binary_feature_scaled = self.scaler.transform(self.y_train)
         # self.binary_feature_scaled = self.binary_feature_scaled.astype('float64')
 
@@ -328,8 +365,27 @@ class Regressor:
         print(f"Training set size (final): {self.X_train_scaled.shape}")
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
 
+        #writing train set into csv
+        x_train_scaled_to_save = pd.DataFrame(self.X_train_scaled)
+        x_train_scaled_to_save.columns = self.X_train.columns
+        x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
+        x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label_test'] = self.y_train.reset_index(drop=True)
+        x_train_scaled_to_save.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_scaled.csv', index=False)
+        self.train_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_unscaled.csv', index=False)
 
-    def random_forest(self, n_estimators: int = 100, i: int = 0, n_jobs=-1, cv: int = 5, criterion: Literal['poisson', 'squared_error', 'friedman_mse', 'absolute_error'] = "squared_error", bootstrap=True, verbose=0) -> float:
+        # writing test set into csv
+        x_test_scaled_to_save = pd.DataFrame(self.X_test_scaled)
+        x_test_scaled_to_save.columns = self.X_test.columns
+        x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
+        x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
+        x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True)
+        x_test_scaled_to_save['class_label_test'] = self.y_test.reset_index(drop=True)
+        x_test_scaled_to_save.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_scaled.csv', index=False)
+        self.test_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_unscaled.csv', index=False)
+
+    def random_forest(self, n_estimators: int = 100, i: int = 0, n_jobs=-1, cv: int = 5, criterion: Literal['poisson', 'squared_error', 'friedman_mse', 'absolute_error'] = "squared_error", bootstrap=True, verbose=0, random_state=None) -> float:
         '''
         n_estimators: number of trees
         i: run number
@@ -341,7 +397,7 @@ class Regressor:
 
         Returned value: value of MSE between predicted and true values is returned
         '''
-        self.regressor = RandomForestRegressor(n_estimators=n_estimators, n_jobs=n_jobs, random_state=42, criterion=criterion, bootstrap=bootstrap, verbose=verbose)
+        self.regressor = RandomForestRegressor(n_estimators=n_estimators, n_jobs=n_jobs, random_state=random_state, criterion=criterion, bootstrap=bootstrap, verbose=verbose)
 
         cv_scores = cross_val_score(self.regressor, self.X_train_scaled, self.y_train, cv=cv,
                                     scoring='neg_mean_squared_error')
@@ -358,12 +414,13 @@ class Regressor:
         y_train_pred = self.regressor.predict(self.X_train_scaled)
         self.y_pred = self.regressor.predict(self.X_test_scaled)
 
-        if not os.path.exists(f"./out/random_forest_trees_{criterion}_{bootstrap}"):
-            os.makedirs(f"./out/random_forest_trees_{criterion}_{bootstrap}")
+        if not os.path.exists(f"./out/random_forest_trees_{criterion}_{bootstrap}_{self.X_train_scaled.shape[1]}_features"):
+            os.makedirs(f"./out/random_forest_trees_{criterion}_{bootstrap}_{self.X_train_scaled.shape[1]}_features")
 
         for counter, tree in enumerate(self.regressor.estimators_): #export trees as text, each tree in a separate text file
-            tree_rules = export_text(tree, feature_names=[f"Feature {counter + 1}" for i in range(self.X_train_scaled.shape[1])])
-            with open(f"./out/random_forest_trees_{criterion}_{bootstrap}/tree_{counter + 1}.txt", "w") as f:
+            # tree_rules = export_text(tree, feature_names=[f"Feature {counter + 1}" for counter in range(self.X_train_scaled.shape[1])])
+            tree_rules = export_text(tree, feature_names=self.X_train.columns)
+            with open(f"./out/random_forest_trees_{criterion}_{bootstrap}_{self.X_train_scaled.shape[1]}_features/tree_{counter + 1}.txt", "w") as f:
                 f.write(tree_rules)
             print(f"Tree {counter + 1} saved as text.")
 
@@ -382,10 +439,10 @@ class Regressor:
         if self.predicted_measure == "tree_distance":
             self.y_pred = np.round(self.y_pred).astype(int)
 
-        train_accuracy = mean_squared_error(self.y_train, y_train_pred)
-        test_accuracy = mean_squared_error(self.y_test, self.y_pred)
-        print(f"Training Accuracy: {train_accuracy:.4f}")
-        print(f"Test Accuracy: {test_accuracy:.4f}")
+        train_mse = mean_squared_error(self.y_train, y_train_pred)
+        test_mse = mean_squared_error(self.y_test, self.y_pred)
+        print(f"Training MSE: {train_mse:.4f}")
+        print(f"Test MSE: {test_mse:.4f}")
 
         df_res = pd.DataFrame({
             'code1': self.main_codes_test,
@@ -405,7 +462,7 @@ class Regressor:
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
         return mse
 
-    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-4, l2=1e-4, undersampling = False, repeats=1, mixed_portion=0.3):
+    def deep_learning(self, i=0, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-4, l2=1e-4, undersampling = False, repeats=1, mixed_portion=0.3, top_k=4, mse_weight=0, ranking_weight=50):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -526,10 +583,10 @@ class Regressor:
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            # model.compile(optimizer=optimizer, loss='mean_squared_error')
+            model.compile(optimizer=optimizer, loss='mean_squared_error')
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=8, mse_weight=1,
-                                                        ranking_weight=10))
+            # model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=8, mse_weight=1,
+            #                                             ranking_weight=10))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: quantile_loss(0.02, y_true, y_pred))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
 
@@ -911,7 +968,7 @@ class Regressor:
             plt.show()
             plt.close()
 
-    def random_forest_classification(self, n_estimators: int = 100, i: int = 0) -> float:
+    def random_forest_classification(self, n_estimators: int = 100, i: int = 0, verbose:int = 1, random_state:int = 42, threshold:float = 0.5) -> float:
 
         # class_weights = compute_class_weight('balanced', classes=np.unique(self.y_train), y=self.y_train)
         # class_weight_dict = dict(enumerate(class_weights))
@@ -920,17 +977,27 @@ class Regressor:
         # self.regressor = RandomForestClassifier(n_estimators=n_estimators, class_weight=class_weight_dict, random_state=42)
         # self.regressor.fit(self.X_train_scaled, self.y_train)
 
-
-        undersample = RandomUnderSampler(sampling_strategy='auto', random_state=42)
-        self.X_train_resampled, self.y_train_resampled = undersample.fit_resample(self.X_train_scaled, self.y_train)
-        self.regressor = RandomForestClassifier(n_estimators=n_estimators, class_weight='balanced', random_state=42)
-        self.regressor.fit(self.X_train_resampled, self.y_train_resampled)
+        # undersample = RandomUnderSampler(sampling_strategy='auto', random_state=42)
+        # self.X_train_resampled, self.y_train_resampled = undersample.fit_resample(self.X_train_scaled, self.y_train)
+        self.regressor = RandomForestClassifier(n_estimators=n_estimators, class_weight='balanced', verbose=verbose, random_state=random_state)
+        # self.regressor.fit(self.X_train_resampled, self.y_train_resampled)
+        self.regressor.fit(self.X_train_scaled, self.y_train)
 
         # Make predictions
         # y_train_pred = self.regressor.predict(self.X_train)
         # self.y_pred = self.regressor.predict(self.X_test_scaled)
         self.y_prob = self.regressor.predict_proba(self.X_test_scaled)[:, 1]  # Probability for class 1
-        self.y_pred = (self.y_prob > 0.7).astype(int)
+        self.y_pred = (self.y_prob > threshold).astype(int)
+
+        if not os.path.exists(f"./out/random_forest_classifier_trees_{self.X_train_scaled.shape[1]}_features"):
+            os.makedirs(f"./out/random_forest_classifier_trees_{self.X_train_scaled.shape[1]}_features")
+
+        for counter, tree in enumerate(self.regressor.estimators_): #export trees as text, each tree in a separate text file
+            # tree_rules = export_text(tree, feature_names=[f"Feature {counter + 1}" for counter in range(self.X_train_scaled.shape[1])])
+            tree_rules = export_text(tree, feature_names=self.X_train.columns)
+            with open(f"./out/random_forest_classifier_trees_{self.X_train_scaled.shape[1]}_features/tree_{counter + 1}.txt", "w") as f:
+                f.write(tree_rules)
+            print(f"Tree {counter + 1} saved as text.")
 
         if self.y_prob is not None:
             auc = roc_auc_score(self.y_test, self.y_prob)
@@ -981,17 +1048,30 @@ class Regressor:
         plt.title('Confusion Matrix')
         plt.xlabel('Predicted')
         plt.ylabel('True')
+        plt.savefig(fname=f'./out/confusion_matrix.png', format='png')
         plt.show()
 
-        precision, recall, _ = precision_recall_curve(self.y_test, self.y_prob)
-
-        # Plot precision-recall curve
-        plt.figure()
+        precision, recall, thresholds = precision_recall_curve(self.y_test, self.y_prob)
+        target_thresholds = [0.3, 0.4, 0.5, 0.52, 0.55, 0.57, 0.6, 0.7]
         plt.plot(recall, precision, color='b', lw=2)
         plt.xlabel('Recall')
         plt.ylabel('Precision')
         plt.title('Precision-Recall Curve')
+
+
+        for target_threshold in target_thresholds:
+            threshold_idx = (abs(thresholds - target_threshold)).argmin()
+            threshold_recall = recall[threshold_idx]
+            threshold_precision = precision[threshold_idx]
+            plt.scatter(threshold_recall, threshold_precision, label=f'Threshold {target_threshold}', s=100, marker='x')
+
+        plt.legend()
+        plt.savefig(fname=f'./out/precision_recall.png', format='png')
         plt.show()
+
+        print("Thresholds:", thresholds)
+        print("Precision:", precision)
+        print("Recall:", recall)
 
         roc_auc = roc_auc_score(self.y_test, self.y_prob)
         fpr, tpr, _ = roc_curve(self.y_test, self.y_prob)
@@ -1004,6 +1084,7 @@ class Regressor:
         plt.ylabel('True Positive Rate')
         plt.title('Receiver Operating Characteristic (ROC)')
         plt.legend(loc="lower right")
+        plt.savefig(fname=f'./out/ROC_curve.png', format='png')
         plt.show()
 
         importances = self.regressor.feature_importances_
@@ -1029,6 +1110,29 @@ class Regressor:
         plt.savefig(fname=f'./out/features_importances_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
         plt.show()
         plt.close()
+
+        mask = self.file_codes_test.str.contains("concat|_alt", regex=True)
+        self.y_pred_filtered = self.y_pred[~mask]
+        self.y_prob_filtered = self.y_prob[~mask]
+        # self.y_test_filtered = self.y_test[~mask]
+        self.y_test_no_alts = self.test_df['class_label_test']
+        self.y_test_filtered = self.y_test_no_alts[~mask]
+
+
+        # Confusion Matrix #2
+        cm = confusion_matrix(self.y_test_filtered, self.y_pred_filtered)
+        print("Confusion Matrix:")
+        print(cm)
+
+        # Plot Confusion Matrix
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Pred: 0', 'Pred: 1'],
+                    yticklabels=['True: 0', 'True: 1'])
+        plt.title('Confusion Matrix2')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.savefig(fname=f'./out/confusion_matrix2.png', format='png')
+        plt.show()
+
 
         return auc
 

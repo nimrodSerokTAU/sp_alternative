@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 
 class PickMeGameTrio:
-    def __init__(self, features_file: str, prediction_file: str, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance', error: float = 0.0) -> None:
+    def __init__(self, features_file: str, prediction_file: str, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance', error: float = 0.0, subset = None) -> None:
         self.features_file = features_file
         self.prediction_file = prediction_file
         self.error = error
@@ -21,6 +21,7 @@ class PickMeGameTrio:
         self.results = []
         self.winners = []
         self.overall_win = []
+        self.subset = subset
 
         # Load the two CSV files into DataFrames
         df1 = pd.read_csv(self.features_file)
@@ -35,7 +36,6 @@ class PickMeGameTrio:
 
         if predicted_measure == "msa_distance":
             self.true_score = 'dpos_dist_from_true'
-
 
         # results = []
         # winners = []
@@ -75,8 +75,11 @@ class PickMeGameTrio:
             substrings = ['muscle', 'prank', '_TRUE.fas', 'true_tree.txt', 'bali_phy', 'BALIPHY', 'original']
             mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
             mafft_df = code_df[~mask]
+
             mafft_scores = []
             if not mafft_df.empty:
+                if self.subset is not None and isinstance(self.subset, int):
+                    mafft_df = mafft_df.sample(min(self.subset, len(mafft_df)))
                 # TRUE MAFFT MIN --> TRUE BEST
                 min_mafft_row = mafft_df.loc[mafft_df[self.true_score].idxmin()]
                 min_mafft_true_score = min_mafft_row[self.true_score]
@@ -124,6 +127,8 @@ class PickMeGameTrio:
             prank_df = code_df[code_df['code'].str.contains('prank', case=False, na=False, regex=True)]
             prank_scores = []
             if not prank_df.empty:
+                if self.subset is not None and isinstance(self.subset, int):
+                    prank_df = prank_df.sample(min(self.subset, len(prank_df)))
                 # TRUE PRANK MIN = TRUE BEST
                 min_prank_row = prank_df.loc[prank_df[self.true_score].idxmin()]
                 min_prank_true_score = min_prank_row[self.true_score]
@@ -170,6 +175,8 @@ class PickMeGameTrio:
             muscle_df = code_df[code_df['code'].str.contains('muscle', case=False, na=False, regex=True)]
             muscle_scores = []
             if not muscle_df.empty:
+                if self.subset is not None and isinstance(self.subset, int):
+                    muscle_df = muscle_df.sample(min(self.subset, len(muscle_df)))
                 min_muscle_row = muscle_df.loc[muscle_df[self.true_score].idxmin()]
                 min_muscle_true_score = min_muscle_row[self.true_score]
                 muscle_scores.append(default_muscle_true_score)
@@ -213,6 +220,8 @@ class PickMeGameTrio:
             baliphy_df = code_df[code_df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
             baliphy_scores = []
             if not baliphy_df.empty:
+                if self.subset is not None and isinstance(self.subset, int):
+                    baliphy_df = baliphy_df.sample(min(self.subset, len(baliphy_df)))
                 min_baliphy_row = baliphy_df.loc[baliphy_df[self.true_score].idxmin()]
                 min_baliphy_true_score = min_baliphy_row[self.true_score]
                 baliphy_scores.append(default_baliphy_true_score)
