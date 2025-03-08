@@ -4,13 +4,15 @@ from typing import Literal
 
 from matplotlib import pyplot as plt
 
-class PickMeGameClassification:
-    def __init__(self, features_file: str, prediction_file: str, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance', error: float = 0.0, subset = None) -> None:
+class PickMeGameMixed:
+    def __init__(self, features_file: str, prediction_file1: str, prediction_file2: str, error: float = 0.0, subset = None) -> None:
         self.features_file = features_file
-        self.prediction_file = prediction_file
+        self.prediction_file1 = prediction_file1
+        self.prediction_file2 = prediction_file2
         self.error = error
         # self.true_score = ''
         self.predicted_score = 'predicted_score'
+        self.predicted_label = 'predicted_label'
         # self.sum_of_pairs_score = 'normalised_sop_score'
         self.sum_of_pairs_score = 'sop_score'
         self.pickme_df = None
@@ -21,8 +23,7 @@ class PickMeGameClassification:
         self.winners = []
         self.overall_win = []
         self.subset = subset
-        if predicted_measure == "msa_distance":
-            self.true_score = 'dpos_dist_from_true'
+        self.true_score = 'dpos_dist_from_true'
 
     def set_scores(self, df):
         scores = []
@@ -31,7 +32,11 @@ class PickMeGameClassification:
                 df = df.sample(min(self.subset, len(df)))
             max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
             max_SoP_true_score = max_SoP_score_row[self.true_score]
-            min_predicted_score_row = df.loc[df["probabilities"].idxmax()]
+            filtered_df = df[df[self.predicted_label] == 1]
+            if not filtered_df.empty:
+                min_predicted_score_row = filtered_df.loc[filtered_df[self.predicted_score].idxmin()]
+            else:
+                min_predicted_score_row = df.loc[df['probabilities'].idxmax()]
             min_predicted_true_score = min_predicted_score_row[self.true_score]
             scores.append(min_predicted_true_score)
             scores.append(max_SoP_true_score)
@@ -46,7 +51,7 @@ class PickMeGameClassification:
     #             df = df.sample(min(self.subset, len(df)))
     #         max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
     #         max_SoP_true_score = max_SoP_score_row[self.true_score]
-    #         filtered_df = df[df['predicted_score'] == 1]
+    #         filtered_df = df[df['predicted_label'] == 1]
     #         if not filtered_df.empty:
     #             min_predicted_score_row = filtered_df.loc[filtered_df['sop_score'].idxmax()]
     #         else:
@@ -98,12 +103,16 @@ class PickMeGameClassification:
     def run(self, i):
         # Load the two CSV files into DataFrames
         df1 = pd.read_csv(self.features_file)
-        df2 = pd.read_csv(self.prediction_file)
+        df2 = pd.read_csv(self.prediction_file1)
+        df3 = pd.read_csv(self.prediction_file2)
 
         df1['code1'] = df1['code1'].astype(str)
         df2['code1'] = df2['code1'].astype(str)
+        df3['code1'] = df2['code1'].astype(str)
 
-        df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
+        # df = pd.merge(df1, df2, df3, on=['code', 'code1'], how='inner')
+        df_merged = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
+        df = pd.merge(df_merged, df3, on=['code', 'code1'], how='inner')
         df = df[~df['code'].str.contains('test_original', na=False)]
         # groups = ['BBS11','BBS12','BBS50','BBS30','BBS20', 'BBA']
 
@@ -187,6 +196,7 @@ class PickMeGameClassification:
 
 
     def summarize(self):
+        # Create a DataFrame from the results
         winners_df = pd.DataFrame(self.winners)
         self.winners_df_w_code = winners_df
         winners_df = winners_df.drop('code', axis=1)

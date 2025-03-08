@@ -82,8 +82,20 @@ def assign_class_label_test(group):
         group['class_label_test'] = np.nan
     return group
 
+# def assign_true_bacth_label(group):
+#     if not group.empty:
+#         percentile_10 = group['dpos_dist_from_true'].quantile(0.1)
+#         group['true_label'] = (group['dpos_dist_from_true'] < percentile_10).astype(int)
+#         # max_sop_row = group.loc[group['sop_score'].idxmax()]
+#         # sop_dpos = max_sop_row['dpos_dist_from_true']
+#         # group['class_label_test'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
+#     else:
+#         group['true_label'] = np.nan
+#         print("empty batch\n")
+#     return group
+
 class BatchGenerator(Sequence):
-    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3):
+    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3, per_aligner=False):
         self.features = features
         self.true_labels = np.asarray(true_labels)
         self.msa_ids = true_msa_ids  # TRUE MSA IDs (categorical)
@@ -95,6 +107,9 @@ class BatchGenerator(Sequence):
         self.train_msa_ids = train_msa_ids
         self.repeats = repeats
         self.mixed_portion = mixed_portion
+        self.per_aligner = per_aligner
+        self.aligners = aligners
+        self.unique_aligners = np.unique(aligners)
 
         # np.random.shuffle(self.unique_msa_ids) #can't do that as the order will be different in training and in validation
 
@@ -114,28 +129,60 @@ class BatchGenerator(Sequence):
         self.unique_msa_ids = np.unique(self.msa_ids)
         self.batches = self._precompute_batches()
 
+    def _split_idx_into_batches(self, idx):
+        batches = []
+        remaining_samples_set = []
+        np.random.shuffle(idx)
+        num_samples = len(idx)
+        num_full_batches = num_samples // self.batch_size
+        remaining_samples = num_samples % self.batch_size
+        leaving_out = math.floor(self.mixed_portion * num_full_batches)
+
+        for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
+            batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
+            batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
+
+        if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
+            remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
+        np.random.shuffle(remaining_samples_set)
+        np.random.shuffle(batches)
+        return batches, remaining_samples_set
+
     def _precompute_batches(self):
         batches = []
         batches_mix = []
         remaining_samples_set = []
-        # leaving_out = 5
 
         for msa_id in self.unique_msa_ids:
             try:
                 for k in range(self.repeats): #testing an option to produce different batch mixes
                     idx = np.where(self.msa_ids == msa_id)[0]
-                    np.random.shuffle(idx)
-                    num_samples = len(idx)
-                    num_full_batches = num_samples // self.batch_size
-                    remaining_samples = num_samples % self.batch_size
-                    leaving_out = math.floor(self.mixed_portion * num_full_batches)
 
-                    for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
-                        batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
-                        batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
+                    if self.per_aligner:
+                        for aligner in self.unique_aligners:
+                            idx = np.intersect1d(np.where(self.aligners == aligner)[0], idx)
+                            btchs, rem_sam_set = self._split_idx_into_batches(idx)
+                            batches.extend(btchs)
+                            remaining_samples_set.extend(rem_sam_set)
+                    else:
+                        btchs, rem_sam_set = self._split_idx_into_batches(idx)
+                        batches.extend(btchs)
+                        remaining_samples_set.extend(rem_sam_set)
 
-                    if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
-                        remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
+
+                    # np.random.shuffle(idx)
+                    # num_samples = len(idx)
+                    # num_full_batches = num_samples // self.batch_size
+                    # remaining_samples = num_samples % self.batch_size
+                    # leaving_out = math.floor(self.mixed_portion * num_full_batches)
+                    #
+                    # for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
+                    #     batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
+                    #     batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
+                    #
+                    #
+                    # if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
+                    #     remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
                     # np.random.shuffle(remaining_samples_set)
                     # np.random.shuffle(batches)
 
@@ -228,7 +275,8 @@ class Regressor:
         # df["class_label"] = np.where(df['dpos_dist_from_true'] <= 0.02, 0, 1)
         # df["class_label2"] = np.where(df['dpos_dist_from_true'] <= 0.015, 0, np.where(df['dpos_dist_from_true'] <= 0.1, 1, 2))
 
-        # df['aligner'] = df.apply(assign_aligner, axis=1)
+        df['aligner'] = df.apply(assign_aligner, axis=1)
+
         # df = df[df['aligner'] != 'true'] #removed true MSAs from the data
         # df = pd.get_dummies(df, columns=['aligner'], prefix='aligner') #added one-hot encoding for msa aligner program with the columns names of the form "aligner_mafft", "aligner_..."; the aligner column is automatically replaced/removed
 
@@ -256,9 +304,9 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test','aligner'])
         if mode == 2:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score', 'aligner'])
         if mode == 3:
             # self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
             self.X = df[['sop_score']]
@@ -310,14 +358,14 @@ class Regressor:
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test', 'aligner'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'class_label_test', 'aligner'])
         if mode == 2:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score', 'aligner'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'class_label_test', 'code', 'code1', 'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'aligner'])
 
         # 2 sop features
         if mode == 3:
@@ -365,11 +413,13 @@ class Regressor:
 
         self.main_codes_train = self.train_df['code1']
         self.file_codes_train = self.train_df['code']
+        self.aligners_train = self.train_df['aligner']
         class_weights = compute_class_weight('balanced', classes=np.unique(self.train_df['class_label']), y=self.train_df['class_label'])
         self.weights = dict(enumerate(class_weights))
         print(self.weights)
         self.main_codes_test = self.test_df['code1']
         self.file_codes_test = self.test_df['code']
+        self.aligners_test = self.test_df['aligner']
 
         corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df['dpos_dist_from_true'])
         print(f"Pearson Correlation of Normalized SOP and dpos in the TEST set: {corr_coefficient1:.4f}\n",
@@ -425,7 +475,7 @@ class Regressor:
         self.test_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_unscaled.csv',
                             index=False)
 
-    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50):
+    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50, per_aligner=False):
         history = None
 
         def weighted_mse(y_true, y_pred, weights):
@@ -576,12 +626,12 @@ class Regressor:
             print(f"the training set is: {train_msa_ids} \n")
             print(f"the validation set is: {val_msa_ids} \n")
             batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                             true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, batch_size=batch_size,
-                                             validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion)
+                                             true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
+                                             validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner)
 
             val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                           true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids,
-                                           batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion)
+                                           true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
+                                           batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner)
 
             # Callback 1: early stopping
             early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
@@ -769,7 +819,7 @@ class Regressor:
             plt.show()
             plt.close()
 
-    def dl_classifier(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50, threshold=0.5):
+    def dl_classifier(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50, threshold=0.5, per_aligner=False):
 
         # def weighted_binary_crossentropy(w0=1.0, w1=1.0):
         #     def loss(y_true, y_pred):
@@ -838,12 +888,12 @@ class Regressor:
         print(f"the training set is: {train_msa_ids} \n")
         print(f"the validation set is: {val_msa_ids} \n")
         batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, batch_size=batch_size,
-                                         validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion)
+                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train, batch_size=batch_size,
+                                         validation_split=validation_split, is_validation=False, per_aligner=per_aligner, repeats=repeats, mixed_portion=mixed_portion)
 
         val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids,
-                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion)
+                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
+                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, per_aligner=per_aligner, repeats=repeats, mixed_portion=mixed_portion)
 
 
         # 1. Implement early stopping
