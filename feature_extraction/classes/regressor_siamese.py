@@ -1,3 +1,6 @@
+import itertools
+import random
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -37,7 +40,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import SMOTE
 from feature_extraction.classes.attention_layer import AttentionLayer
 from sklearn.utils import shuffle
-from tensorflow.keras.metrics import AUC
+from tensorflow.keras.metrics import AUC, Precision
 
 def assign_aligner(row):
     code = row['code'].lower()
@@ -55,34 +58,47 @@ def assign_aligner(row):
     return 'true'
 
 class MSA_PairwiseBatchGenerator(tf.keras.utils.Sequence):
-    def __init__(self, features, true_labels, msa_ids, msa_files, batch_size=32, validation_split=0.2, is_validation=False):
+    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, msa_files, batch_size=32, validation_split=0.2, is_validation=False):
         self.features = features
         self.true_labels = true_labels
-        self.msa_ids = msa_ids
+        self.msa_ids = true_msa_ids
+        self.unique_msa_ids = np.unique(true_msa_ids)[
+            np.unique(true_msa_ids) != "AATF"]  # TODO remove AATF from features file
+        self.val_msa_ids = val_msa_ids
+        self.train_msa_ids = train_msa_ids
         self.msa_files = msa_files
         self.batch_size = batch_size
         self.validation_split = validation_split
         self.is_validation = is_validation
-        self.unique_msa_ids = np.unique(msa_ids)
 
-        split_idx = int(len(self.unique_msa_ids) * (1 - self.validation_split))
+
+        # split_idx = int(len(self.unique_msa_ids) * (1 - self.validation_split))
 
         if not is_validation:
-            self.train_msa_ids = self.unique_msa_ids[:split_idx]
+            # self.train_msa_ids = self.unique_msa_ids[:split_idx]
             self.features = self.features[np.isin(self.msa_ids, self.train_msa_ids)]
             self.true_labels = self.true_labels[np.isin(self.msa_ids, self.train_msa_ids)]
             self.msa_files = self.msa_files[np.isin(self.msa_ids, self.train_msa_ids)]
             self.msa_ids = self.msa_ids[np.isin(self.msa_ids, self.train_msa_ids)]
+
         else:
-            self.val_msa_ids = self.unique_msa_ids[split_idx:]
+            # self.val_msa_ids = self.unique_msa_ids[split_idx:]
             self.features = self.features[np.isin(self.msa_ids, self.val_msa_ids)]
             self.true_labels = self.true_labels[np.isin(self.msa_ids, self.val_msa_ids)]
             self.msa_files = self.msa_files[np.isin(self.msa_ids, self.val_msa_ids)]
             self.msa_ids = self.msa_ids[np.isin(self.msa_ids, self.val_msa_ids)]
 
-        self.unique_msa_ids = np.unique(self.msa_ids)
+        # self.unique_msa_ids = np.unique(self.msa_ids)
+        self.unique_msa_ids = np.unique(self.msa_ids)[
+            np.unique(self.msa_ids) != "AATF"]
         self.pairs = self._create_pairs()
         self.batches = self._precompute_batches()
+        df = pd.DataFrame(self.assert_,
+                          columns=["Code1", "Index_1", "Index_2", "Label", "True_Label_1", "True_Label_2", "MSA_File_1",
+                                   "MSA_File_2"])
+
+        # Save the DataFrame to a CSV file
+        df.to_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/pairs.csv", index=False)
 
     def _precompute_batches(self):
         batches = []
@@ -100,51 +116,64 @@ class MSA_PairwiseBatchGenerator(tf.keras.utils.Sequence):
             batch_features_1 = np.array(batch_features_1)
             batch_features_2 = np.array(batch_features_2)
             batch_labels = np.array(batch_labels)
-            batch_features_1 = tf.convert_to_tensor(batch_features_1, dtype=tf.float32)
+            batch_features_1 = tf.convert_to_tensor(batch_features_1, dtype=tf.float32) #TODO do I really need to convert it to tensors? np array should be fine too...
             batch_features_2 = tf.convert_to_tensor(batch_features_2, dtype=tf.float32)
             batch_labels = tf.convert_to_tensor(batch_labels, dtype=tf.float32)
             batches.append(((batch_features_1, batch_features_2), batch_labels))
         np.random.shuffle(batches)
         return batches
 
+# create pairs for 150 initial MSAs only
     def _create_pairs(self):
         pairs = []
-
+        self.assert_ = []
         for msa_id in self.unique_msa_ids:
             try:
-                condition_msa_id = (self.msa_ids == msa_id)
-                condition_concat = self.msa_files.str.contains('concat')
-                combined_condition = condition_msa_id & condition_concat
-                idx = np.where(combined_condition)[0]
-                if len(idx) >= 150:
-                    random_indices = np.random.choice(idx, size=150, replace=False)
-                else:
-                    random_indices = idx
-                for i in range(len(random_indices)-1):
-                    for j in range(i+1, len(random_indices)):
-                        dist_i = self.true_labels.iloc[random_indices[i]]
-                        dist_j = self.true_labels.iloc[random_indices[j]]
-                        if dist_i < dist_j:
-                            pairs.append((random_indices[i], random_indices[j], 0))  # i is closer (first sample is closer)
-                        else:
-                            pairs.append((random_indices[i], random_indices[j], 1))  # j is closer or equal (second sample is closer)
+                # condition_msa_id = (self.msa_ids == msa_id)
+                # condition_concat = self.msa_files.str.contains('concat')
+                # combined_condition = condition_msa_id & condition_concat
+                # idx = np.where(combined_condition)[0]
+                # if len(idx) >= 40:
+                #     random_indices = np.random.choice(idx, size=40, replace=False)
+                # else:
+                #     random_indices = idx
+                # for i in range(len(random_indices)-1):
+                #     for j in range(i+1, len(random_indices)):
+                #         dist_i = self.true_labels.iloc[random_indices[i]]
+                #         dist_j = self.true_labels.iloc[random_indices[j]]
+                #         if dist_i < dist_j:
+                #             pairs.append((random_indices[i], random_indices[j], 0))  # i is closer (first sample is closer)
+                #         else:
+                #             pairs.append((random_indices[i], random_indices[j], 1))  # j is closer or equal (second sample is closer)
 
                 idx = np.where(self.msa_ids == msa_id)[0]
-                if len(idx) >= 150:
-                    random_indices = np.random.choice(idx, size=150, replace=False)
-                else:
-                    random_indices = idx
-                    # continue
-                for i in range(len(random_indices)-1):
-                    for j in range(i+1, len(random_indices)):
-                        dist_i = self.true_labels.iloc[random_indices[i]]
-                        dist_j = self.true_labels.iloc[random_indices[j]]
-                        if dist_i < dist_j:
-                            pairs.append((random_indices[i], random_indices[j], 0))  # i is closer (first sample is closer)
-                        else:
-                            pairs.append((random_indices[i], random_indices[j], 1))  # j is closer or equal (second sample is closer)
+                # TEMP_features, TEMP_labels = self.features[idx], self.true_labels[idx]
+                # if len(idx) >= 100:
+                #     random_indices = np.random.choice(idx, size=100, replace=False)
+                # else:
+                #     random_indices = idx
+                all_pairs = list(itertools.combinations(idx, 2))
+                sampled_pairs = random.sample(all_pairs, 10000)
+                for pair in sampled_pairs:
+                    dist_i = self.true_labels.iloc[pair[0]]
+                    dist_j = self.true_labels.iloc[pair[1]]
+                    if dist_i < dist_j:
+                        pairs.append((pair[0], pair[1], 0))  # i is closer (first sample is closer)
+                    else:
+                        pairs.append(
+                            (pair[0], pair[1], 1))  # j is closer or equal (second sample is closer)
+                        self.assert_.append((msa_id, pair[0], pair[1], 1, self.true_labels.iloc[pair[0]], self.true_labels.iloc[pair[1]], self.msa_files.iloc[pair[0]], self.msa_files.iloc[pair[1]]))
+                # for i in range(len(random_indices)-1):
+                #     for j in range(i+1, len(random_indices)):
+                #         dist_i = self.true_labels.iloc[random_indices[i]]
+                #         dist_j = self.true_labels.iloc[random_indices[j]]
+                #         if dist_i < dist_j:
+                #             pairs.append((random_indices[i], random_indices[j], 0))  # i is closer (first sample is closer)
+                #         else:
+                #             pairs.append((random_indices[i], random_indices[j], 1))  # j is closer or equal (second sample is closer)
             except Exception as e:
-                print(f"Exception1 {msa_id}, {random_indices[i]}, {random_indices[j]}: {e}\n")
+                # print(f"Exception1 {msa_id}, {random_indices[i]}, {random_indices[j]}: {e}\n")
+                print(f"Exception1 {msa_id}: {e}\n")
         np.random.shuffle(pairs)
         return pairs
 
@@ -155,10 +184,10 @@ class MSA_PairwiseBatchGenerator(tf.keras.utils.Sequence):
         return self.batches[idx]
 
     def on_epoch_end(self):
-        self.pairs = shuffle(self.pairs)
         if not self.is_validation:
+            self.pairs = shuffle(self.pairs)
             self.batches = self._precompute_batches()
-        np.random.shuffle(self.batches)
+        np.random.shuffle(self.batches) # on validation we don't need to compute batches, just shuffle the validation batches created for 1st epoch
 
     def __iter__(self):
         for idx in range(len(self)):
@@ -241,7 +270,7 @@ class Regressor:
         if mode == 2:
             self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'sop_score', 'normalised_sop_score'])
         if mode == 3:
-            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score','normalised_sop_score']]
         if mode == 4:
             self.X = df.drop(
                 columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'class_label2', 'code', 'code1',
@@ -300,8 +329,8 @@ class Regressor:
 
         # 2 sop features
         if mode == 3:
-            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
+            self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score','normalised_sop_score']]
+            self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score','normalised_sop_score']]
 
         if mode == 4:
             self.X_train = self.train_df.drop(
@@ -378,10 +407,33 @@ class Regressor:
         print(f"Training set size (final): {self.X_train_scaled.shape}")
         print(f"Test set size  (final): {self.X_test_scaled.shape}")
 
+        # writing train set into csv
+        x_train_scaled_to_save = pd.DataFrame(self.X_train_scaled)
+        x_train_scaled_to_save.columns = self.X_train.columns
+        x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
+        x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
+        # x_train_scaled_to_save['class_label_test'] = ...
+        x_train_scaled_to_save.to_csv(
+            '/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_scaled.csv', index=False)
+        self.train_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_unscaled.csv',
+                             index=False)
 
+        # writing test set into csv
+        x_test_scaled_to_save = pd.DataFrame(self.X_test_scaled)
+        x_test_scaled_to_save.columns = self.X_test.columns
+        x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
+        x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
+        x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True)
+        # x_test_scaled_to_save['class_label_test'] = ...
+        x_test_scaled_to_save.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_scaled.csv',
+                                     index=False)
+        self.test_df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_unscaled.csv',
+                            index=False)
 
-    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-4, i=0, undersampling = False):
+    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-4, i=0, undersampling = False, threshold=0.50):
         history = None
+        tf.config.set_visible_devices([], 'GPU')
         # tf.config.experimental_run_functions_eagerly(True)
         # @tf.function
         def _get_true_label(i, j):
@@ -399,20 +451,50 @@ class Regressor:
             try:
                 for msa_id in unique_msa_ids:
                     idx = np.where(self.main_codes_test == msa_id)[0]
-                    if len(idx) >= 100:
-                        random_indices = np.random.choice(idx, size=100, replace=False)
+                    if len(idx) >= 50:
+                        random_indices = np.random.choice(idx, size=50, replace=False)
                     else:
                         random_indices = idx
                     for i in range(len(random_indices) - 1):
                         for j in range(i + 1, len(random_indices)):
-                            pairs.append(random_indices[i], random_indices[j])
+                            pairs.append((random_indices[i], random_indices[j]))
             except Exception as e:
                 print(f"Exception {msa_id}, {random_indices[i]}, {random_indices[j]}: {e}\n")
             return pairs
 
-        def contrastive_loss(y_true, y_pred, margin=1.0):
-            y_true = tf.cast(y_true, tf.float32)
-            return tf.reduce_mean(y_true * tf.square(y_pred) + (1 - y_true) * tf.square(tf.maximum(margin - y_pred, 0)))
+        # def contrastive_loss(y_true, y_pred, margin=1.0):
+        #     y_true = tf.cast(y_true, tf.float32)
+        #     return tf.reduce_mean(y_true * tf.square(y_pred) + (1 - y_true) * tf.square(tf.maximum(margin - y_pred, 0)))
+
+        def focal_loss(gamma=2., alpha=0.25):
+            """
+            Focal Loss for binary classification.
+            Parameters:
+                gamma (float): Focusing parameter, typically set to 2.
+                alpha (float): Balancing factor to adjust class weights (typically 0.25 for imbalanced datasets).
+            Returns:
+                A loss function that can be used in model compilation.
+            """
+
+            def loss(y_true, y_pred):
+                y_pred = K.clip(y_pred, K.epsilon(), 1. - K.epsilon())
+                cross_entropy = -y_true * K.log(y_pred)
+                loss = alpha * K.pow(1 - y_pred, gamma) * cross_entropy
+                return K.mean(loss, axis=-1)
+
+            return loss
+
+        def inverse_focal_loss(alpha=0.25, gamma=2.0):
+            def loss(y_true, y_pred):
+                y_pred = K.clip(y_pred, K.epsilon(), 1. - K.epsilon())
+                cross_entropy = -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred) #cross-netropy changed in case if the minority class is overrepresented
+                loss = alpha * K.pow(1 - y_pred, gamma) * cross_entropy
+                return K.mean(loss, axis=-1)
+
+            return loss
+
+        # def weighted_binary_crossentropy(y_true, y_pred, weight=1):
+        #     return K.mean(weight * y_true * K.log(y_pred) + (1 - y_true) * K.log(1 - y_pred), axis=-1)
 
         def build_siamese_model(input_dim):
             input_1 = Input(shape=(input_dim,))
@@ -420,60 +502,65 @@ class Regressor:
 
             # Shared layers for both inputs (same weights for both)
             shared = Sequential([
-                Dense(128, kernel_regularizer=regularizers.l2(l2)),
+                Dense(64, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2)),
                 LeakyReLU(alpha=0.1),
+                # Activation('swish'),
                 Dropout(dropout_rate),
                 BatchNormalization(),
 
-                Dense(64, kernel_regularizer=regularizers.l2(l2)),
-                LeakyReLU(alpha=0.1),
+                Dense(16, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2)),
+                # LeakyReLU(alpha=0.1),
+                Activation('swish'),
                 Dropout(dropout_rate),
                 BatchNormalization(),
 
-                Dense(32, kernel_regularizer=regularizers.l2(l2)),
-                LeakyReLU(alpha=0.1),
-                Dropout(dropout_rate),
-                BatchNormalization(),
-
-                Dense(16, kernel_regularizer=regularizers.l2(l2)),
-                LeakyReLU(alpha=0.1),
-                Dropout(dropout_rate),
+                # Dense(32, kernel_regularizer=regularizers.l2(l2)),
+                # LeakyReLU(alpha=0.1),
+                # Dropout(dropout_rate),
+                # BatchNormalization(),
+                #
+                # Dense(32, kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2)),
+                # LeakyReLU(alpha=0.1),
+                Activation('swish'),
+                # Dropout(dropout_rate),
                 BatchNormalization()
             ])
             x1 = shared(input_1)
             x2 = shared(input_2)
 
-            # Calculate the absolute difference between the two embeddings
-            # distance = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))([x1, x2])
-            def euclidean_distance(tensors):
-                x1, x2 = tensors
-                return K.sqrt(K.sum(K.square(x1 - x2), axis=1, keepdims=True))
-
-            distance = Lambda(euclidean_distance)([x1, x2])
-
-            # def cosine_similarity(tensors):
-            #     x1, x2 = tensors
-            #     dot_product = K.sum(x1 * x2, axis=1, keepdims=True)
-            #     norm_1 = K.sqrt(K.sum(K.square(x1), axis=1, keepdims=True))
-            #     norm_2 = K.sqrt(K.sum(K.square(x2), axis=1, keepdims=True))
-            #     return dot_product / (norm_1 * norm_2)
+            distance = Lambda(lambda tensors: K.abs(tensors[0] - tensors[1]))([x1, x2]) #abs difference between two embeddings
+            # def euclidean_distance(vectors):
+            #     x, y = vectors
+            #     return K.sqrt(K.sum(K.square(x - y), axis=-1))
             #
-            # distance = Lambda(cosine_similarity)([x1, x2])
+            # distance = Lambda(euclidean_distance)([x1, x2])
 
-            # Add a final layer to output a similarity score (0 or 1)
-            output = Dense(1, activation='sigmoid')(distance)
+            # def l1_distance(vectors):
+            #     x, y = vectors
+            #     return K.abs(x - y)
+            #
+            # distance = Lambda(l1_distance)([x1, x2])
 
-            # Create the model
+            output = Dense(1, activation='sigmoid')(distance) # layer with sigmoid activation to get a single value between 0 a
+
             model = Model(inputs=[input_1, input_2], outputs=output)
-            optimizer = Adam(learning_rate=0.0001, decay=1e-6)
-            model.compile(optimizer=optimizer, loss=contrastive_loss, metrics=['accuracy', AUC()])
+            optimizer = Adam(learning_rate=learning_rate)
+            model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy', AUC(), Precision()])
+            # model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy', AUC(), Precision()])
+            # model.compile(optimizer='adam', loss=inverse_focal_loss(gamma=2., alpha=0.25), metrics=['accuracy', AUC(), Precision()])
+            # model.compile(optimizer=optimizer, loss=weighted_binary_crossentropy, metrics=['accuracy', AUC(), Precision()])
 
             return model
 
+        unique_train_codes = self.main_codes_train.unique()
+        train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
+        print(f"the training set is: {train_msa_ids} \n")
+        print(f"the validation set is: {val_msa_ids} \n")
+
         # train_generator = MSA_PairwiseBatchGenerator(self.X_train_scaled, self.y_train, batch_size=batch_size)
-        train_generator = MSA_PairwiseBatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, msa_ids=self.main_codes_train, msa_files=self.file_codes_train, batch_size=batch_size,
+        train_generator = MSA_PairwiseBatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, msa_files=self.file_codes_train, batch_size=batch_size,
                                                      validation_split=validation_split, is_validation=False)
-        val_generator = MSA_PairwiseBatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, msa_ids=self.main_codes_train, msa_files=self.file_codes_train, batch_size=batch_size,
+        val_generator = MSA_PairwiseBatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, msa_files=self.file_codes_train, batch_size=batch_size,
                                                    validation_split=validation_split, is_validation=True)
 
         # Callback 1: early stopping
@@ -492,10 +579,11 @@ class Regressor:
 
         # Build the Siamese model
         input_dim = self.X_train_scaled.shape[1]  # Number of features
+        # with tf.device('/CPU:0'):
         model = build_siamese_model(input_dim)
 
         # Train the model
-        history = model.fit(train_generator, epochs=20, validation_data=val_generator, verbose=1, callbacks=callbacks)
+        history = model.fit(train_generator, epochs=epochs, validation_data=val_generator, verbose=verbose, callbacks=callbacks)
 
         # Plot training and validation loss
         plt.plot(history.history['loss'], label='Training Loss')
@@ -510,8 +598,10 @@ class Regressor:
         test_pairs = _get_test_pairs()
         y_true, y_pred = [], []
         for i, j in test_pairs:
-            score = model.predict((self.X_test_scaled[i:i + 1], self.X_test_scaled[j:j + 1]))  # Predict similarity
-            predicted_label = 1 if score > 0.5 else 0
+            features1 = self.X_test_scaled[i:i + 1]
+            features2 = self.X_test_scaled[j:j + 1]
+            score = model.predict((features1, features2))  # Predict similarity
+            predicted_label = 1 if score > threshold else 0
             true_label = _get_true_label(i, j)
 
             y_true.append(true_label)

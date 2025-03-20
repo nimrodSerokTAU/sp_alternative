@@ -12,6 +12,8 @@ class PickMeGameTrio:
         self.error = error
         self.true_score = ''
         self.predicted_score = 'predicted_score'
+        self.predicted_class = 'predicted_class_prob'
+        # self.predicted_score = 'predicted_score2'
         # self.sum_of_pairs_score = 'normalised_sop_score'
         self.sum_of_pairs_score = 'sop_score'
         self.pickme_df = None
@@ -25,6 +27,24 @@ class PickMeGameTrio:
         if predicted_measure == "msa_distance":
             self.true_score = 'dpos_dist_from_true'
 
+    # def set_scores(self, df):
+    #     scores = []
+    #     if not df.empty:
+    #         if self.subset is not None and isinstance(self.subset, int):
+    #             df = df.sample(min(self.subset, len(df)))
+    #         max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
+    #         max_SoP_true_score = max_SoP_score_row[self.true_score]
+    #
+    #         top_5_lowest_dpos = df.nsmallest(5, self.predicted_score)
+    #         min_predicted_score_row = top_5_lowest_dpos.loc[top_5_lowest_dpos[self.sum_of_pairs_score].idxmax()]
+    #         # min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
+    #         min_predicted_true_score = min_predicted_score_row[self.true_score]
+    #         scores.append(min_predicted_true_score)
+    #         scores.append(max_SoP_true_score)
+    #     else:
+    #         scores.extend([np.nan, np.nan])
+    #     return scores
+
     def set_scores(self, df):
         scores = []
         if not df.empty:
@@ -32,7 +52,13 @@ class PickMeGameTrio:
                 df = df.sample(min(self.subset, len(df)))
             max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
             max_SoP_true_score = max_SoP_score_row[self.true_score]
-            min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
+
+            group1 = df.nlargest(10, self.predicted_class)
+            # group1 = df.nsmallest(5, self.predicted_score)
+            # group1 = df.loc[df[self.predicted_class]>=0.4]
+            min_predicted_score_row = group1.loc[group1[self.predicted_score].idxmin()]
+            # min_predicted_score_row = group1.loc[group1[self.predicted_class].idxmax()]
+            # min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
             min_predicted_true_score = min_predicted_score_row[self.true_score]
             scores.append(min_predicted_true_score)
             scores.append(max_SoP_true_score)

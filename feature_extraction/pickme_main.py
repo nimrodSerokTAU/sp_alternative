@@ -1,12 +1,12 @@
 import numpy as np
-from classes.pick_me import PickMeGame
-from classes.pick_me_per_program import PickMeGameProgram
-from classes.pick_me_per_program_max import PickMeGameProgramMax
+# from classes.pick_me import PickMeGame
+# from classes.pick_me_per_program import PickMeGameProgram
+# from classes.pick_me_per_program_max import PickMeGameProgramMax
 from classes.pick_me_trio import PickMeGameTrio, PickMeAggregator
-from classes.pick_me_average import PickMeGameAverage
+# from classes.pick_me_average import PickMeGameAverage
 from scipy import stats
 # from classes.pick_me_classification import PickMeGameClassification
-from classes.pick_me_mixed import PickMeGameMixed
+# from classes.pick_me_mixed import PickMeGameMixed
 
 
 
@@ -16,6 +16,7 @@ if __name__ == '__main__':
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
+        # i = 2
         # pickme = PickMeGameProgram(features_file='./out/balibase_RV10-50_features_080125_w_foldmason_scores.csv',
         #                            prediction_file=f'./out/BaliBase_ALL_10-50/DL8_w_foldmason_features/prediction_DL_{i}_mode1_msa_distance.csv',
         #                            error=0)
@@ -28,19 +29,25 @@ if __name__ == '__main__':
         #                            error=0)
         #
 
-        # pickme = PickMeGameTrio(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-        #                         prediction_file=f'./out/prediction_DL_0_mode1_msa_distance.csv',
-        #                         error=0, subset = 64)
+
+
         pickme = PickMeGameTrio(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-                                prediction_file=f'./out/1/prediction_DL_{i}_mode1_msa_distance.csv',
+                                prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
                                 error=0, subset = None)
+
+
+
+
+        # pickme = PickMeGameClassification(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
+        #                         prediction_file=f'./out/prediction_DL_0_mode1_class_label.csv',
+        #                         error=0, subset = None)
 
         # pickme = PickMeGameClassification(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
         #                         prediction_file=f'./out/orthomam_NEW/RF_classifier_all_features_threshold_0.5_NS300+KP_alt/rf_prediction_0_mode1_class_label.csv',
         #                         error=0, subset=None)
 
         # pickme = PickMeGameMixed(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-        #                                                           prediction_file1=f'./out/combined_classification_DL/prediction_DL_0_mode1_msa_distance.csv', prediction_file2=f'./out/combined_classification_DL/prediction_DL_0_mode1_class_label.csv',
+        #                                                           prediction_file1=f'./out/part2/prediction_DL_0_mode1_msa_distance.csv', prediction_file2=f'./out/part1/prediction_DL_0_mode1_class_label.csv',
         #                                                           error=0, subset=None)
 
         pickme.run(i)

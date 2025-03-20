@@ -25,7 +25,7 @@ import pickle
 import pydot
 import tensorflow as tf
 # import tensorflow_model_optimization as tfmot
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, MaxAbsScaler, QuantileTransformer, PowerTransformer, LabelEncoder, OneHotEncoder
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape, Embedding, Concatenate, Flatten
 from tensorflow.keras.optimizers import Adam, Nadam, RMSprop
@@ -71,6 +71,13 @@ def assign_class_label(group):
     group['class_label'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
     return group
 
+# def assign_class_label(group):
+#     mask = group['code'].str.contains("concat|_alt", case=False, na=False)
+#     group_without_extra = group[~mask]
+#     percentile_15 = group_without_extra['dpos_dist_from_true'].quantile(0.15)
+#     group['class_label'] = (group['dpos_dist_from_true'] < percentile_15).astype(int)
+#     return group
+
 def assign_class_label_test(group):
     mask = group['code'].str.contains("concat|_alt", case=False, na=False)
     group_without_extra = group[~mask]
@@ -84,10 +91,75 @@ def assign_class_label_test(group):
         group['class_label'] = np.nan
     return group
 
+# from tensorflow.keras.layers import Layer
+# class LowScoreMaskLayer(Layer):
+#     def __init__(self, threshold=0.5, **kwargs):
+#         super(LowScoreMaskLayer, self).__init__(**kwargs)
+#         self.threshold = threshold
+#     def call(self, inputs):
+#         classification_output = inputs[0]  # Get classification output
+#         # Generate the mask where classification output > threshold
+#         low_score_mask = K.cast(K.greater(classification_output, self.threshold), dtype='float32')
+#         return low_score_mask
+
+
+from tensorflow.keras.layers import Layer
+# class WeightedRegressionLoss(Layer):
+#     def __init__(self, alpha=0.5, **kwargs):
+#         super(WeightedRegressionLoss, self).__init__(**kwargs)
+#         self.alpha = alpha
+#
+#     def call(self, inputs):
+#         y_true, regression_output, classification_output = inputs
+#
+#         # Convert classification output to a weight (classification probability)
+#         classification_weight = K.cast(classification_output, dtype=tf.float32)
+#         classification_weight = classification_weight * self.alpha + (1 - self.alpha)
+#
+#         # Compute regression loss
+#         regression_error = K.abs(y_true - regression_output)
+#         weighted_error = regression_error * classification_weight
+#
+#         return K.mean(weighted_error)
+
+
+from tensorflow.keras.losses import Loss
+class WeightedRegressionLoss(Loss):
+    def __init__(self, alpha=0.5, name="weighted_regression_loss"):
+        super().__init__(name=name)
+        self.alpha = alpha
+
+    def call(self, y_true, y_pred):
+        # Retrieve classification output dynamically
+        classification_output = self.get_classification_output(y_pred)
+
+        # Compute classification weight (alpha-weighted probabilities)
+        classification_weight = K.cast(classification_output, dtype=tf.float32)
+        classification_weight = classification_weight * self.alpha + (1 - self.alpha)
+
+        # Compute weighted MSE
+        regression_error = K.square(y_true - y_pred)
+        weighted_error = regression_error * classification_weight
+
+        return K.mean(weighted_error)
+
+    def get_classification_output(self, y_pred):
+        """Tries to fetch classification output dynamically from the model during training."""
+        for layer in y_pred._keras_history[0].model.layers:
+            if layer.name == "classification_output":
+                return layer.output
+        raise ValueError("Classification output not found in the model.")
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"alpha": self.alpha})
+        return config
+
 class BatchGenerator(Sequence):
-    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3, per_aligner=False, classification_task = False, features_w_names=np.nan):
+    def __init__(self, features, true_labels, true_class_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3, per_aligner=False, classification_task = False, features_w_names=np.nan):
         self.features = features
         self.true_labels = np.asarray(true_labels)
+        self.true_class_labels = np.asarray(true_class_labels)
         self.msa_ids = true_msa_ids  # TRUE MSA IDs (categorical)
         self.batch_size = batch_size
         self.unique_msa_ids = np.unique(true_msa_ids)[np.unique(true_msa_ids) != "AATF"]  #TODO remove AATF from features file
@@ -113,6 +185,7 @@ class BatchGenerator(Sequence):
 
         self.features = self.features[mask]
         self.true_labels = self.true_labels[mask]
+        self.true_class_labels = self.true_class_labels[mask]
         self.features_w_names = self.features_w_names[mask]
         self.features_w_names = self.features_w_names.reset_index(drop=True)
         self.msa_ids = self.msa_ids[mask]
@@ -135,7 +208,7 @@ class BatchGenerator(Sequence):
             #     batches.append((self.features[batch_idx], labels))
             # else:
             #     batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
-            batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
+            batches.append((self.features[batch_idx], (self.true_labels[batch_idx], self.true_class_labels[batch_idx])))
 
         if remaining_samples > 0 or leaving_out > 0: # intermixed batches (consisting of the samples from different unique MSA IDs) to make sure that
             remaining_samples_set.extend(idx[(num_full_batches - leaving_out) * self.batch_size:])
@@ -212,7 +285,7 @@ class BatchGenerator(Sequence):
                 #     labels = self._precompute_true_labels(batch_idx)
                 #     batches_mix.append((self.features[batch_idx], labels))
                 # else:
-                batches_mix.append((self.features[batch_idx], self.true_labels[batch_idx]))
+                batches_mix.append((self.features[batch_idx], (self.true_labels[batch_idx],self.true_class_labels[batch_idx])))
             # if len(batch_idx) == self.batch_size:  # Ensure full batch size
             #     batches_mix.append((self.features[batch_idx], self.true_labels[batch_idx]))
 
@@ -485,6 +558,8 @@ class Regressor:
         self.y_train = self.train_df[true_score_name]
         self.y_test = self.test_df[true_score_name]
         # self.dpos_train = self.train_df['dpos_dist_from_true']
+        self.class_label_train = self.train_df['class_label']
+        self.class_label_test = self.test_df['class_label']
 
         self.binary_feature = self.train_df['class_label'].astype('float64')
 
@@ -509,7 +584,8 @@ class Regressor:
         x_train_scaled_to_save.columns = self.X_train.columns
         x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
-        x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
+        # x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label'] = self.class_label_train.reset_index(drop=True)
         # x_train_scaled_to_save['class_label_test'] = ...
         x_train_scaled_to_save.to_csv(
             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_scaled_{i}.csv', index=False)
@@ -532,22 +608,26 @@ class Regressor:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
-        def low_score_weighted_mse(y_true, y_pred):
+        def final_prediction(main_output, low_score_output, y_true, threshold=0.03):
+            return tf.where(y_true < threshold, low_score_output, main_output)
+
+        # def low_score_weighted_mse(y_true, y_pred):
+        #     error = tf.abs(y_true - y_pred)
+        #     weight = tf.maximum(1.0, 1.0 / (y_true + 1e-6))
+        #     weighted_error = weight * error
+        #     return tf.reduce_mean(weighted_error ** 2)
+
+        def low_score_weighted_log_error(y_true, y_pred):
             error = tf.abs(y_true - y_pred)
-            weight = tf.maximum(1.0, 1.0 / (y_true + 1e-6))
+            weight = tf.maximum(1.0, tf.math.log(y_true + 1e-6))  # Logarithmic weighting based on y_true
             weighted_error = weight * error
             return tf.reduce_mean(weighted_error ** 2)
 
-        def weighted_mse(y_true, y_pred, weights):
-            mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
-            weighted_loss = mse_loss * weights
-            return weighted_loss
-
-        def weighted_mse_loss(y_true, y_pred, factor):
-            weights = K.exp(-y_true)  # Op1: Higher weights for lower scores
-            # weights = 1/(1 + K.exp(factor*(y_true-0.5)))  # Op2: Higher weights for lower scores
-            mse_loss = K.mean(weights * K.square(y_true - y_pred))  # Weighted MSE
-            return mse_loss
+        def low_score_weighted_exp_error(y_true, y_pred, exponent=6.0):
+            error = tf.abs(y_true - y_pred)
+            weight = tf.maximum(1.0, tf.exp(-y_true) + 1e-6)  # Exponentially decaying weight based on y_true
+            weighted_error = weight * error
+            return tf.reduce_mean(weighted_error ** exponent)
 
         def rank_loss(y_true, y_pred, top_k):
             tf.compat.v1.enable_eager_execution()
@@ -575,32 +655,7 @@ class Regressor:
 
             return rank_diff
 
-        @tf.function
-        def pairwise_rank_loss(y_true, y_pred, margin=0.0, top_k = 4):
-            n = tf.shape(y_true)[0]
-
-            y_true_flat = tf.reshape(y_true, [-1])
-            _, top_k_indices = tf.math.top_k(-y_true_flat, k=top_k, sorted=True)  # Use negative to get smallest values
-            mask = tf.reduce_any(tf.equal(tf.reshape(tf.range(n), [-1, 1]), tf.reshape(top_k_indices, [1, -1])), axis=1)
-
-            i_indices = tf.reshape(tf.range(n), [-1, 1])
-            j_indices = tf.reshape(tf.range(n), [1, -1])
-            i_indices_flat = tf.reshape(i_indices, [-1])
-            j_indices_flat = tf.reshape(j_indices, [-1])
-            y_true_i = tf.gather(y_true, i_indices_flat)
-            y_true_j = tf.gather(y_true, j_indices_flat)
-            y_pred_i = tf.gather(y_pred, i_indices_flat)
-            y_pred_j = tf.gather(y_pred, j_indices_flat)
-
-            y_true_diff = tf.cast(y_true_i < y_true_j, tf.float32)
-            pairwise_loss = tf.maximum(0.0, y_pred_i - y_pred_j + margin)
-
-            loss = tf.reduce_sum(pairwise_loss * y_true_diff * tf.cast(tf.reshape(mask, [-1, 1]), tf.float32))
-
-            return loss
-
-        # Combine MSE loss with rank-based loss
-        def mse_with_rank_loss(y_true, y_pred, top_k=4, mse_weight=1, ranking_weight=0.3):
+        def mse_with_rank_loss(y_true, y_pred, top_k=4, mse_weight=1, ranking_weight=50):
 
             mse_loss = K.mean(K.square(K.cast(y_true - y_pred, dtype=tf.float32)))  # MSE loss
             # mse_loss = tf.keras.losses.MSE(y_true, y_pred)
@@ -613,105 +668,210 @@ class Regressor:
 
             return total_loss
 
-        @tf.function
-        def min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0):
-            # mse_loss = K.mean(K.square(y_true - y_pred))
-            #absolute error
-            mse_loss = K.mean(K.abs(y_true - y_pred))
+        def weighted_binary_crossentropy(w0=1.0, w1=1.0):
+            def loss(y_true, y_pred):
+                loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
+                weights = y_true * w1 + (1 - y_true) * w0 #would it help me to make class1 5 times more important?
+                return tf.reduce_mean(loss_fn(y_true, y_pred) * weights)
 
-            min_true_index = tf.argmin(y_true, axis=0)
+            return loss
 
-            min_pred = tf.gather(y_pred, min_true_index)
-            min_true = tf.gather(y_true, min_true_index)
+        def weighted_regression_loss(alpha=0.5):
+            def loss(y_true, y_pred):
+                # Extract classification probability from y_pred (assuming y_pred contains both outputs)
+                regression_output, classification_output = y_pred[:, 0], y_pred[:, 1]
 
-            # min_penalty = tf.maximum(0.0,
-            #                          min_pred - min_true)  # penalize if prediction is greater than true minimum
-            # absolute error of top1
-            min_penalty = tf.abs(min_pred - min_true)
-            # min_penalty = K.square(min_pred - min_true)
+                # Ensure classification_output is float
+                classification_weight = K.cast(classification_output, dtype=tf.float32)
 
-            total_loss = mse_weight * mse_loss + min_penalty_weight * min_penalty
+                # Apply weighting based on classification probability
+                classification_weight = classification_weight * alpha + (1 - alpha)
 
-            return total_loss
+                # Compute regression loss
+                regression_error = K.abs(y_true - regression_output)
+                weighted_error = regression_error * classification_weight
 
-        # non-negative regression msa_distance task
-        if self.predicted_measure == 'msa_distance':
-            model = Sequential()
-            model.add(Input(shape=(self.X_train_scaled.shape[1],)))
+                return K.mean(weighted_error)
 
-            #first hidden
-            model.add(
-                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
+            return loss
 
-            # second hidden
-            model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
+        # def regression_loss_with_classification_weight(y_true, y_pred, classification_output):
+        #     # classification_output = K.get_value(model.get_layer('classification_output').output)
+        #     return weighted_regression_loss(y_true, y_pred, classification_output, alpha=0.5)
 
-            # third hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
 
-            # fourth hidden
-            model.add(
-                Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
+        def classification_first_stage_loss(y_true, y_pred, classification_output):
+            '''masks all samples that were classified as "class 0" / probability lower than 0.5 threshold/
+            only calculates the error for the samples classified as "class 1"'''
 
-            model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
+            tf.compat.v1.enable_eager_execution()
+            @tf.function
+            def print_func(y_true, y_pred, regression_error, filtered_error):
+                tf.print("low_score_mask:", low_score_mask)
+                tf.print("low_score_mask shape:", K.int_shape(low_score_mask))
+                tf.print("y_true:", y_true)
+                tf.print("y_true shape:", K.int_shape(y_true))
+                tf.print("y_pred:", y_pred)
+                tf.print("y_pred shape:", K.int_shape(y_pred))
+                tf.print("regression_error:", regression_error)
+                tf.print("regression_error shape:", K.int_shape(regression_error))
+                tf.print("filtered_error:", filtered_error)
+                tf.print("filtered_error shape:", K.int_shape(filtered_error))
+                return y_true, y_pred, regression_error, filtered_error
 
-            optimizer = Adam(learning_rate=learning_rate)
-            # optimizer = RMSprop(learning_rate=learning_rate)
+            low_score_mask_layer = LowScoreMaskLayer(threshold=0.5)
+            low_score_mask = low_score_mask_layer(
+                [classification_output])
 
-            # model.compile(optimizer=optimizer, loss='mean_squared_error')
-            # model.compile(optimizer=optimizer, loss=low_score_weighted_mse)
-            # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
-            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse_loss(y_true, y_pred, factor=7))
-            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
-                                                        ranking_weight=ranking_weight))
-            # model.compile(optimizer=optimizer,
-            #               loss=lambda y_true, y_pred: min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0))
+            y_true = K.cast(y_true, dtype=tf.float32)
+            y_pred = K.cast(y_pred, dtype=tf.float32)
+            regression_error = K.abs(y_true - y_pred)
+            # low_score_mask = K.reshape(low_score_mask, K.shape(regression_error))
+            # regression_error = K.abs(K.cast(y_true - y_pred, dtype=tf.float32))
+            filtered_error = regression_error * low_score_mask
+            print_func(y_true, y_pred, regression_error, filtered_error)
+            # filtered_error = K.cast(regression_error * low_score_mask, dtype=tf.float32)
+            # mean_error = tf.reduce_mean(K.cast(filtered_error,dtype=tf.float32))
+            # mean_error = K.mean(K.cast(filtered_error,dtype=tf.float32))
+            mean_error = K.mean(filtered_error)
+            return mean_error
 
-            unique_train_codes = self.main_codes_train.unique()
-            train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
-            print(f"the training set is: {train_msa_ids} \n")
-            print(f"the validation set is: {val_msa_ids} \n")
-            # x_train_scaled_with_names = pd.DataFrame(self.X_train_scaled)
-            # x_train_scaled_with_names.columns = self.X_train.columns
-            batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                             true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
-                                             validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+        def create_model(input_shape, mse_weight, ranking_weight, l2, dropout_rate,
+                         learning_rate):
 
-            val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                           true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
-                                           batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+            input_layer = Input(shape=(input_shape,))
 
-            # Callback 1: early stopping
-            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
-            # Callback 2: learning rate scheduler
-            lr_scheduler = ReduceLROnPlateau(
-                monitor='val_loss',  # to monitor
-                patience=3,  # number of epochs with no improvement before reducing the learning rate
-                verbose=1,
-                factor=0.5,  # factor by which the learning rate will be reduced
-                min_lr=1e-6,  # lower bound on the learning rate
-                min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
-            )
-            callbacks = [
-                early_stopping,
-                lr_scheduler
-            ]
-            history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
-                                    callbacks=callbacks)
+            # Shared layers
+            x = Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2))(
+                input_layer)
+            x = LeakyReLU(negative_slope=0.01)(x)
+            x = BatchNormalization()(x)
+            x = Dropout(dropout_rate)(x)
+
+            x = Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2))(x)
+            x = LeakyReLU(negative_slope=0.01)(x)
+            x = BatchNormalization()(x)
+            x = Dropout(dropout_rate)(x)
+
+            x = Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2))(x)
+            x = LeakyReLU(negative_slope=0.01)(x)
+            x = BatchNormalization()(x)
+            x = Dropout(dropout_rate)(x)
+
+            # x = Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2))(x)
+            # x = LeakyReLU(negative_slope=0.01)(x)
+            # x = BatchNormalization()(x)
+            # x = Dropout(dropout_rate)(x)
+
+            # Main regression (mse) head
+            regression_head = Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2))(x)
+            regression_head = LeakyReLU(negative_slope=0.01)(regression_head)
+            regression_head = BatchNormalization()(regression_head)
+            regression_head = Dropout(dropout_rate)(regression_head)
+            regression_output = Dense(1, activation='sigmoid', name='regression_output')(regression_head)
+
+            # Classification head
+            classification_head = Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2))(x)
+            classification_head = LeakyReLU(negative_slope=0.01)(classification_head)
+            classification_head = BatchNormalization()(classification_head)
+            classification_head = Dropout(dropout_rate)(classification_head)
+            classification_output = Dense(1, activation='sigmoid', name='classification_output')(classification_head)
+
+            weighted_loss_output = WeightedRegressionLoss(alpha=0.5, name='weighted_regression_loss')([input_layer, regression_output, classification_output])
+
+
+            # Define the model
+            model = Model(inputs=input_layer, outputs=[regression_output, classification_output])
+            # model = Model(inputs=input_layer, outputs=[regression_output, classification_output, weighted_loss_output])
+
+            class_weights = compute_class_weight('balanced', classes=np.unique(self.class_label_train), y=self.class_label_train)
+            class_weight_dict = dict(enumerate(class_weights))
+            print(class_weight_dict)
+
+            # Compile the model with custom loss functions
+            # model.compile(optimizer=Adam(learning_rate=learning_rate),
+            #               loss={'main_output': 'mse', 'low_score_output': low_score_weighted_exp_error},
+            #               loss_weights={'main_output': mse_weight,
+            #                             'low_score_output': ranking_weight})
+            # model.compile(optimizer=Adam(learning_rate=learning_rate),
+            #               loss={'regression_output': mse_with_rank_loss, 'classification_output': weighted_binary_crossentropy(w0=class_weight_dict[0], w1=5*class_weight_dict[1])},
+            #               loss_weights={'regression_output': mse_weight,
+            #                             'classification_output': ranking_weight})
+
+            # model.compile(optimizer=Adam(learning_rate=learning_rate),
+            #               loss={'regression_output': lambda y_true, y_pred: y_pred,
+            #                     'classification_output': weighted_binary_crossentropy(w0=class_weight_dict[0],
+            #                                                                           w1=5 * class_weight_dict[1]),
+            #                     'weighted_regression_loss': lambda y_true, y_pred: y_pred}, loss_weights={'regression_output': 1,
+            #                             'classification_output': 1, 'weighted_regression_loss': 1})
+
+            model.compile(optimizer=Adam(learning_rate=learning_rate),
+                          loss={'regression_output': WeightedRegressionLoss,
+                                'classification_output': weighted_binary_crossentropy(w0=class_weight_dict[0],
+                                                                                      w1=5 * class_weight_dict[1])},
+                          loss_weights={'regression_output': 1,
+                                        'classification_output': 1})
+
+            # model.compile(optimizer=Adam(learning_rate=learning_rate),
+            #               loss={'regression_output': lambda y_true, y_pred: classification_first_stage_loss(y_true, y_pred, classification_output),
+            #                     'classification_output': weighted_binary_crossentropy(w0=class_weight_dict[0],
+            #                                                                           w1=5 * class_weight_dict[1])})
+
+            return model
+
+        model = create_model(input_shape=self.X_train_scaled.shape[1], mse_weight=mse_weight, ranking_weight=ranking_weight, l2=l2, dropout_rate=dropout_rate,
+                         learning_rate=learning_rate)
+
+        unique_train_codes = self.main_codes_train.unique()
+        train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
+        print(f"the training set is: {train_msa_ids} \n")
+        print(f"the validation set is: {val_msa_ids} \n")
+        # x_train_scaled_with_names = pd.DataFrame(self.X_train_scaled)
+        # x_train_scaled_with_names.columns = self.X_train.columns
+        batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, true_class_labels = self.class_label_train,
+                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
+                                         validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+
+        val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train, true_class_labels = self.class_label_train,
+                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
+                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+
+        # Callback 1: early stopping
+        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
+        # Callback 2: learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(
+            monitor='val_loss',  # to monitor
+            patience=3,  # number of epochs with no improvement before reducing the learning rate
+            verbose=1,
+            factor=0.5,  # factor by which the learning rate will be reduced
+            min_lr=1e-6,  # lower bound on the learning rate
+            min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
+        )
+        callbacks = [
+            early_stopping,
+            lr_scheduler
+        ]
+
+        # history = model.fit(self.X_train_scaled, [self.y_train, self.y_train],
+        #   epochs=epochs,
+        #   batch_size=batch_size,
+        #   validation_split=validation_split,
+        #   verbose=verbose,
+        #   callbacks=callbacks)
+
+        # history = model.fit(self.X_train_scaled, [self.y_train, self.class_label_train],
+        #   epochs=epochs,
+        #   batch_size=batch_size,
+        #   validation_split=validation_split,
+        #   verbose=verbose,
+        #   callbacks=callbacks)
+
+        history = model.fit(batch_generator,
+          epochs=epochs,
+          batch_size=batch_size,
+          validation_data=val_generator,
+          verbose=verbose,
+          callbacks=callbacks)
 
         plt.plot(history.history['loss'], label='Training Loss')
         plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -732,78 +892,45 @@ class Regressor:
         model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
         plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
 
-        # substrings = ['original', 'concat']
-        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        # mask = X_test_scaled_with_names['code'].str.contains('|'.join(substrings), case=False, na=False)
-        # self.X_test_scaled = self.X_test_scaled[~mask]
-        loss = model.evaluate(self.X_test_scaled, self.y_test)
+        loss = model.evaluate(self.X_test_scaled, [self.y_test, self.class_label_test])
         print(f"Test Loss: {loss}")
 
-        self.y_pred = model.predict(self.X_test_scaled)
-        self.y_pred = np.ravel(self.y_pred)  # flatten multi-dimensional array into one-dimensional
+        self.y_pred, self.class_prob = model.predict(self.X_test_scaled)
+
+        # Get predictions from both heads
+        # main_predictions, low_score_predictions = model.predict(self.X_test_scaled)
+
+
+        self.y_pred = np.ravel(self.y_pred)  # flatten
         self.y_pred = self.y_pred.astype('float64')
+        self.class_prob = np.ravel(self.class_prob)  # flatten
+        self.class_prob = self.class_prob.astype('float64')
+
+        self.class_pred = (self.class_prob >= 0.55).astype(int)
+
 
         df_res = pd.DataFrame({
             'code1': self.main_codes_test,
             'code': self.file_codes_test,
-            'predicted_score': self.y_pred
+            'predicted_score': self.y_pred,
+            'predicted_class_prob': self.class_prob,
+            'predicted_class_pred': self.class_pred,
         })
 
         df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
 
         mse = mean_squared_error(self.y_test, self.y_pred)
-        print(f"Mean Squared Error: {mse:.4f}")
+        print(f"Mean Squared Error 1: {mse:.4f}")
         corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
 
-        try:
-            # # explain features importance
-            X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-            X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
-            explainer = shap.Explainer(model, X_test_subset)
-            shap_values = explainer(X_test_subset)
-            # explainer = shap.Explainer(model, X_test_scaled_with_names)
-            # shap_values = explainer(X_test_scaled_with_names)
-            joblib.dump(explainer,
-                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-            joblib.dump(shap_values,
-                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-            matplotlib.use('Agg')
-
-            feature_names = [
-                a + ": " + str(b) for a, b in zip(X_test_subset.columns, np.abs(shap_values.values).mean(0).round(3))
-            ]
-
-            shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
-            # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/summary_plot_{i}.png', dpi=300,
-                        bbox_inches='tight')
-            # plt.show()
-            plt.close()
-
-            shap.plots.waterfall(shap_values[0], max_display=40)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/waterfall_plot_{i}.png', dpi=300,
-                        bbox_inches='tight')
-            # plt.show()
-            plt.close()
-
-            shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/force_plot_{i}.png')
-            # plt.show()
-            plt.close()
-
-            shap.plots.bar(shap_values, max_display=40)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/bar_plot_{i}.png', dpi=300,
-                        bbox_inches='tight')
-            # plt.show()
-            plt.close()
-        except Exception as e:
-            print(f"Did not manage to get features importance\n")
+        print(classification_report(self.class_label_test, self.class_pred))
 
         return mse
 
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
+        # FIRST PREDICTION
         plt.figure(figsize=(12, 8))
         plt.scatter(self.y_test, self.y_pred, color='blue', edgecolor='k', alpha=0.7)
         plt.plot([self.y_test.min(), self.y_test.max()], [self.y_test.min(), self.y_test.max()], color='red', linestyle='--')
@@ -817,16 +944,7 @@ class Regressor:
         )
         plt.xlabel('True Values')
         plt.ylabel('Predicted Values')
-        if model_name == "svr":
-            title = "Support Vector Regression"
-        elif model_name == "rf":
-            title = "Random Forest Regression"
-        elif model_name == "knn-r":
-            title = "K-Nearest Neighbors Regression"
-        elif model_name == "gbr":
-            title = "Gradient Boosting Regression"
-        elif model_name == "dl":
-            title = "Deep learning"
+        title = "Deep learning"
         plt.title(f'{title}: Predicted vs. True Values')
         plt.grid(True)
         plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
@@ -856,176 +974,9 @@ class Regressor:
         plt.close()
 
 
-        if model_name == "rf" or model_name == "gbr":
-            importances = self.regressor.feature_importances_
-            indices = np.argsort(importances)[::-1]
-
-            importances_df = pd.DataFrame({
-                'Feature': self.X.columns,
-                'Importance': importances
-            })
-
-            top_n = 15
-            top_features = importances_df.iloc[indices].head(top_n)
-
-            # Plot feature importances
-            plt.figure(figsize=(22, 21))
-            plt.title(f'{title} Feature Importances', fontsize=20)
-            plt.barh(top_features['Feature'], top_features['Importance'], color='skyblue')
-            plt.xlabel('Importance', fontsize=18)
-            plt.ylabel('Features', fontsize=18)
-            plt.xticks(fontsize=18)
-            plt.yticks(fontsize=18)
-            plt.tight_layout()
-            plt.savefig(fname=f'./out/features_importances_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
-            plt.show()
-            plt.close()
-
-    def dl_classifier(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.0001, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.1, top_k = 4, mse_weight=0, ranking_weight=50, threshold=0.5, per_aligner=False):
-
-        # def weighted_binary_crossentropy(w0=1.0, w1=1.0):
-        #     def loss(y_true, y_pred):
-        #         epsilon = tf.keras.backend.epsilon()
-        #         y_pred = tf.clip_by_value(y_pred, epsilon, 1. - epsilon)  # Prevent log(0)
-        #
-        #         # Compute the binary cross-entropy loss with weights
-        #         loss = - (w1 * y_true * tf.keras.backend.log(y_pred) +
-        #                   2 * w0 * (1 - y_true) * tf.keras.backend.log(1 - y_pred))
-        #
-        #         return tf.reduce_mean(loss)  # Mean loss over the batch
-        #
-        #     return loss
-
-        def weighted_binary_crossentropy(w0=1.0, w1=1.0):
-            def loss(y_true, y_pred):
-                loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
-                weights = y_true * w1 + (1 - y_true) * w0 #would it help me to make class1 5 times more important?
-                return tf.reduce_mean(loss_fn(y_true, y_pred) * weights)
-
-            return loss
-
-
-        model = Sequential()
-        model.add(Input(shape=(self.X_train_scaled.shape[1],)))
-
-        # first hidden
-        model.add(Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-        # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
-        model.add(Activation('relu'))
-        # model.add(ELU())
-        model.add(BatchNormalization())
-        model.add(Dropout(dropout_rate))  # Dropout for regularization
-
-        # second hidden
-        model.add(Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-        # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the second hidden layer
-        model.add(Activation('relu'))
-        model.add(BatchNormalization())
-        model.add(Dropout(dropout_rate))  # Dropout for regularization
-
-        # third hidden
-        model.add(Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-        # model.add(LeakyReLU(negative_slope=0.01))  # Leaky ReLU for the third hidden layer
-        # model.add(ELU())
-        model.add(Activation('relu'))
-        model.add(BatchNormalization())
-        model.add(Dropout(dropout_rate))  # Dropout for regularization
-
-        model.add(Dense(1, activation='sigmoid'))  # limits output to 0 to 1 range
-
-
-        class_weights = compute_class_weight('balanced', classes=np.unique(self.y_train), y=self.y_train)
-        class_weight_dict = dict(enumerate(class_weights))
-        print(class_weight_dict)
-
-        optimizer = Adam(learning_rate=learning_rate)
-        model.compile(optimizer=optimizer, loss=weighted_binary_crossentropy(w0=class_weight_dict[0], w1=class_weight_dict[1]),
-                      metrics=['accuracy', metrics.AUC(), metrics.AUC(name='auc_weighted')])
-        # model.compile(optimizer=optimizer, loss='binary_crossentropy',
-        #               metrics=['accuracy', metrics.AUC(), metrics.AUC(name='auc_weighted')])
-
-
-        unique_train_codes = self.main_codes_train.unique()
-        train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
-        print(f"the training set is: {train_msa_ids} \n")
-        print(f"the validation set is: {val_msa_ids} \n")
-        batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train, batch_size=batch_size,
-                                         validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, classification_task=True, features_w_names=self.train_df)
-
-        val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
-                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, classification_task=True, features_w_names=self.train_df)
-
-
-        # 1. Implement early stopping
-        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
-        # 2. learning rate scheduler
-        lr_scheduler = ReduceLROnPlateau(
-            monitor='val_loss',  # Metric to monitor
-            patience=3,  # Number of epochs with no improvement to wait before reducing the learning rate
-            verbose=1,  # Print messages when learning rate is reduced
-            factor=0.7,  # Factor by which the learning rate will be reduced
-            min_lr=1e-5  # Lower bound on the learning rate
-        )
-        callbacks = [early_stopping, lr_scheduler]
-        history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
-                            callbacks=callbacks)
-        # history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split, verbose=verbose, callbacks=[early_stopping, lr_scheduler])
-
-        plot_model(model, to_file=f'./out/classifier_model_architecture_{i}_mode{self.mode}_{self.predicted_measure}.png',
-                   show_shapes=True, show_layer_names=True,
-                   show_layer_activations=True)
-        model.save(f'./out/classifer_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
-        plot_model(model, to_file='./out/classifier_model_architecture.dot', show_shapes=True, show_layer_names=True)
-
-        plt.plot(history.history['loss'], label='Training Loss')
-        plt.plot(history.history['val_loss'], label='Validation Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-
-        # Set integer ticks on the x-axis
-        epochs = range(1, len(history.history['loss']) + 1)  # Integer epoch numbers
-        plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
-
-        plt.legend()
-        plt.savefig(fname=f'./out/classification_loss_graph_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
-        plt.show()
-        plt.close()
-
-        self.y_prob = model.predict(self.X_test_scaled).flatten()
-
-        if self.y_prob is not None:
-            auc = roc_auc_score(self.y_test, self.y_prob)
-            print(f"AUC-ROC: {auc:.4f}")
-            auc_pr = average_precision_score(self.y_test, self.y_prob)
-            print(f"AUC-PR: {auc_pr:.4f}")
-
-        self.y_pred = (self.y_prob >= threshold).astype(int)
-        print(classification_report(self.y_test, self.y_pred))
-
-        # explain features importance
-        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        # explainer = shap.Explainer(model, X_test_scaled_with_names)
-        # shap_values = explainer(X_test_scaled_with_names)
-        # joblib.dump(explainer,
-        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-        # joblib.dump(shap_values,
-        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-
-        # Create a DataFrame
-        df_res = pd.DataFrame({
-            'code1': self.main_codes_test,
-            'code': self.file_codes_test,
-            'predicted_score': self.y_pred,
-            'probabilities': self.y_prob
-        })
-
-        # Save the DataFrame to a CSV file
-        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
-
+#class PREDICTION
         # Confusion Matrix
-        cm = confusion_matrix(self.y_test, self.y_pred)
+        cm = confusion_matrix(self.class_label_test, self.class_pred)
         print("Confusion Matrix:")
         print(cm)
 
@@ -1039,13 +990,12 @@ class Regressor:
         plt.show()
 
         # Plot precision-recall curve
-        precision, recall, thresholds = precision_recall_curve(self.y_test, self.y_prob)
+        precision, recall, thresholds = precision_recall_curve(self.class_label_test, self.class_pred)
         target_thresholds = [0.3, 0.4, 0.5, 0.52, 0.55, 0.57, 0.6, 0.7]
         plt.plot(recall, precision, color='b', lw=2)
         plt.xlabel('Recall')
         plt.ylabel('Precision')
         plt.title('Precision-Recall Curve')
-
 
         for target_threshold in target_thresholds:
             threshold_idx = (abs(thresholds - target_threshold)).argmin()
@@ -1057,8 +1007,8 @@ class Regressor:
         plt.savefig(fname=f'./out/precision_recall.png', format='png')
         plt.show()
 
-        roc_auc = roc_auc_score(self.y_test, self.y_prob)
-        fpr, tpr, _ = roc_curve(self.y_test, self.y_prob)
+        roc_auc = roc_auc_score(self.class_label_test, self.class_prob)
+        fpr, tpr, _ = roc_curve(self.class_label_test, self.class_prob)
 
         # Plot ROC curve
         plt.figure()
@@ -1070,24 +1020,3 @@ class Regressor:
         plt.legend(loc="lower right")
         plt.savefig(fname=f'./out/ROC_curve.png', format='png')
         plt.show()
-
-        mask = self.file_codes_test.str.contains("concat|_alt", regex=True)
-        self.y_pred_filtered = self.y_pred[~mask]
-        self.y_prob_filtered = self.y_prob[~mask]
-        self.y_test_filtered = self.y_test[~mask]
-
-        # Confusion Matrix #2
-        cm = confusion_matrix(self.y_test_filtered, self.y_pred_filtered)
-        print("Confusion Matrix:")
-        print(cm)
-
-        # Plot Confusion Matrix
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Pred: 0', 'Pred: 1'],
-                    yticklabels=['True: 0', 'True: 1'])
-        plt.title('Confusion Matrix2')
-        plt.xlabel('Predicted')
-        plt.ylabel('True')
-        plt.savefig(fname=f'./out/confusion_matrix2.png', format='png')
-        plt.show()
-
-        return auc
