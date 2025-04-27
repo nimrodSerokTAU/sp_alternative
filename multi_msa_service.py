@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import numpy as np
 import pandas as pd
 import scipy.stats
 
@@ -8,7 +7,7 @@ from classes.msa import MSA, MSAStats
 from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
-from dpos import compute_dpos_distance
+from dpos import compute_dpos_distance, compute_dpos_no_g_distance
 from enums import SopCalcTypes, RootingMethods, WeightMethods
 
 
@@ -120,7 +119,8 @@ def add_msa_to_stats(all_msa_stats: list[MSAStats], msa: MSA, true_msa: MSA, con
             sop_w_options = sp.compute_naive_sp_score(msa.sequences, msa.seq_weights_options)
     additional_weights: set[WeightMethods] = config.additional_weights
     dpos: float = compute_dpos_distance(true_msa.sequences, msa.sequences)
+    dpos_no_gp: float = compute_dpos_no_g_distance(true_msa.sequences, msa.sequences)
 
-    msa.set_my_features(additional_weights, sop_w_options, true_msa.tree, dpos)
+    msa.set_my_features(additional_weights, sop_w_options, true_msa.tree, dpos, dpos_no_gp)
     all_msa_stats.append(msa.stats)
 

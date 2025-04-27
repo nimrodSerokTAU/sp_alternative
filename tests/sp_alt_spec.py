@@ -14,7 +14,7 @@ from classes.sp_score import SPScore
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
 from enums import SopCalcTypes, RootingMethods, WeightMethods
 from multi_msa_service import calc_multiple_msa_sp_scores
-from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance
+from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance, compute_dpos_no_g_distance
 from ete3 import Tree, TreeNode
 
 newick_of_AATF = (
@@ -146,8 +146,20 @@ def test_only_gap_open_and_ext_cost_same():
         'ARNDC---HI',
         'AA-DCQ--AI',
         'AA--CQEGHI']
-    res: int = sp.compute_sp_gap_open(profile)
-    assert res == (-6, 4)
+    # ARNDC---HI
+    # AA-DCQ--AI
+    # ----> 2
+
+    # ARNDC---HI
+    # AA--CQEGHI
+    # ----> 2
+
+    # AA-DCQ--AI
+    # AA--CQEGHI
+    # ----> 2
+
+    res: tuple [int, int] = sp.compute_sp_gap_open(profile)
+    assert res == (-6, 6)
 
 
 def test_compute_efficient_sp():
@@ -274,7 +286,7 @@ def compute_dpos_distance_for_diff_case_b():
     assert round(res, 3) == 0.417
 
 
-def test_dpos_for_diff_length():
+def test_dpos_for_diff_length_case_a():
     profile_a: list[str] = [
         'AATATTG-',
         'A--ATTAG',
@@ -289,7 +301,126 @@ def test_dpos_for_diff_length():
     assert round(res, 3) == 0.639
 
 
-def test_dpos_for_diff_length_case_b():
+def test_dpos_for_diff_length_case_qu_a():
+    profile_a: list[str] = [
+        'GCATCATT-G',
+        'GC---ATTAG',
+        'GC---AT-AG'
+    ]
+    profile_b: list[str] = [
+        'GCATCATT-G',
+        'GCA---TTAG',
+        'GCA----TAG'
+    ]
+    profile_c: list[str] = [
+        'GCATCATT-G-',
+        'GC---ATT-AG',
+        'GC---A-TA-G'
+    ]
+    res_ab = compute_dpos_distance(profile_a, profile_b)
+    res_ac = compute_dpos_distance(profile_a, profile_c)
+    assert round(res_ab, 3) == 0.364
+    assert round(res_ac, 3) == 0.295
+
+
+def test_dpos_for_diff_length_case_qu_b():
+    true_profile: list[str] = [
+        'GAAGTTAGACATC',
+        'GA--------ATC',
+        'GA--------ATG',
+        'GT--------ATG',
+        'GT--------ATC',
+    ]
+    profile_a: list[str] = [
+        'GAAGTTAGACATC',
+        'GAA--------TC',
+        'GAA--------TG',
+        'GTA--------TG',
+        'GTA--------TC',
+    ]
+    profile_b: list[str] = [
+        'GAAGTTAGACATC',
+        'GA----A----TC',
+        'GA----A----TG',
+        'GT----A----TG',
+        'GT----A----TC',
+    ]
+    profile_c: list[str] = [
+        'GAAGTTAGACATC',
+        'GA------A--TC',
+        'GA------A--TG',
+        'GT------A--TG',
+        'GT------A--TC',
+    ]
+
+    res_a = compute_dpos_distance(true_profile, profile_a)
+    res_b = compute_dpos_distance(true_profile, profile_b)
+    res_c = compute_dpos_distance(true_profile, profile_c)
+    assert round(res_a, 3) == 0.303
+    assert round(res_b, 3) == 0.182
+    assert round(res_c, 3) == 0.121
+
+
+def test_dpos_no_g_for_diff_length_case_qu_a():
+    profile_a: list[str] = [
+        'GCATCATT-G',
+        'GC---ATTAG',
+        'GC---AT-AG'
+    ]
+    profile_b: list[str] = [
+        'GCATCATT-G',
+        'GCA---TTAG',
+        'GCA----TAG'
+    ]
+    profile_c: list[str] = [
+        'GCATCATT-G-',
+        'GC---ATT-AG',
+        'GC---A-TA-G'
+    ]
+    res_ab = compute_dpos_no_g_distance(profile_a, profile_b)
+    res_ac = compute_dpos_no_g_distance(profile_a, profile_c)
+    assert round(res_ab, 3) == 0.242
+    assert round(res_ac, 3) == 0.273
+
+
+def test_dpos_no_g_for_diff_length_case_qu_b():
+    true_profile: list[str] = [
+        'GAAGTTAGACATC',
+        'GA--------ATC',
+        'GA--------ATG',
+        'GT--------ATG',
+        'GT--------ATC',
+    ]
+    profile_a: list[str] = [
+        'GAAGTTAGACATC',
+        'GAA--------TC',
+        'GAA--------TG',
+        'GTA--------TG',
+        'GTA--------TC',
+    ]
+    profile_b: list[str] = [
+        'GAAGTTAGACATC',
+        'GA----A----TC',
+        'GA----A----TG',
+        'GT----A----TG',
+        'GT----A----TC',
+    ]
+    profile_c: list[str] = [
+        'GAAGTTAGACATC',
+        'GA------A--TC',
+        'GA------A--TG',
+        'GT------A--TG',
+        'GT------A--TC',
+    ]
+
+    res_a = compute_dpos_no_g_distance(true_profile, profile_a)
+    res_b = compute_dpos_no_g_distance(true_profile, profile_b)
+    res_c = compute_dpos_no_g_distance(true_profile, profile_c)
+    assert round(res_a, 3) == 0.091
+    assert round(res_b, 3) == 0.091
+    assert round(res_c, 3) == 0.091
+
+def test_dpos_for_diff_length_case_c():
     profile_a: list[str] = [
         'AAT',
         '--T',
@@ -494,7 +625,7 @@ def test_rf_for_nj_using_ours():
     msa.build_nj_tree()
     nj_unrooted_tree = msa.tree
     rf = unrooted_tree.calc_rf(nj_unrooted_tree)
-    assert rf == 74
+    assert rf == 34
 
 
 def test_rf_for_nj_using_newick():
@@ -582,7 +713,8 @@ def test_msa_stats():
                                         sp_missmatch_count, sp_gpo_count, ge_count)
     inferred_msa.order_sequences(true_msa.seq_names)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-    inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+    dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
+    inferred_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
     inferred_msa.set_my_alignment_features()
     inferred_msa.build_nj_tree()
     inferred_msa.tree.longest_path()
@@ -593,7 +725,7 @@ def test_msa_stats():
     assert inferred_msa.stats.get_my_features() == (
         'inferred,-12.0,-0.12,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
         '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.13,-0.13,0.47,0.22,1,5,1.676,0.183,0.093,0.396,0.03,0.304,'
-        '-1.5226555580702366,0.174,0.491,0.026,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,22,-1.135,-0.586,-7.131,-6.979,251.0,26,')
+        '-1.5226555580702366,0.174,0.491,0.026,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,22,-1.135,-0.586,-7.131,-6.979,251.0,26,12,0.8717797887081347,0.107,')
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
@@ -864,10 +996,12 @@ def test_create_alternative_msas_by_realign():
     for msa_data in res:
         alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
         dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
-        alt_msa.stats.set_my_dpos_dist_from_true(dpos)
+        dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
+        alt_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
         msa_list.append(alt_msa)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-    inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+    dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
+    inferred_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
     dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
     assert dpos_ratio <= 3
 
@@ -897,11 +1031,13 @@ def test_create_alternative_msas_by_moving_smallest():
         print(inx)
         alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
         dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
-        alt_msa.stats.set_my_dpos_dist_from_true(dpos)
+        dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
+        alt_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
         dpos_list.append(dpos)
         msa_list.append(alt_msa)
     dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-    inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
+    dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
+    inferred_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
     dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
     assert dpos_ratio <= 1
 
