@@ -127,14 +127,14 @@ class MSA:
         return [self.rooted_trees[rooting_method.value].seq_weight_dict[s_name] for s_name in self.seq_names]
 
     def set_my_features(self, weights: set[WeightMethods], sop_w_options: list[float], true_tree: UnrootedTree,
-                        dpos: float):
+                        dpos: float, dpos_no_gp: float):
         self.set_my_alignment_features()
         self.build_nj_tree()
         self.calc_seq_weights(weights)
         if len(sop_w_options) > 0:
             self.set_w(sop_w_options)
         self.set_rf_from_true(true_tree)
-        self.stats.set_my_dpos_dist_from_true(dpos)
+        self.stats.set_my_dpos_dist_from_true(dpos, dpos_no_gp)
 
     def compute_seq_w_henikoff_vars(self) -> tuple[list[float], list[float]]:
         seq_len: int = len(self.sequences[0])

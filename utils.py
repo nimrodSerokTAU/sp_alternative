@@ -23,7 +23,7 @@ def read_matching_matrix(file_path: str) -> tuple[list[list[int]], dict[str, int
     return match_matrix, codes_dict_to_inx
 
 
-def translate_to_matrix_index(letter: str, code_to_index_dict: dict[str, int]) -> int:
+def translate_to_matrix_index(letter: str, code_to_index_dict: dict[str, int]) -> int:  # TODO: check '*' Vs. '-'
     return code_to_index_dict[letter] if letter in code_to_index_dict else code_to_index_dict['*']
 
 

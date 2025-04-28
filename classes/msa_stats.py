@@ -13,6 +13,7 @@ class MSAStats:
     sop_score: float
     normalised_sop_score: float
     dpos_dist_from_true: float
+    dpos_ng_dist_from_true: float
     taxa_num: int
     constant_sites_pct: float
     n_unique_sites: int
@@ -100,6 +101,7 @@ class MSAStats:
         self.sop_score = 0
         self.normalised_sop_score = 0
         self.dpos_dist_from_true = 0
+        self.dpos_ng_dist_from_true = 0
         self.taxa_num = 0
         self.constant_sites_pct = 0
         self.n_unique_sites = 0
@@ -196,7 +198,7 @@ class MSAStats:
             'k_mer_10_max', 'k_mer_10_mean', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_10_top_10_norm',
             'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'k_mer_20_top_10_norm',
             'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root',
-            'clustal_differential_sum', 'sp_score_subs', 'sp_ge_count'
+            'clustal_differential_sum', 'sp_score_subs', 'sp_ge_count', 'nj_parsimony_score', 'nj_parsimony_sd', 'dpos_ng_dist_from_true'
         ]
 
     def set_my_sop_score(self, sop_score: float):
@@ -226,8 +228,9 @@ class MSAStats:
         self.clustal_differential_sum = sop_w_options_dict[
             WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value] if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value in sop_w_options_dict else 0
 
-    def set_my_dpos_dist_from_true(self, dpos: float):
+    def set_my_dpos_dist_from_true(self, dpos: float, dpos_no_gp: float):
         self.dpos_dist_from_true = dpos
+        self.dpos_ng_dist_from_true = dpos_no_gp
 
     def set_my_alignment_features(self, aln: list[str]):
         self.set_length(aln)
