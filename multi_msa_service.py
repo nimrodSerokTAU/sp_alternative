@@ -99,26 +99,16 @@ def calc_multiple_msa_sp_scores(config: Configuration):
                 print(msa_name)
                 inferred_msa = MSA(msa_name)
                 inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
-                if config.sop_clac_type == SopCalcTypes.NAIVE:
-                    inferred_msa.set_my_sop_score(sp.compute_naive_sp_score(inferred_msa.sequences)[0])
-                else:
-                    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count, ge_count = sp.compute_efficient_sp_parts(
-                        inferred_msa.sequences)
-                    inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                                        sp_missmatch_count, go_count, ge_count)
-                    if len(inferred_msa.weight_names) > 0:
-                        inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
                 inferred_msa.order_sequences(true_msa.seq_names)
-                dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-                inferred_msa.stats.set_my_dpos_dist_from_true(dpos)
-                inferred_msa.set_my_alignment_features()
-                inferred_msa.build_nj_tree()
-                inferred_msa.calc_seq_weights(config.additional_weights)
-                inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
-                inferred_msa.set_rf_from_true(true_msa.tree)
-                all_msa_stats.append(inferred_msa.stats)
+                alternative_inferred: list[list[str]] = inferred_msa.create_alternative_msas_by_moving_one_part()
+                add_msa_to_stats(all_msa_stats, inferred_msa, true_msa, config, sp)
+                # for i, m in enumerate(alternative_inferred):
+                #     inf_alt_msa = MSA(f'{msa_name}_alt_{i}')
+                #     inf_alt_msa.set_sequences_to_me(m, inferred_msa.seq_names)
+                #     add_msa_to_stats(all_msa_stats, inferred_msa, true_msa, config, sp)
+
             except Exception as e:
-                print(f"error in {inferred_file_name}: {e}\n")
+                    print(f"error in {inferred_file_name}: {e}\n")
         if config.is_analyze_per_dir:
             if config.is_compute_correlation:
                 pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
