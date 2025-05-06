@@ -1,6 +1,5 @@
 import math
 import os
-
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -12,8 +11,9 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, average_precision_score, classification_report, precision_recall_curve, roc_curve
 import matplotlib.pyplot as plt
 from sklearn.svm import SVR
-from typing import Literal
-from scipy.stats import pearsonr, gaussian_kde
+from typing import Literal, List, Any, Iterator, Tuple, Optional
+from scipy.stats import pearsonr, gaussian_kde, norm
+from sklearn.base import BaseEstimator, TransformerMixin
 import visualkeras
 import joblib
 import xgboost as xgb
@@ -21,11 +21,10 @@ from catboost import CatBoostClassifier
 import joblib
 import shap
 import pickle
-
 import pydot
 import tensorflow as tf
 # import tensorflow_model_optimization as tfmot
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder, RobustScaler, QuantileTransformer
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape, Embedding, Concatenate, Flatten
 from tensorflow.keras.optimizers import Adam, Nadam, RMSprop
@@ -41,7 +40,7 @@ from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import SMOTE
 from feature_extraction.classes.attention_layer import AttentionLayer
 
-def assign_aligner(row):
+def assign_aligner(row: pd.Series) -> str:
     code = row['code'].lower()
     not_mafft = ['muscle', 'prank', '_true.fas', 'true_tree.txt', 'bali_phy', 'baliphy', 'original']
 
@@ -56,7 +55,7 @@ def assign_aligner(row):
 
     return 'true'
 
-def check_file_type(file_path):
+def check_file_type(file_path: str) -> str:
     _, file_extension = os.path.splitext(file_path)
     if file_extension == '.parquet':
         return 'parquet'
@@ -65,13 +64,13 @@ def check_file_type(file_path):
     else:
         return 'unknown'
 
-def assign_class_label(group):
+def assign_class_label(group: pd.DataFrame) -> pd.DataFrame:
     max_sop_row = group.loc[group['sop_score'].idxmax()]
     sop_dpos = max_sop_row['dpos_dist_from_true']
     group['class_label'] = (group['dpos_dist_from_true'] < sop_dpos).astype(int)
     return group
 
-def assign_class_label_test(group):
+def assign_class_label_test(group: pd.DataFrame) -> pd.DataFrame:
     mask = group['code'].str.contains("concat|_alt", case=False, na=False)
     group_without_extra = group[~mask]
     if not group_without_extra.empty:
@@ -84,13 +83,81 @@ def assign_class_label_test(group):
         group['class_label'] = np.nan
     return group
 
+
+# class SmoothCDFTransformer(BaseEstimator, TransformerMixin):
+#     def __init__(self):
+#         self.params_ = {}  # Store mean and std for each feature
+#
+#     def fit(self, X, y=None):
+#         # Convert X to a pandas DataFrame if it's not already
+#         X = pd.DataFrame(X)
+#
+#         # Select only numerical columns (just like how Scalers handle)
+#         self.features_ = X.select_dtypes(include=[np.number]).columns.tolist()
+#
+#         for feature in self.features_:
+#             values = X[feature].values
+#             mu, sigma = np.mean(values), np.std(values)
+#             self.params_[feature] = (mu, sigma)
+#
+#         return self
+#
+#     def transform(self, X):
+#         # Ensure that the input is a pandas DataFrame
+#         X = pd.DataFrame(X)
+#
+#         # Transform the data
+#         X_transformed = X.copy()
+#
+#         for feature in self.features_:
+#             mu, sigma = self.params_[feature]
+#             values = X[feature].values
+#             # Apply CDF of normal distribution
+#             cdf_vals = norm.cdf(values, loc=mu, scale=sigma)
+#             X_transformed[f"{feature}_cdf"] = cdf_vals
+#
+#         return X_transformed
+#
+#
+# class SmoothCDFReplacer(BaseEstimator, TransformerMixin):
+#     def __init__(self):
+#         self.params_ = {}
+#
+#     def fit(self, X, y=None):
+#         X = pd.DataFrame(X)
+#         self.features_ = X.select_dtypes(include=[np.number]).columns.tolist()
+#
+#         for feature in self.features_:
+#             values = X[feature].values
+#             mu = np.mean(values)
+#             sigma = np.std(values)
+#             self.params_[feature] = (mu, sigma)
+#
+#         return self
+#
+#     def transform(self, X):
+#         X = pd.DataFrame(X).copy()
+#
+#         for feature in self.features_:
+#             mu, sigma = self.params_[feature]
+#             values = X[feature].values
+#
+#             if sigma == 0:
+#                 # Avoid NaNs: if all values are the same, assign CDF=0.5
+#                 X[feature] = 0.5
+#             else:
+#                 X[feature] = norm.cdf(values, loc=mu, scale=sigma)
+#
+#         return X.values
+
 class BatchGenerator(Sequence):
     def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3, per_aligner=False, classification_task = False, features_w_names=np.nan):
         self.features = features
         self.true_labels = np.asarray(true_labels)
         self.msa_ids = true_msa_ids  # TRUE MSA IDs (categorical)
         self.batch_size = batch_size
-        self.unique_msa_ids = np.unique(true_msa_ids)[np.unique(true_msa_ids) != "AATF"]  #TODO remove AATF from features file
+        # self.unique_msa_ids = np.unique(true_msa_ids)[np.unique(true_msa_ids) != "AATF"]  #TODO remove AATF from features file
+        self.unique_msa_ids = np.unique(true_msa_ids)
         self.validation_split = validation_split
         self.is_validation = is_validation
         self.val_msa_ids = val_msa_ids
@@ -119,9 +186,9 @@ class BatchGenerator(Sequence):
         self.unique_msa_ids = np.unique(self.msa_ids)
         self.batches = self._precompute_batches()
 
-    def _split_idx_into_batches(self, idx):
-        batches = []
-        remaining_samples_set = []
+    def _split_idx_into_batches(self, idx: np.ndarray) -> Tuple[List[Any], List[Any]]:
+        batches: List[Any] = []
+        remaining_samples_set: List[Any] = []
         # np.random.shuffle(idx)
         num_samples = len(idx)
         num_full_batches = num_samples // self.batch_size
@@ -143,18 +210,19 @@ class BatchGenerator(Sequence):
         np.random.shuffle(batches)
         return batches, remaining_samples_set
 
-    def _split_sorted_idx_into_batches(self, idx):
-        if len(idx) > 0:
-            sorted_features = self.features_w_names.iloc[idx]
-            sorted_features = sorted_features.sort_values(by='dpos_dist_from_true', ascending=True)
-            sorted_indices = sorted_features.index.values #TODO - check that actual indices are reordered by sorting
-            batches, remaining_samples_set = self._split_idx_into_batches(sorted_indices)
-            return batches, remaining_samples_set
+    # def _split_sorted_idx_into_batches(self, idx):
+    #     if len(idx) > 0:
+    #         sorted_features = self.features_w_names.iloc[idx]
+    #         sorted_features = sorted_features.sort_values(by='dpos_dist_from_true', ascending=True)
+    #         # sorted_features = sorted_features.sort_values(by='dpos_ng_dist_from_true', ascending=True)
+    #         sorted_indices = sorted_features.index.values #TODO - check that actual indices are reordered by sorting
+    #         batches, remaining_samples_set = self._split_idx_into_batches(sorted_indices)
+    #         return batches, remaining_samples_set
 
-    def _precompute_batches(self):
-        batches = []
-        batches_mix = []
-        remaining_samples_set = []
+    def _precompute_batches(self) -> List[Any]:
+        batches: List[Any] = []
+        batches_mix: List[Any] = []
+        remaining_samples_set: List[Any] = []
 
         for msa_id in self.unique_msa_ids:
             try:
@@ -221,37 +289,39 @@ class BatchGenerator(Sequence):
 
         return final_batches
 
-    def _precompute_true_labels(self, idx):
-        if len(idx) > 0:
-            features = self.features_w_names.iloc[idx]
-            features = features.reset_index(drop=True)
-            # percentile_10 = features['dpos_dist_from_true'].quantile(0.1)
-            # labels = (features['dpos_dist_from_true'] <= percentile_10).astype(int)
-            # labels = labels.to_numpy()
-
-            max_sop_row = features.loc[features['sop_score'].idxmax()]
-            sop_dpos = max_sop_row['dpos_dist_from_true']
-            # print("Features shape:", features.shape)
-            # print("Max SOP Row:", max_sop_row)
-            # print("SoP dpos:", sop_dpos)
-            labels = (features['dpos_dist_from_true'] < sop_dpos).astype(int)
-            labels = labels.to_numpy()
-        else:
-            labels = np.nan
-            print("empty batch\n")
-        return labels
-    def __len__(self):
+    # def _precompute_true_labels(self, idx):
+    #     if len(idx) > 0:
+    #         features = self.features_w_names.iloc[idx]
+    #         features = features.reset_index(drop=True)
+    #         # percentile_10 = features['dpos_dist_from_true'].quantile(0.1)
+    #         # labels = (features['dpos_dist_from_true'] <= percentile_10).astype(int)
+    #         # labels = labels.to_numpy()
+    #
+    #         max_sop_row = features.loc[features['sop_score'].idxmax()]
+    #         sop_dpos = max_sop_row['dpos_dist_from_true']
+    #         # sop_dpos = max_sop_row['dpos_ng_dist_from_true']
+    #         # print("Features shape:", features.shape)
+    #         # print("Max SOP Row:", max_sop_row)
+    #         # print("SoP dpos:", sop_dpos)
+    #         labels = (features['dpos_dist_from_true'] < sop_dpos).astype(int)
+    #         # labels = (features['dpos_ng_dist_from_true'] < sop_dpos).astype(int)
+    #         labels = labels.to_numpy()
+    #     else:
+    #         labels = np.nan
+    #         print("empty batch\n")
+    #     return labels
+    def __len__(self) -> int:
         return len(self.batches)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Any:
         return self.batches[idx]
 
-    def on_epoch_end(self):
+    def on_epoch_end(self) -> None:
         if not self.is_validation:
             self.batches = self._precompute_batches()
         np.random.shuffle(self.batches)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[Any, Any]]:
         for idx in range(len(self)):
             batch_features, batch_labels = self[idx]
             yield (batch_features, batch_labels)
@@ -274,6 +344,7 @@ class Regressor:
         self.main_codes_test = None
         self.file_codes_test = None
         # self.train_codes, self.test_codes = None, None
+        # self._prepare_data()
 
 
         # df = pd.read_csv(self.features_file)
@@ -281,16 +352,26 @@ class Regressor:
         # df = pd.concat([df, df_extra], ignore_index=True)
         # to make sure that all dataset codes are read as strings and not integers
         # df = pd.read_parquet(self.features_file, engine='pyarrow')
+        df = pd.DataFrame()
         file_type = check_file_type(self.features_file)
         if file_type == 'parquet':
             df = pd.read_parquet(self.features_file, engine='pyarrow')
-        elif file_type =='csv':
+        elif file_type == 'csv':
             df = pd.read_csv(self.features_file)
         else:
             print(f"features file is of unknown format\n")
 
+        true_score_name = None
+        if self.predicted_measure == 'msa_distance':
+            # true_score_name = "dpos_dist_from_true"
+            true_score_name = "dpos_ng_dist_from_true"
+        elif self.predicted_measure == 'tree_distance':
+            true_score_name = 'normalized_rf'
+        elif self.predicted_measure == 'class_label':
+            true_score_name = 'class_label'
+
         df['code1'] = df['code1'].astype(str)
-        df = df[df['code1'] != 'AATF'] #TODO delete
+        # df = df[df['code1'] != 'AATF'] #TODO delete
 
         # substrings = ['original', 'concat', '_alt_']
         # mask = df['code'].str.contains('|'.join(substrings), case=False, na=False)
@@ -307,6 +388,8 @@ class Regressor:
         # df['class_label'] = df.groupby(['code1', 'aligner']).apply(assign_class_label_test).reset_index(level=[0, 1], drop=True)['class_label']
         df['class_label'] = df['class_label'].astype(int)
 
+        # df = df[df['aligner'] != 'muscle'] #TODO delete: here I remove all muscle msa's
+
         # df = df[df['class_label'] == 1] #TODO delete: here I chose only the MSAs we produces with small dpos
 
         df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_label.csv', index=False)
@@ -318,9 +401,11 @@ class Regressor:
 
         # Check for missing values
         print("Missing values in each column:\n", df.isnull().sum())
-        corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
+        corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df[true_score_name])
+        # corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of Normalized SOP and dpos: {corr_coefficient1:.4f}\n", f"P-value of non-correlation: {p_value1:.6f}\n")
-        corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df['dpos_dist_from_true'])
+        corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df[true_score_name])
+        # corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of SOP and dpos: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.6f}\n")
 
@@ -343,18 +428,20 @@ class Regressor:
         # encoded_msa_ids = encoder.fit_transform(unique_code1.reshape(-1, 1))
         # df['true_msa_ids_embed'] = encoded_msa_ids
 
-        if self.predicted_measure == 'msa_distance':
-            true_score_name = "dpos_dist_from_true"
-        elif self.predicted_measure == 'tree_distance':
-            true_score_name = 'normalized_rf'
-        elif self.predicted_measure == 'class_label':
-            true_score_name = 'class_label'
+        # true_score_name = None
+        # if self.predicted_measure == 'msa_distance':
+        #     # true_score_name = "dpos_dist_from_true"
+        #     true_score_name = "dpos_ng_dist_from_true"
+        # elif self.predicted_measure == 'tree_distance':
+        #     true_score_name = 'normalized_rf'
+        # elif self.predicted_measure == 'class_label':
+        #     true_score_name = 'class_label'
 
         self.y = df[true_score_name]
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score', 'aligner'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true'])
         if mode == 2:
             self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score'])
         if mode == 3:
@@ -362,15 +449,15 @@ class Regressor:
             self.X = df[['sop_score']]
         if mode == 4:
             self.X = df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1', 'aligner',
                          'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
                          'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
             'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
-            'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+            'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len'])
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'clustal_mid_root', 'clustal_differential_sum'])
 
 
         if remove_correlated_features:
@@ -410,9 +497,9 @@ class Regressor:
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'normalised_sop_score', 'aligner'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','class_label', 'normalised_sop_score', 'aligner'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true'])
         if mode == 2:
             self.X_train = self.train_df.drop(
                 columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf','class_label', 'code', 'code1', 'pypythia_msa_difficulty','sop_score', 'normalised_sop_score', 'aligner'])
@@ -428,39 +515,44 @@ class Regressor:
 
         if mode == 4:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
+                columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1', 'aligner',
                          'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
                          'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
                          'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
             'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
-            'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+            'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'sp_score_gap_e_norm','single_char_count', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len'])
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'clustal_mid_root', 'clustal_differential_sum'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code',
-                         'code1',
+                columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1', 'aligner',
                          'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
                          'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
-                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
-                         'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
-                         'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
-                         'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-                         'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
-                         'sp_score_gap_e_norm', 'sp_score_gap_e_norm', 'single_char_count', 'double_char_count',
-                         'k_mer_10_max', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
-                         'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-                         'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
-                         'seq_min_len']
+                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min','gaps_len_two',
+            'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
+            'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
+            'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
+            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'sp_score_gap_e_norm', 'double_char_count','k_mer_10_max',  'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_top_10_norm',
+            'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'seq_min_len', 'clustal_mid_root', 'clustal_differential_sum']
             )
 
         if remove_correlated_features:
             self.X_train = self.X_train.drop(columns=to_drop)
             self.X_test = self.X_test.drop(columns=to_drop)
 
-        self.scaler = MinMaxScaler()
-        self.X_train_scaled = self.scaler.fit_transform(self.X_train) #calculate scaling parameters (fit)
-        self.X_test_scaled = self.scaler.transform(self.X_test) #use the same scaling parameters as in train scaling
+        # self.scaler = MinMaxScaler() #TODO uncomment this line
+        # self.scaler = RobustScaler()
+        # self.scaler = StandardScaler()
+        self.scaler = QuantileTransformer(output_distribution='uniform', n_quantiles=5000)
+        self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit) #TODO uncomment this line
+        self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling #TODO uncomment this line
+
+        # self.scaler = SmoothCDFTransformer() #TODO comment this line
+        # self.scaler = SmoothCDFReplacer()
+        # self.scaler.fit(self.X_train) #TODO comment this line
+        # self.X_train_scaled = self.scaler.transform(self.X_train) #TODO comment this line
+        # self.X_test_scaled = self.scaler.transform(self.X_test) #TODO comment this line
+
         joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
 
         self.main_codes_train = self.train_df['code1']
@@ -473,11 +565,15 @@ class Regressor:
         self.file_codes_test = self.test_df['code']
         self.aligners_test = self.test_df['aligner']
 
-        corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df['dpos_dist_from_true'])
+        corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df[true_score_name])
+        # corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'],
+        #                                        self.test_df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of Normalized SOP and dpos in the TEST set: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.4f}\n")
         corr_coefficient1, p_value1 = pearsonr(self.test_df['sop_score'],
-                                               self.test_df['dpos_dist_from_true'])
+                                               self.test_df[true_score_name])
+        # corr_coefficient1, p_value1 = pearsonr(self.test_df['sop_score'],
+        #                                         self.test_df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of SOP and dpos in the TEST set: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.4f}\n")
 
@@ -506,7 +602,7 @@ class Regressor:
 
         # writing train set into csv
         x_train_scaled_to_save = pd.DataFrame(self.X_train_scaled)
-        x_train_scaled_to_save.columns = self.X_train.columns
+        x_train_scaled_to_save.columns = self.X_train.columns #TODO uncomment this line
         x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
@@ -518,7 +614,7 @@ class Regressor:
 
         # writing test set into csv
         x_test_scaled_to_save = pd.DataFrame(self.X_test_scaled)
-        x_test_scaled_to_save.columns = self.X_test.columns
+        x_test_scaled_to_save.columns = self.X_test.columns #TODO uncomment this line
         x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True)
@@ -528,28 +624,28 @@ class Regressor:
         self.test_df.to_csv(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_unscaled_{i}.csv',
                             index=False)
 
-    def deep_learning(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.01, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.3, top_k = 4, mse_weight=0, ranking_weight=50, per_aligner=False):
+    def deep_learning(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1, learning_rate: float = 0.01, dropout_rate: float = 0.2, l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1, mixed_portion: float = 0.3, top_k: int = 4, mse_weight: float = 0, ranking_weight: float = 50, per_aligner: bool = False) -> float:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
-        def low_score_weighted_mse(y_true, y_pred):
+        def low_score_weighted_mse(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
             error = tf.abs(y_true - y_pred)
             weight = tf.maximum(1.0, 1.0 / (y_true + 1e-6))
             weighted_error = weight * error
             return tf.reduce_mean(weighted_error ** 2)
 
-        def weighted_mse(y_true, y_pred, weights):
+        def weighted_mse(y_true: tf.Tensor, y_pred: tf.Tensor, weights: tf.Tensor) -> tf.Tensor:
             mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
             weighted_loss = mse_loss * weights
             return weighted_loss
 
-        def weighted_mse_loss(y_true, y_pred, factor):
+        def weighted_mse_loss(y_true: tf.Tensor, y_pred: tf.Tensor, factor: Optional[float] = 7.0) -> tf.Tensor:
             weights = K.exp(-y_true)  # Op1: Higher weights for lower scores
             # weights = 1/(1 + K.exp(factor*(y_true-0.5)))  # Op2: Higher weights for lower scores
             mse_loss = K.mean(weights * K.square(y_true - y_pred))  # Weighted MSE
             return mse_loss
 
-        def rank_loss(y_true, y_pred, top_k):
+        def rank_loss(y_true: tf.Tensor, y_pred: tf.Tensor, top_k: int) -> tf.Tensor:
             tf.compat.v1.enable_eager_execution()
             @tf.function
             def print_func(y_true, y_pred, paired, sorted_paired):
@@ -575,32 +671,32 @@ class Regressor:
 
             return rank_diff
 
-        @tf.function
-        def pairwise_rank_loss(y_true, y_pred, margin=0.0, top_k = 4):
-            n = tf.shape(y_true)[0]
-
-            y_true_flat = tf.reshape(y_true, [-1])
-            _, top_k_indices = tf.math.top_k(-y_true_flat, k=top_k, sorted=True)  # Use negative to get smallest values
-            mask = tf.reduce_any(tf.equal(tf.reshape(tf.range(n), [-1, 1]), tf.reshape(top_k_indices, [1, -1])), axis=1)
-
-            i_indices = tf.reshape(tf.range(n), [-1, 1])
-            j_indices = tf.reshape(tf.range(n), [1, -1])
-            i_indices_flat = tf.reshape(i_indices, [-1])
-            j_indices_flat = tf.reshape(j_indices, [-1])
-            y_true_i = tf.gather(y_true, i_indices_flat)
-            y_true_j = tf.gather(y_true, j_indices_flat)
-            y_pred_i = tf.gather(y_pred, i_indices_flat)
-            y_pred_j = tf.gather(y_pred, j_indices_flat)
-
-            y_true_diff = tf.cast(y_true_i < y_true_j, tf.float32)
-            pairwise_loss = tf.maximum(0.0, y_pred_i - y_pred_j + margin)
-
-            loss = tf.reduce_sum(pairwise_loss * y_true_diff * tf.cast(tf.reshape(mask, [-1, 1]), tf.float32))
-
-            return loss
+        # @tf.function
+        # def pairwise_rank_loss(y_true, y_pred, margin=0.0, top_k = 4):
+        #     n = tf.shape(y_true)[0]
+        #
+        #     y_true_flat = tf.reshape(y_true, [-1])
+        #     _, top_k_indices = tf.math.top_k(-y_true_flat, k=top_k, sorted=True)  # Use negative to get smallest values
+        #     mask = tf.reduce_any(tf.equal(tf.reshape(tf.range(n), [-1, 1]), tf.reshape(top_k_indices, [1, -1])), axis=1)
+        #
+        #     i_indices = tf.reshape(tf.range(n), [-1, 1])
+        #     j_indices = tf.reshape(tf.range(n), [1, -1])
+        #     i_indices_flat = tf.reshape(i_indices, [-1])
+        #     j_indices_flat = tf.reshape(j_indices, [-1])
+        #     y_true_i = tf.gather(y_true, i_indices_flat)
+        #     y_true_j = tf.gather(y_true, j_indices_flat)
+        #     y_pred_i = tf.gather(y_pred, i_indices_flat)
+        #     y_pred_j = tf.gather(y_pred, j_indices_flat)
+        #
+        #     y_true_diff = tf.cast(y_true_i < y_true_j, tf.float32)
+        #     pairwise_loss = tf.maximum(0.0, y_pred_i - y_pred_j + margin)
+        #
+        #     loss = tf.reduce_sum(pairwise_loss * y_true_diff * tf.cast(tf.reshape(mask, [-1, 1]), tf.float32))
+        #
+        #     return loss
 
         # Combine MSE loss with rank-based loss
-        def mse_with_rank_loss(y_true, y_pred, top_k=4, mse_weight=1, ranking_weight=0.3):
+        def mse_with_rank_loss(y_true: tf.Tensor, y_pred: tf.Tensor, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 0.3) -> tf.Tensor:
 
             mse_loss = K.mean(K.square(K.cast(y_true - y_pred, dtype=tf.float32)))  # MSE loss
             # mse_loss = tf.keras.losses.MSE(y_true, y_pred)
@@ -614,7 +710,7 @@ class Regressor:
             return total_loss
 
         @tf.function
-        def min_score_penalty_loss(y_true, y_pred, mse_weight=1.0, min_penalty_weight=50.0):
+        def min_score_penalty_loss(y_true: tf.Tensor, y_pred: tf.Tensor, mse_weight: float = 1.0, min_penalty_weight: float = 50.0) -> tf.Tensor:
             # mse_loss = K.mean(K.square(y_true - y_pred))
             #absolute error
             mse_loss = K.mean(K.abs(y_true - y_pred))
@@ -659,12 +755,19 @@ class Regressor:
             model.add(BatchNormalization())
             model.add(Dropout(dropout_rate))
 
-            # fourth hidden
+            # # # fourth hidden
             model.add(
                 Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
             model.add(Dropout(dropout_rate))
+            #
+            # # # # fifth hidden
+            # model.add(
+            #     Dense(16, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l1_l2(l1=l1, l2=l2)))
+            # model.add(LeakyReLU(negative_slope=0.01))
+            # model.add(BatchNormalization())
+            # model.add(Dropout(dropout_rate))
 
             model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
 
@@ -674,7 +777,7 @@ class Regressor:
             # model.compile(optimizer=optimizer, loss='mean_squared_error')
             # model.compile(optimizer=optimizer, loss=low_score_weighted_mse)
             # model.compile(optimizer=optimizer, loss=mse_with_rank_loss)
-            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse_loss(y_true, y_pred, factor=7))
+            # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse_loss(y_true, y_pred))
             # model.compile(optimizer=optimizer, loss=lambda y_true, y_pred: weighted_mse(y_true, y_pred, weights))
             model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
                                                         ranking_weight=ranking_weight))
@@ -881,7 +984,7 @@ class Regressor:
             plt.show()
             plt.close()
 
-    def dl_classifier(self, epochs=50, batch_size=16, validation_split=0.2, verbose=1, learning_rate=0.0001, dropout_rate=0.2, l1=1e-5, l2=1e-5, i=0, undersampling = False, repeats = 1, mixed_portion = 0.1, top_k = 4, mse_weight=0, ranking_weight=50, threshold=0.5, per_aligner=False):
+    def dl_classifier(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1, learning_rate: float =0.0001, dropout_rate: float = 0.2, l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1, mixed_portion: float = 0.1, top_k: int = 4, mse_weight: float = 0, ranking_weight: float = 50, threshold: float = 0.5, per_aligner: bool = False) -> float:
 
         # def weighted_binary_crossentropy(w0=1.0, w1=1.0):
         #     def loss(y_true, y_pred):
@@ -896,8 +999,8 @@ class Regressor:
         #
         #     return loss
 
-        def weighted_binary_crossentropy(w0=1.0, w1=1.0):
-            def loss(y_true, y_pred):
+        def weighted_binary_crossentropy(w0: float = 1.0, w1: float = 1.0) -> callable:
+            def loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
                 loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=False)
                 weights = y_true * w1 + (1 - y_true) * w0 #would it help me to make class1 5 times more important?
                 return tf.reduce_mean(loss_fn(y_true, y_pred) * weights)
@@ -1000,6 +1103,9 @@ class Regressor:
             print(f"AUC-ROC: {auc:.4f}")
             auc_pr = average_precision_score(self.y_test, self.y_prob)
             print(f"AUC-PR: {auc_pr:.4f}")
+        else:
+            auc = np.nan
+            auc_pr = np.nan
 
         self.y_pred = (self.y_prob >= threshold).astype(int)
         print(classification_report(self.y_test, self.y_pred))
@@ -1045,7 +1151,6 @@ class Regressor:
         plt.xlabel('Recall')
         plt.ylabel('Precision')
         plt.title('Precision-Recall Curve')
-
 
         for target_threshold in target_thresholds:
             threshold_idx = (abs(thresholds - target_threshold)).argmin()

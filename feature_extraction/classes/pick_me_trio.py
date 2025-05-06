@@ -26,6 +26,7 @@ class PickMeGameTrio:
         self.subset = subset
         if predicted_measure == "msa_distance":
             self.true_score = 'dpos_dist_from_true'
+            # self.true_score = 'dpos_ng_dist_from_true'
 
     # def set_scores(self, df):
     #     scores = []
@@ -53,12 +54,22 @@ class PickMeGameTrio:
             max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
             max_SoP_true_score = max_SoP_score_row[self.true_score]
 
-            group1 = df.nlargest(10, self.predicted_class)
-            # group1 = df.nsmallest(5, self.predicted_score)
+            # group1 = df.nlargest(20, self.sum_of_pairs_score)
+            # group1 = df.nsmallest(7, 'nj_parsimony_score')
+            # group1 = df.nlargest(10, self.predicted_class)
+            # group1 = df.nsmallest(15, self.predicted_score)
             # group1 = df.loc[df[self.predicted_class]>=0.4]
-            min_predicted_score_row = group1.loc[group1[self.predicted_score].idxmin()]
-            # min_predicted_score_row = group1.loc[group1[self.predicted_class].idxmax()]
-            # min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
+            # min_predicted_score_row = group1.loc[group1[self.predicted_score].idxmin()]
+            # min_predicted_score_row = group1.loc[group1[self.predicted_score].idxmin()]
+            # min_predicted_score_row = group1.loc[group1[self.sum_of_pairs_score].idxmax()]
+            # min_predicted_score_row = group1.loc[group1['nj_parsimony_score'].idxmin()]
+            # min_predicted_score_row = group1.loc[group1['number_of_gap_segments'].idxmin()]
+            # min_predicted_score_row = df.loc[df[''].idxmin()]
+            min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
+            # min_value = df[self.predicted_score].min()
+            # min_rows = df[df[self.predicted_score] == min_value]
+            # min_predicted_score_row = min_rows.loc[min_rows[self.sum_of_pairs_score].idxmax()]
+            # min_predicted_score_row = min_rows.loc[min_rows['nj_parsimony_score'].idxmin()]
             min_predicted_true_score = min_predicted_score_row[self.true_score]
             scores.append(min_predicted_true_score)
             scores.append(max_SoP_true_score)
@@ -92,11 +103,11 @@ class PickMeGameTrio:
         min_score = min(scores)
         min_indices = [i for i, score in enumerate(scores) if score == min_score]
         min_results = [result_map[i] for i in min_indices]
-        if 'min predicted' and 'max sop' in min_results:
+        if 'min predicted' in min_results and 'max sop' in min_results:
             winner = "tie(predicted and sop)"
         elif 'min predicted' in min_results:
             winner = "predicted"
-        elif 'sop' in min_results:
+        elif 'max sop' in min_results:
             winner = "sop"
         else:
             winner = "default"
@@ -112,6 +123,8 @@ class PickMeGameTrio:
 
         df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
         df = df[~df['code'].str.contains('test_original', na=False)]
+        # df = df[~df['code'].str.contains('muscle', case=False, na=False, regex=True)] #TODO remove
+        df.to_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_predictions.csv")
         # groups = ['BBS11','BBS12','BBS50','BBS30','BBS20', 'BBA']
 
         for code in df['code1'].unique():

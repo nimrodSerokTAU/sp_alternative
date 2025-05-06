@@ -1,7 +1,7 @@
 import numpy as np
 # from classes.regressor import Regressor
-# from classes.regressor_grouped import Regressor
-from classes.regressor_task_heads import Regressor
+from classes.regressor_grouped import Regressor
+# from classes.regressor_task_heads import Regressor
 # from classes.regressor_siamese import Regressor
 # from classes.regressor_400_attention import Regressor
 from scipy import stats
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         # regressor = log_function_run(Regressor, features_file="./out/orthomam_features_with900extra_020325.parquet", test_size=0.2,
         #                              mode=3,
         #                              predicted_measure='msa_distance', i=i, remove_correlated_features=False)
-        regressor = log_function_run(Regressor, features_file="./out/orthomam_features_with900extra_020325.parquet",
+        regressor = log_function_run(Regressor, features_file="./out/orthomam_features_w_xtr_NS_KP_290425.parquet",
                                      test_size=0.2,
                                      mode=1,
                                      predicted_measure='msa_distance', i=i, remove_correlated_features=False)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         # mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=32, learning_rate=0.0001, dropout_rate=0.2, l1=0.00001, l2=0.00001, repeats=2, mixed_portion=0.1, top_k=4, mse_weight=1, ranking_weight=15,per_aligner=True)
         # mse = log_function_run(regressor.dl_classifier, i=i, epochs=10, batch_size=16, learning_rate=0.001, dropout_rate=0.2, l1=0.00001, l2=0.00001, repeats=2, mixed_portion=0.0, threshold=0.50, per_aligner=True)
         mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.0001,
-                               dropout_rate=0.2, l1=0.001, l2=0.001, repeats=2, mixed_portion=0.1, per_aligner=None, top_k=4, mse_weight=1.5, ranking_weight=1)
+                               dropout_rate=0.2, l1=0.001, l2=0.001, repeats=2, mixed_portion=0.1, per_aligner=None, top_k=4, mse_weight=1, ranking_weight=50)
         # mse = log_function_run(regressor.random_forest_classification, n_estimators = 150, i=i, verbose=1, random_state=42, threshold=0.55)
 
         # mse = log_function_run(regressor.random_forest, n_estimators=500, i=i)

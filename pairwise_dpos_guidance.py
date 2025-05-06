@@ -11,12 +11,12 @@ from classes.msa import MSA, MSAStats
 from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
-from dpos import compute_dpos_distance
+from dpos import compute_dpos_distance, compute_dpos_no_g_distance
 from enums import SopCalcTypes, RootingMethods
 
 folder = '/groups/pupko/kseniap/'
-output_dir = f'{folder}/OrthoMaM/dpos_res/'
-
+# output_dir = f'{folder}/OrthoMaM/dpos_res_v2/'
+output_dir = f"{folder}/OrthoMaM/Guidance_Filtering_Paper/pairwise_dpos_res2/"
 
 if __name__ == '__main__':
     code = sys.argv[1]
@@ -68,10 +68,13 @@ if __name__ == '__main__':
 
                         inferred_msa2.order_sequences(inferred_msa1.seq_names)
                         dpos: float = compute_dpos_distance(inferred_msa1.sequences, inferred_msa2.sequences)
+                        dpos_no_gp: float = compute_dpos_no_g_distance(inferred_msa1.sequences, inferred_msa2.sequences)
 
                         if isinstance(dpos, float):
-                            dpos_dict[(inferred_file_name1, inferred_file_name2)] = dpos
-                            dpos_array.append(float(dpos))
+                            # dpos_dict[(inferred_file_name1, inferred_file_name2)] = dpos
+                            # dpos_array.append(float(dpos))
+                            dpos_dict[(inferred_file_name1, inferred_file_name2)] = dpos_no_gp
+                            dpos_array.append(float(dpos_no_gp))
                         else:
                             print(f"dpos for {inferred_file_name1}, {inferred_file_name2} is not float\n")
 

@@ -31,8 +31,8 @@ if __name__ == '__main__':
 
 
 
-        pickme = PickMeGameTrio(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-                                prediction_file=f'./out/prediction_DL_{i}_mode1_msa_distance.csv',
+        pickme = PickMeGameTrio(features_file='./out/balibase_RV10_features_260125_w_foldmason.csv',
+                                prediction_file=f'./out/BaliBase10_NEW/L1L2_1e-5_with_foldmason_bs_16/prediction_DL_0_mode1_msa_distance.csv',
                                 error=0, subset = None)
 
 

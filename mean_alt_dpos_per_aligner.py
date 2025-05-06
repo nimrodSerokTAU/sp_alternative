@@ -1,5 +1,3 @@
-
-# "('bali_phy_msa.118.fasta', 'bali_phy_msa.53.fasta')",0.02195619141531657
 import pandas as pd
 import glob
 

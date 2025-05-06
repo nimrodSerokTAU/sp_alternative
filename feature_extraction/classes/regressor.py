@@ -1,5 +1,6 @@
 import os
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -126,9 +127,11 @@ class Regressor:
 
         # Check for missing values
         print("Missing values in each column:\n", df.isnull().sum())
-        corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
+        # corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_dist_from_true'])
+        corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of Normalized SOP and dpos: {corr_coefficient1:.4f}\n", f"P-value of non-correlation: {p_value1:.6f}\n")
-        corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df['dpos_dist_from_true'])
+        # corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df['dpos_dist_from_true'])
+        corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of SOP and dpos: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.6f}\n")
 
@@ -160,7 +163,8 @@ class Regressor:
         df = df.dropna()
 
         if self.predicted_measure == 'msa_distance':
-            true_score_name = "dpos_dist_from_true"
+            # true_score_name = "dpos_dist_from_true"
+            true_score_name = "dpos_ng_dist_from_true"
             # true_score_name = "MEAN_RES_PAIR_SCORE"
             # true_score_name = "MEAN_COL_SCORE"
             # df['MEAN_RES_PAIR_SCORE'] = df['MEAN_RES_PAIR_SCORE'].astype(float)
@@ -176,7 +180,7 @@ class Regressor:
 
         # all features
         if mode == 1:
-            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label', 'class_label_test'])
+            self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label', 'class_label_test', 'dpos_ng_dist_from_true'])
             # self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 features of SoP
         # if mode == 2:
@@ -241,9 +245,9 @@ class Regressor:
         # all features
         if mode == 1:
             self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','normalised_sop_score','class_label', 'class_label_test'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label', 'class_label_test', 'dpos_ng_dist_from_true'])
             self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty','normalised_sop_score','class_label', 'class_label_test'])
+                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'normalised_sop_score', 'class_label', 'class_label_test', 'dpos_ng_dist_from_true'])
             # self.X_train =self.train_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
             # self.X_test = self.test_df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label2', 'entropy_mean', 'entropy_pct_75', 'msa_len', 'seq_max_len', 'seq_min_len', 'total_gaps', 'gaps_len_one', 'gaps_len_two', 'gaps_len_three_plus', 'num_unique_gaps', 'gaps_1seq_len1', 'gaps_1seq_len2', 'gaps_1seq_len3plus', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'sp_score_subs_norm', 'sp_score_gap_e_norm', 'sp_match_ratio', 'sp_missmatch_ratio', 'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var', 'k_mer_10_pct_95', 'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90', 'k_mer_20_norm', 'number_of_gap_segments', 'number_of_mismatches', 'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_differential_sum'])
         # all features except 2 sop
@@ -314,11 +318,16 @@ class Regressor:
         self.main_codes_test = self.test_df['code1']
         self.file_codes_test = self.test_df['code']
 
-        corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df['dpos_dist_from_true'])
+        # corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'], self.test_df['dpos_dist_from_true'])
+        corr_coefficient1, p_value1 = pearsonr(self.test_df['normalised_sop_score'],
+                                               self.test_df['dpos_ng_dist_from_true'])
+
         print(f"Pearson Correlation of Normalized SOP and dpos in the TEST set: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.4f}\n")
+        # corr_coefficient1, p_value1 = pearsonr(self.test_df['sop_score'],
+        #                                        self.test_df['dpos_dist_from_true'])
         corr_coefficient1, p_value1 = pearsonr(self.test_df['sop_score'],
-                                               self.test_df['dpos_dist_from_true'])
+                                               self.test_df['dpos_ng_dist_from_true'])
         print(f"Pearson Correlation of SOP and dpos in the TEST set: {corr_coefficient1:.4f}\n",
               f"P-value of non-correlation: {p_value1:.4f}\n")
 
@@ -729,17 +738,63 @@ class Regressor:
         corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
 
-        # # explain features importance
-        # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-        # X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
-        # explainer = shap.Explainer(model, X_test_subset)
-        # shap_values = explainer(X_test_subset)
-        # # explainer = shap.Explainer(model, X_test_scaled_with_names)
-        # # shap_values = explainer(X_test_scaled_with_names)
-        # joblib.dump(explainer,
-        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-        # joblib.dump(shap_values,
-        #             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        # explain features importance
+        # try:
+        #     X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+        #     X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
+        #     explainer = shap.Explainer(model, X_test_subset)
+        #     shap_values = explainer(X_test_subset)
+        #     # explainer = shap.Explainer(model, X_test_scaled_with_names)
+        #     # shap_values = explainer(X_test_scaled_with_names)
+        #     joblib.dump(explainer,
+        #                 f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        #     joblib.dump(shap_values,
+        #                 f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        # except Exception as e:
+        #     pass
+        try:
+            # # explain features importance
+            X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+            X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
+            explainer = shap.Explainer(model, X_test_subset)
+            shap_values = explainer(X_test_subset)
+            # explainer = shap.Explainer(model, X_test_scaled_with_names)
+            # shap_values = explainer(X_test_scaled_with_names)
+            joblib.dump(explainer,
+                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+            joblib.dump(shap_values,
+                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+            matplotlib.use('Agg')
+
+            feature_names = [
+                a + ": " + str(b) for a, b in zip(X_test_subset.columns, np.abs(shap_values.values).mean(0).round(3))
+            ]
+
+            shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
+            # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
+            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/summary_plot_{i}.png', dpi=300,
+                        bbox_inches='tight')
+            # plt.show()
+            plt.close()
+
+            shap.plots.waterfall(shap_values[0], max_display=40)
+            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/waterfall_plot_{i}.png', dpi=300,
+                        bbox_inches='tight')
+            # plt.show()
+            plt.close()
+
+            shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
+            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/force_plot_{i}.png')
+            # plt.show()
+            plt.close()
+
+            shap.plots.bar(shap_values, max_display=40)
+            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/bar_plot_{i}.png', dpi=300,
+                        bbox_inches='tight')
+            # plt.show()
+            plt.close()
+        except Exception as e:
+            print(f"Did not manage to get features importance\n")
 
         return mse
 
