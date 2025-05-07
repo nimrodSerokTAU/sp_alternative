@@ -4,16 +4,17 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier
 from sklearn.utils.class_weight import compute_class_weight
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, average_precision_score, classification_report, precision_recall_curve, roc_curve
-import matplotlib.pyplot as plt
 from sklearn.svm import SVR
-from typing import Literal, List, Any, Iterator, Tuple, Optional
-from scipy.stats import pearsonr, gaussian_kde, norm
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder, RobustScaler, QuantileTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
+from typing import Literal, List, Any, Iterator, Tuple, Optional
+from scipy.stats import pearsonr, gaussian_kde, norm, rankdata
 import visualkeras
 import joblib
 import xgboost as xgb
@@ -24,7 +25,6 @@ import pickle
 import pydot
 import tensorflow as tf
 # import tensorflow_model_optimization as tfmot
-from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder, OneHotEncoder, RobustScaler, QuantileTransformer
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape, Embedding, Concatenate, Flatten
 from tensorflow.keras.optimizers import Adam, Nadam, RMSprop
@@ -82,6 +82,28 @@ def assign_class_label_test(group: pd.DataFrame) -> pd.DataFrame:
     else:
         group['class_label'] = np.nan
     return group
+
+def rank_percentile_scale_targets(y_true: pd.Series, group_codes: pd.Series) -> pd.Series:
+    if not y_true.index.equals(group_codes.index):
+        raise ValueError("y_true and group_codes must have the same index")
+
+    df = pd.DataFrame({
+        "y": y_true,
+        "group": group_codes
+    })
+
+    scaled_series = pd.Series(index=y_true.index, dtype=np.float32)
+
+    for group_val, group_df in df.groupby("group"):
+        vals = group_df["y"].values
+        if len(vals) == 1:
+            scaled = np.array([0.0])
+        else:
+            ranks = rankdata(vals, method="average")
+            scaled = (ranks - 1) / (len(vals) - 1)
+        scaled_series.loc[group_df.index] = scaled
+
+    return scaled_series
 
 
 # class SmoothCDFTransformer(BaseEstimator, TransformerMixin):
@@ -149,6 +171,86 @@ def assign_class_label_test(group: pd.DataFrame) -> pd.DataFrame:
 #                 X[feature] = norm.cdf(values, loc=mu, scale=sigma)
 #
 #         return X.values
+
+
+class GroupAwareScaler:
+    def __init__(self, global_scaler=None):
+        self.global_scaler = global_scaler or StandardScaler()
+        self.feature_names = None
+        self.group_col = None
+        self.fitted = False
+
+    def fit(self, df: pd.DataFrame, group_col: str, feature_cols: list):
+        self.feature_names = feature_cols
+        self.group_col = group_col
+        self.global_scaler.fit(df[feature_cols])
+        self.fitted = True
+        return self
+
+    def transform(self, df: pd.DataFrame) -> np.ndarray:
+        if not self.fitted:
+            raise RuntimeError("Scaler has not been fitted.")
+
+        df = df.copy()
+
+        # Drop index level if group_col is both in index and columns
+        if self.group_col in df.index.names and self.group_col in df.columns:
+            df.index = df.index.droplevel(self.group_col)
+        elif self.group_col in df.index.names:
+            df = df.reset_index()
+
+        # Apply global scaler
+        global_scaled = self.global_scaler.transform(df[self.feature_names])
+
+        # Pre-allocate for rank-percentile scaled features
+        rank_scaled = np.zeros_like(global_scaled)
+
+        # For each feature, compute per-group ranks in row order
+        for i, feature in enumerate(self.feature_names):
+            percentiles = np.zeros(len(df))
+            for group_value, group_df in df.groupby(self.group_col):
+                group_idx = df.index.get_indexer(group_df.index)
+                vals = group_df[feature].values
+                if len(vals) == 1:
+                    p = np.array([0.0])
+                else:
+                    ranks = rankdata(vals, method="average")
+                    p = (ranks - 1) / (len(vals) - 1)
+                percentiles[group_idx] = p
+            rank_scaled[:, i] = percentiles
+
+        # Combine global_scaled and rank_scaled
+        combined = np.concatenate([global_scaled, rank_scaled], axis=1)
+        return combined #TODO uncomment this line
+        # return rank_scaled
+
+    def fit_transform(self, df: pd.DataFrame, group_col: str, feature_cols: list) -> np.ndarray:
+        self.fit(df, group_col, feature_cols)
+        return self.transform(df)
+
+    def save(self, path: str):
+        with open(path, "wb") as f:
+            pickle.dump({
+                "global_scaler": self.global_scaler,
+                "feature_names": self.feature_names,
+                "group_col": self.group_col,
+                "fitted": self.fitted
+            }, f)
+
+    def load(self, path: str):
+        with open(path, "rb") as f:
+            data = pickle.load(f)
+            self.global_scaler = data["global_scaler"]
+            self.feature_names = data["feature_names"]
+            self.group_col = data["group_col"]
+            self.fitted = data["fitted"]
+
+    def get_feature_names_out(self) -> list:
+        """Returns names like ['f1_scaled', ..., 'f1_rank', ...]"""
+        scaled = [f"{f}_scaled" for f in self.feature_names]
+        ranked = [f"{f}_rank" for f in self.feature_names]
+        return scaled + ranked
+
 
 class BatchGenerator(Sequence):
     def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3, per_aligner=False, classification_task = False, features_w_names=np.nan):
@@ -331,10 +433,10 @@ class Regressor:
     test_size: portion of the codes to be separated into a test set; all MSAs for that specific code would be on the same side of the train-test split
     mode: 1 is all features, 2 is all except SoP features, 3 is only 2 SoP features'''
     def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False, predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i=0) -> None:
-        self.features_file = features_file
-        self.test_size = test_size
-        self.predicted_measure = predicted_measure
-        self.mode = mode
+        self.features_file: str = features_file
+        self.test_size: float = test_size
+        self.predicted_measure: Literal['msa_distance', 'class_label'] = predicted_measure
+        self.mode: int = mode
         # self.num_estimators = n_estimators
         self.X_train, self.X_test, self.y_train, self.y_test = None, None, None, None
         self.X, self.y, self.y_pred = None, None, None
@@ -343,6 +445,8 @@ class Regressor:
         self.file_codes_train = None
         self.main_codes_test = None
         self.file_codes_test = None
+        self.final_features_names = None
+
         # self.train_codes, self.test_codes = None, None
         # self._prepare_data()
 
@@ -446,7 +550,8 @@ class Regressor:
             self.X = df.drop(columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1', 'pypythia_msa_difficulty', 'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score'])
         if mode == 3:
             # self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X = df[['sop_score']]
+            # self.X = df[['sop_score']]
+            self.X = df[['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count', 'number_of_gap_segments','nj_parsimony_score','msa_len','num_cols_no_gaps','total_gaps','entropy_var','num_unique_gaps','sp_score_gap_e_norm','k_mer_10_mean','av_gaps','n_unique_sites','skew_bl','median_bl','bl_75_pct','avg_unique_gap', 'k_mer_20_var','k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count']]
         if mode == 4:
             self.X = df.drop(
                 columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1', 'aligner',
@@ -463,7 +568,14 @@ class Regressor:
         if remove_correlated_features:
             correlation_matrix = self.X.corr().abs()
             upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
-            to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.9)]
+            to_drop = [column for column in upper_triangle.columns if any(upper_triangle[column] > 0.9)] #TODO to uncomment
+            # to_drop = ['entropy_pct_75', 'gaps_len_one',
+            #  'gaps_len_two', 'gaps_len_three_plus',  'gaps_1seq_len1', 'gaps_1seq_len2',
+            #  'gaps_1seq_len3', 'gaps_1seq_len3plus',  'num_cols_1_gap', 'num_cols_2_gaps',
+            #  'num_cols_all_gaps_except1', 'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count',
+            #  'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var',
+            #  'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
+            #  'k_mer_20_norm',  'number_of_mismatches', 'sp_score_subs', 'nj_parsimony_sd'] #TODO to comment
             print("Correlated features to drop:", to_drop)
             self.X = self.X.drop(columns=to_drop)
 
@@ -510,8 +622,8 @@ class Regressor:
         if mode == 3:
             # self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
             # self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X_train = self.train_df[['sop_score']]
-            self.X_test = self.test_df[['sop_score']]
+            self.X_train = self.train_df[['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count', 'number_of_gap_segments','nj_parsimony_score','msa_len','num_cols_no_gaps','total_gaps','entropy_var','num_unique_gaps','sp_score_gap_e_norm','k_mer_10_mean','av_gaps','n_unique_sites','skew_bl','median_bl','bl_75_pct','avg_unique_gap', 'k_mer_20_var','k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count']]
+            self.X_test = self.test_df[['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count', 'number_of_gap_segments','nj_parsimony_score','msa_len','num_cols_no_gaps','total_gaps','entropy_var','num_unique_gaps','sp_score_gap_e_norm','k_mer_10_mean','av_gaps','n_unique_sites','skew_bl','median_bl','bl_75_pct','avg_unique_gap', 'k_mer_20_var','k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count']]
 
         if mode == 4:
             self.X_train = self.train_df.drop(
@@ -543,17 +655,20 @@ class Regressor:
         # self.scaler = MinMaxScaler() #TODO uncomment this line
         # self.scaler = RobustScaler()
         # self.scaler = StandardScaler()
-        self.scaler = QuantileTransformer(output_distribution='uniform', n_quantiles=5000)
-        self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit) #TODO uncomment this line
-        self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling #TODO uncomment this line
+        # self.scaler = QuantileTransformer(output_distribution='uniform', n_quantiles=5000)
+        # self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit) #TODO uncomment this line
+        # self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling #TODO uncomment this line
 
-        # self.scaler = SmoothCDFTransformer() #TODO comment this line
-        # self.scaler = SmoothCDFReplacer()
-        # self.scaler.fit(self.X_train) #TODO comment this line
-        # self.X_train_scaled = self.scaler.transform(self.X_train) #TODO comment this line
-        # self.X_test_scaled = self.scaler.transform(self.X_test) #TODO comment this line
+        # joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl') #TODO uncomment this line
 
-        joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        scaler = GroupAwareScaler(global_scaler=RobustScaler())
+        self.X_train_scaled = scaler.fit_transform(self.train_df, group_col="code1", feature_cols=self.X_train.columns)
+        self.X_test_scaled = scaler.transform(self.test_df)
+        scaler.save(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+        self.final_features_names = scaler.get_feature_names_out()
+        # scaler = GroupAwareScaler()
+        # scaler.load("group_aware_scaler.pkl")
+
 
         self.main_codes_train = self.train_df['code1']
         self.file_codes_train = self.train_df['code']
@@ -582,6 +697,13 @@ class Regressor:
         self.y_test = self.test_df[true_score_name]
         # self.dpos_train = self.train_df['dpos_dist_from_true']
 
+        """ REMOVE this section """
+        self.y_train_scaled = rank_percentile_scale_targets(y_true =self.y_train , group_codes = self.main_codes_train) #TODO remove this line
+        self.y_test_scaled = rank_percentile_scale_targets(y_true=self.y_test, group_codes=self.main_codes_test)  # TODO remove this line
+        self.y_train = self.y_train_scaled # TODO remove this line
+        self.y_test = self.y_test_scaled # TODO remove this line
+        """ REMOVE this section """
+
         self.binary_feature = self.train_df['class_label'].astype('float64')
 
         # Check the size of each set
@@ -602,10 +724,11 @@ class Regressor:
 
         # writing train set into csv
         x_train_scaled_to_save = pd.DataFrame(self.X_train_scaled)
-        x_train_scaled_to_save.columns = self.X_train.columns #TODO uncomment this line
+        # x_train_scaled_to_save.columns = self.X_train.columns #TODO uncomment this line
         x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
-        x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True)
+        x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True) #TODO uncomment this line
+        # x_train_scaled_to_save['class_label'] = self.y_train
         # x_train_scaled_to_save['class_label_test'] = ...
         x_train_scaled_to_save.to_csv(
             f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_scaled_{i}.csv', index=False)
@@ -614,10 +737,11 @@ class Regressor:
 
         # writing test set into csv
         x_test_scaled_to_save = pd.DataFrame(self.X_test_scaled)
-        x_test_scaled_to_save.columns = self.X_test.columns #TODO uncomment this line
+        # x_test_scaled_to_save.columns = self.X_test.columns #TODO uncomment this line
         x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
-        x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True)
+        x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True) #TODO uncomment this line
+        # x_test_scaled_to_save['class_label'] = self.y_test
         # x_test_scaled_to_save['class_label_test'] = ...
         x_test_scaled_to_save.to_csv(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_scaled_{i}.csv',
                                      index=False)
@@ -756,11 +880,11 @@ class Regressor:
             model.add(Dropout(dropout_rate))
 
             # # # fourth hidden
-            model.add(
-                Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
+            # model.add(
+            #     Dense(32, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+            # model.add(LeakyReLU(negative_slope=0.01))
+            # model.add(BatchNormalization())
+            # model.add(Dropout(dropout_rate))
             #
             # # # # fifth hidden
             # model.add(
@@ -861,7 +985,10 @@ class Regressor:
 
         try:
             # # explain features importance
-            X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+            if self.final_features_names is not None: #TODO testing this option
+                X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.final_features_names)
+            else:
+                X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
             X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
             explainer = shap.Explainer(model, X_test_subset)
             shap_values = explainer(X_test_subset)

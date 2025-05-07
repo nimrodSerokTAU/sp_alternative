@@ -1,32 +1,31 @@
 import numpy as np
 import pandas as pd
-from typing import Literal
-
+from typing import Literal, List, Any, Iterator, Tuple, Optional, Dict
 from matplotlib import pyplot as plt
 
 
 class PickMeGameTrio:
     def __init__(self, features_file: str, prediction_file: str, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance', error: float = 0.0, subset = None) -> None:
-        self.features_file = features_file
-        self.prediction_file = prediction_file
-        self.error = error
-        self.true_score = ''
-        self.predicted_score = 'predicted_score'
-        self.predicted_class = 'predicted_class_prob'
+        self.features_file: str = features_file
+        self.prediction_file: str = prediction_file
+        self.error: float = error
+        self.true_score: str = ''
+        self.predicted_score: str = 'predicted_score'
+        self.predicted_class: str = 'predicted_class_prob'
         # self.predicted_score = 'predicted_score2'
         # self.sum_of_pairs_score = 'normalised_sop_score'
-        self.sum_of_pairs_score = 'sop_score'
-        self.pickme_df = None
-        self.pickme_sop_df = None
-        self.accumulated_data = {}
-        self.accumulated_sop_data = {}
-        self.results = []
-        self.winners = []
-        self.overall_win = []
-        self.subset = subset
+        self.sum_of_pairs_score: str = 'sop_score'
+        self.pickme_df: Optional[pd.DataFrame] = None
+        self.pickme_sop_df: Optional[pd.DataFrame] = None
+        self.accumulated_data: Dict[str, float] = {}
+        self.accumulated_sop_data: Dict[str, float] = {}
+        self.results: List[Any] = []
+        self.winners: List[Any] = []
+        self.overall_win: List[Any] = []
+        self.subset: Optional[float] = subset
         if predicted_measure == "msa_distance":
-            self.true_score = 'dpos_dist_from_true'
-            # self.true_score = 'dpos_ng_dist_from_true'
+            # self.true_score = 'dpos_dist_from_true'
+            self.true_score = 'dpos_ng_dist_from_true'
 
     # def set_scores(self, df):
     #     scores = []
