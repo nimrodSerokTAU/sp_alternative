@@ -221,8 +221,8 @@ class GroupAwareScaler:
 
         # Combine global_scaled and rank_scaled
         combined = np.concatenate([global_scaled, rank_scaled], axis=1)
-        return combined #TODO uncomment this line
-        # return rank_scaled
+        # return combined #TODO uncomment this line
+        return rank_scaled #TODO - assumeed that only ranked features are used, and globally scaled are dropped
 
     def fit_transform(self, df: pd.DataFrame, group_col: str, feature_cols: list) -> np.ndarray:
         self.fit(df, group_col, feature_cols)
@@ -249,7 +249,8 @@ class GroupAwareScaler:
         """Returns names like ['f1_scaled', ..., 'f1_rank', ...]"""
         scaled = [f"{f}_scaled" for f in self.feature_names]
         ranked = [f"{f}_rank" for f in self.feature_names]
-        return scaled + ranked
+        # return scaled + ranked #TODO uncomment this line
+        return ranked #TODO - assumeed that only ranked features are used, and globally scaled are dropped
 
 
 class BatchGenerator(Sequence):

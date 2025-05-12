@@ -52,6 +52,8 @@ class PickMeGameTrio:
                 df = df.sample(min(self.subset, len(df)))
             max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
             max_SoP_true_score = max_SoP_score_row[self.true_score]
+            # max_SoP_score_row = df.loc[df['normalised_sop_score'].idxmin()]
+            # max_SoP_true_score = max_SoP_score_row[self.true_score]
 
             # group1 = df.nlargest(20, self.sum_of_pairs_score)
             # group1 = df.nsmallest(7, 'nj_parsimony_score')
@@ -177,9 +179,9 @@ class PickMeGameTrio:
             baliphy_scores.append(default_baliphy_true_score)
 
             overall_scores = self.set_scores(code_df)
-            # overall_scores.extend([default_mafft_true_score, default_prank_true_score, default_muscle_true_score, default_baliphy_true_score])
-            overall_scores.extend([np.nan, np.nan, np.nan,
-                                   np.nan])
+            overall_scores.extend([default_mafft_true_score, default_prank_true_score, default_muscle_true_score, default_baliphy_true_score])
+            # overall_scores.extend([np.nan, np.nan, np.nan,
+            #                        np.nan]) #TODO - use this line if you want to exclude defaults from overall results
 
             mafft_winner = self.choose_winner(mafft_scores)
             prank_winner = self.choose_winner(prank_scores)

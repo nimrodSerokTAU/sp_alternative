@@ -4,8 +4,8 @@ import glob
 # folder = '/groups/pupko/kseniap/'
 # output_dir = f'{folder}/OrthoMaM/dpos_res/'
 # output_file = f'{folder}/OrthoMaM/mean_dpos.csv'
-output_dir = '/Users/kpolonsky/Downloads/dpos_res/'
-output_file = '/Users/kpolonsky/Downloads/mean_dpos.csv'
+output_dir = '/Users/kpolonsky/Downloads/dpos_among_MSAs/dpos_res2/'
+output_file = '/Users/kpolonsky/Downloads/mean_dpos_v2.csv'
 
 aligners = {
     'MUSCLE': ['muscle', 'MUSCLE'],
