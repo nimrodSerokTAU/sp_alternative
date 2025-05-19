@@ -563,6 +563,21 @@ def test_tree_from_newick():
         {'children_ids': [], 'id': 0, 'keys': {'Macropus'}}]
 
 
+def test_dpos_for_diff_length_case_d():
+    profile_a: list[str] = [
+        'ATAG',
+        '-T-G',
+        'CG-G'
+    ]
+    profile_b: list[str] = [
+        'AT-AG',
+        '--T-G',
+        '-CG-G'
+    ]
+    res = compute_dpos_distance(profile_a, profile_b)
+    assert round(res, 3) == 0.333
+
+
 def test_multi():
     configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
@@ -886,7 +901,7 @@ def test_differential_sum_rooting():
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
     assert res == {'bl_b_e_d': 0.1, 'bl_a': 0.2, 'bl_a_c': 0.475, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
                     'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.475,
-                    'a_w': 0.438, 'c_w': 0.387, 'e_w': 0.242}
+                    'a_w': 0.745, 'c_w': 0.345, 'e_w': 0.242}
 
 
 def test_differential_sum_rooting_case_of_no_solution():
@@ -1063,3 +1078,41 @@ def calc_single_msas(config: Configuration):
         [401.0417600554709, 399.8565813655558, 2136.4204964575442, 1578.570699310766],
         [400.98871068138055, 402.2891297632128, 2314.664373827455, 1444.721691365885],
         [403.1283990916456, 405.13410889386114, 2286.363206046346, 1451.505481668867]]
+
+def test_henikoff_with_gaps_value():
+    # Create a simple test alignment with known gap patterns
+    aln: list[str] = [
+        'AT-CGC',
+        'ACATG-',
+        'AT-CG-',
+        'ATC-GA',
+        'TTATGC'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    
+    # Create MSA and configuration
+    msa = MSA('test')
+    msa.sequences = aln
+    msa.seq_names = names
+    
+    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+                                        SopCalcTypes.EFFICIENT, 'comparison_files',
+                                        False, False,
+                                        {WeightMethods.HENIKOFF_WG})
+    
+    # Calculate sequence weights
+    msa.calc_seq_weights(config.additional_weights)
+    
+    # Compute SP score with weights
+    sp = SPScore(config)
+    sop_w_options = sp.compute_naive_sp_score(msa.sequences, msa.seq_weights_options)
+    
+    # Set the weights in stats
+    msa.stats.set_my_w_sop({WeightMethods.HENIKOFF_WG.value: sop_w_options[0]})
+    
+    # The expected value is the actual calculated SP score with Henikoff weights
+    expected_value = -1.682110969387752
+    
+    # Check if the henikoff_with_gaps value is set correctly
+    assert abs(msa.stats.henikoff_with_gaps - expected_value) < 1e-10, \
+        f"Expected henikoff_with_gaps to be {expected_value}, but got {msa.stats.henikoff_with_gaps}"

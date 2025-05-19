@@ -54,5 +54,9 @@ def calc_p_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> floa
 
 def calc_kimura_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> float:
     fractional_identity: float = calc_p_distance_from_other(aligned_seq, other_aligned_seq)
-    return -math.log((1 - fractional_identity - fractional_identity * fractional_identity / 5), math.e)
+    print('fractional_identity: ', fractional_identity)
+    kimura_exponent = 1 - fractional_identity - 0.2 * fractional_identity * fractional_identity
+    if kimura_exponent < 0:
+        return 2
+    return -math.log(kimura_exponent)
 
