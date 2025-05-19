@@ -36,9 +36,11 @@ from tensorflow.keras.utils import plot_model
 from tensorflow.keras.utils import Sequence
 from tensorflow.keras import backend as K
 from tensorflow.keras import metrics
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.over_sampling import SMOTE
-from feature_extraction.classes.attention_layer import AttentionLayer
+# from imblearn.under_sampling import RandomUnderSampler
+# from imblearn.over_sampling import SMOTE
+# from feature_extraction.classes.attention_layer import AttentionLayer
+from feature_extraction.classes.group_aware_scaler import GroupAwareScaler
+from feature_extraction.classes.batch_generator import BatchGenerator
 
 def assign_aligner(row: pd.Series) -> str:
     code = row['code'].lower()
@@ -106,123 +108,56 @@ def rank_percentile_scale_targets(y_true: pd.Series, group_codes: pd.Series) -> 
     return scaled_series
 
 
-# class SmoothCDFTransformer(BaseEstimator, TransformerMixin):
-#     def __init__(self):
-#         self.params_ = {}  # Store mean and std for each feature
+# class GroupAwareScaler:
+#     def __init__(self, global_scaler=None):
+#         self.global_scaler = global_scaler or StandardScaler()
+#         self.feature_names = None
+#         self.group_col = None
+#         self.fitted = False
 #
-#     def fit(self, X, y=None):
-#         # Convert X to a pandas DataFrame if it's not already
-#         X = pd.DataFrame(X)
-#
-#         # Select only numerical columns (just like how Scalers handle)
-#         self.features_ = X.select_dtypes(include=[np.number]).columns.tolist()
-#
-#         for feature in self.features_:
-#             values = X[feature].values
-#             mu, sigma = np.mean(values), np.std(values)
-#             self.params_[feature] = (mu, sigma)
-#
+#     def fit(self, df: pd.DataFrame, group_col: str, feature_cols: list):
+#         self.feature_names = feature_cols
+#         self.group_col = group_col
+#         self.global_scaler.fit(df[feature_cols])
+#         self.fitted = True
 #         return self
 #
-#     def transform(self, X):
-#         # Ensure that the input is a pandas DataFrame
-#         X = pd.DataFrame(X)
+#     def transform(self, df: pd.DataFrame) -> np.ndarray:
+#         if not self.fitted:
+#             raise RuntimeError("Scaler has not been fitted.")
 #
-#         # Transform the data
-#         X_transformed = X.copy()
+#         df = df.copy()
 #
-#         for feature in self.features_:
-#             mu, sigma = self.params_[feature]
-#             values = X[feature].values
-#             # Apply CDF of normal distribution
-#             cdf_vals = norm.cdf(values, loc=mu, scale=sigma)
-#             X_transformed[f"{feature}_cdf"] = cdf_vals
+#         # Drop index level if group_col is both in index and columns
+#         if self.group_col in df.index.names and self.group_col in df.columns:
+#             df.index = df.index.droplevel(self.group_col)
+#         elif self.group_col in df.index.names:
+#             df = df.reset_index()
 #
-#         return X_transformed
+#         # Apply global scaler
+#         global_scaled = self.global_scaler.transform(df[self.feature_names])
 #
+#         # Pre-allocate for rank-percentile scaled features
+#         rank_scaled = np.zeros_like(global_scaled)
 #
-# class SmoothCDFReplacer(BaseEstimator, TransformerMixin):
-#     def __init__(self):
-#         self.params_ = {}
+#         # For each feature, compute per-group ranks in row order
+#         for i, feature in enumerate(self.feature_names):
+#             percentiles = np.zeros(len(df))
+#             for group_value, group_df in df.groupby(self.group_col):
+#                 group_idx = df.index.get_indexer(group_df.index)
+#                 vals = group_df[feature].values
+#                 if len(vals) == 1:
+#                     p = np.array([0.0])
+#                 else:
+#                     ranks = rankdata(vals, method="average")
+#                     p = (ranks - 1) / (len(vals) - 1)
+#                 percentiles[group_idx] = p
+#             rank_scaled[:, i] = percentiles
 #
-#     def fit(self, X, y=None):
-#         X = pd.DataFrame(X)
-#         self.features_ = X.select_dtypes(include=[np.number]).columns.tolist()
-#
-#         for feature in self.features_:
-#             values = X[feature].values
-#             mu = np.mean(values)
-#             sigma = np.std(values)
-#             self.params_[feature] = (mu, sigma)
-#
-#         return self
-#
-#     def transform(self, X):
-#         X = pd.DataFrame(X).copy()
-#
-#         for feature in self.features_:
-#             mu, sigma = self.params_[feature]
-#             values = X[feature].values
-#
-#             if sigma == 0:
-#                 # Avoid NaNs: if all values are the same, assign CDF=0.5
-#                 X[feature] = 0.5
-#             else:
-#                 X[feature] = norm.cdf(values, loc=mu, scale=sigma)
-#
-#         return X.values
-
-
-class GroupAwareScaler:
-    def __init__(self, global_scaler=None):
-        self.global_scaler = global_scaler or StandardScaler()
-        self.feature_names = None
-        self.group_col = None
-        self.fitted = False
-
-    def fit(self, df: pd.DataFrame, group_col: str, feature_cols: list):
-        self.feature_names = feature_cols
-        self.group_col = group_col
-        self.global_scaler.fit(df[feature_cols])
-        self.fitted = True
-        return self
-
-    def transform(self, df: pd.DataFrame) -> np.ndarray:
-        if not self.fitted:
-            raise RuntimeError("Scaler has not been fitted.")
-
-        df = df.copy()
-
-        # Drop index level if group_col is both in index and columns
-        if self.group_col in df.index.names and self.group_col in df.columns:
-            df.index = df.index.droplevel(self.group_col)
-        elif self.group_col in df.index.names:
-            df = df.reset_index()
-
-        # Apply global scaler
-        global_scaled = self.global_scaler.transform(df[self.feature_names])
-
-        # Pre-allocate for rank-percentile scaled features
-        rank_scaled = np.zeros_like(global_scaled)
-
-        # For each feature, compute per-group ranks in row order
-        for i, feature in enumerate(self.feature_names):
-            percentiles = np.zeros(len(df))
-            for group_value, group_df in df.groupby(self.group_col):
-                group_idx = df.index.get_indexer(group_df.index)
-                vals = group_df[feature].values
-                if len(vals) == 1:
-                    p = np.array([0.0])
-                else:
-                    ranks = rankdata(vals, method="average")
-                    p = (ranks - 1) / (len(vals) - 1)
-                percentiles[group_idx] = p
-            rank_scaled[:, i] = percentiles
-
-        # Combine global_scaled and rank_scaled
-        combined = np.concatenate([global_scaled, rank_scaled], axis=1)
-        # return combined #TODO uncomment this line
-        return rank_scaled #TODO - assumeed that only ranked features are used, and globally scaled are dropped
+#         # Combine global_scaled and rank_scaled
+#         combined = np.concatenate([global_scaled, rank_scaled], axis=1)
+#         # return combined #TODO uncomment this line
+#         return rank_scaled #TODO - assumeed that only ranked features are used, and globally scaled are dropped
 
     def fit_transform(self, df: pd.DataFrame, group_col: str, feature_cols: list) -> np.ndarray:
         self.fit(df, group_col, feature_cols)
