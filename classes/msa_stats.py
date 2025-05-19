@@ -399,7 +399,7 @@ class MSAStats:
 
         self.av_gaps = total_length / num_of_gaps
         self.num_unique_gaps = unique_gaps
-        self.avg_unique_gap = unique_gaps_length / unique_gaps
+        self.avg_unique_gap = unique_gaps_length / max(unique_gaps, 1)
         self.gaps_1seq_len1 = length_count[1][1]
         self.gaps_2seq_len1 = length_count[1][2]
         self.gaps_all_except_1_len1 = length_count[1][self.taxa_num - 1]
