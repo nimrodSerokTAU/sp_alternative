@@ -32,6 +32,32 @@ regressor = Regressor(features_file="../out/orthomam_features_w_xtr_NS_KP_290425
                                      predicted_measure='msa_distance', i=0, remove_correlated_features=False)
 
 
+
+def get_regularizer_info(reg):
+    if isinstance(reg, l1_l2):
+        return {
+            'type': 'L1L2',
+            'l1': float(reg.l1) if reg.l1 else 0.0,
+            'l2': float(reg.l2) if reg.l2 else 0.0
+        }
+    elif isinstance(reg, l1):
+        return {
+            'type': 'L1',
+            'l1': float(reg.l1),
+            'l2': 0.0
+        }
+    elif isinstance(reg, l2):
+        return {
+            'type': 'L2',
+            'l1': 0.0,
+            'l2': float(reg.l2)
+        }
+    else:
+        return {
+            'type': None,
+            'l1': 0.0,
+            'l2': 0.0
+        }
 def rank_loss(y_true: tf.Tensor, y_pred: tf.Tensor, top_k: int) -> tf.Tensor:
     tf.compat.v1.enable_eager_execution()
 
@@ -215,10 +241,12 @@ for round in range(150):
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
 
         print(
-            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {regularizer}, Loss_func: {loss_func}, Top_k: {top_k}, Ranking_Weight: {ranking_weight}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
+            f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {reg_info}, Loss_func: {loss_func}, Top_k: {top_k}, Ranking_Weight: {ranking_weight}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
 
         with open('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt', 'a') as f:
-            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {regularizer}, Loss_func: {loss_func}, Top_k: {top_k}, Ranking_Weight: {ranking_weight}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
+            f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {reg_info}, Loss_func: {loss_func}, Top_k: {top_k}, Ranking_Weight: {ranking_weight}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
+
+        reg_info = get_regularizer_info(regularizer)
 
         if corr_coefficient > best_score:
             best_score = corr_coefficient
@@ -231,7 +259,7 @@ for round in range(150):
                 'optimizer': param_grid['optimizer'][0],
                 'learning rate': learning_rate,
                 'validation split': param_grid['validation_split'],
-                'regularizer': regularizer,
+                'regularizer': reg_info,
                 'loss_func': loss_func,
                 'top_k': top_k,
                 'ranking_weight': ranking_weight

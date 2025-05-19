@@ -22,10 +22,14 @@ if __name__ == '__main__':
 
     mse_values = []
     for i in range(1):
-        regressor = log_function_run(Regressor, features_file="./out/orthomam_features_w_xtr_NS_KP_290425.parquet",
+        regressor = log_function_run(Regressor, features_file="./out/balibase_features_RV11-50_new_dpos_with_foldmason_190525.csv",
                                      test_size=0.2,
                                      mode=3,
                                      predicted_measure='msa_distance', i=i, remove_correlated_features=False)
+        # regressor = log_function_run(Regressor, features_file="./out/orthomam_features_w_xtr_NS_KP_290425.parquet",
+        #                              test_size=0.2,
+        #                              mode=3,
+        #                              predicted_measure='msa_distance', i=i, remove_correlated_features=False)
 
 
         mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.0001,

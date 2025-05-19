@@ -253,144 +253,48 @@ class Regressor:
 
 
     def _finalize_features(self, df):
-        self.y = df[self.true_score_name]
-
-        # all features
-        if self.mode == 1:
-            self.X = df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                         'pypythia_msa_difficulty',
-                         'class_label', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true'])
-        if self.mode == 2:
-            self.X = df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                         'pypythia_msa_difficulty',
-                         'class_label', 'class_label_test', 'sop_score', 'normalised_sop_score'])
-        if self.mode == 3:
-            # self.X = df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            # self.X = df[['sop_score']]
-            self.X = df[['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
+        columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
+                         'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
+        columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
+        columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
                          'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps', 'total_gaps',
                          'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps',
                          'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var',
                          'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap',
-                         'single_char_count']]
-        if self.mode == 4:
+                         'single_char_count']
+
+        self.y = df[self.true_score_name]
+
+        if self.mode == 1:
             self.X = df.drop(
-                columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf',
-                         'class_label',
-                         'code', 'code1', 'aligner',
-                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
-                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
-                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
-                         'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
-                         'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
-                         'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-                         'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
-                         'sp_score_gap_e_norm',
-                         'double_char_count', 'k_mer_10_max', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
-                         'k_mer_10_top_10_norm',
-                         'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-                         'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
-                         'seq_min_len',
-                         'clustal_mid_root', 'clustal_differential_sum'])
+                columns=columns_to_drop_dft)
+            self.X_train = self.train_df.drop(
+                columns=columns_to_drop_dft)
+            self.X_test = self.test_df.drop(
+                columns=columns_to_drop_dft)
+
+        if self.mode == 2:
+            self.X = df.drop(
+                columns=columns_to_drop_extended)
+            self.X_train = self.train_df.drop(
+                columns=columns_to_drop_extended)
+            self.X_test = self.test_df.drop(
+                columns=columns_to_drop_extended)
+        if self.mode == 3:
+            self.X = df[columns_to_choose]
+            self.X_train = self.train_df[
+                columns_to_choose]
+            self.X_test = self.test_df[
+                columns_to_choose]
 
         if self.remove_correlated_features:
             correlation_matrix = self.X.corr().abs()
             upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
             to_drop = [column for column in upper_triangle.columns if
-                       any(upper_triangle[column] > 0.9)]  # TODO to uncomment
-            # to_drop = ['entropy_pct_75', 'gaps_len_one',
-            #  'gaps_len_two', 'gaps_len_three_plus',  'gaps_1seq_len1', 'gaps_1seq_len2',
-            #  'gaps_1seq_len3', 'gaps_1seq_len3plus',  'num_cols_1_gap', 'num_cols_2_gaps',
-            #  'num_cols_all_gaps_except1', 'sp_match_ratio', 'sp_missmatch_ratio', 'single_char_count',
-            #  'double_char_count', 'bl_sum', 'kurtosis_bl', 'bl_std', 'bl_max', 'k_mer_10_max', 'k_mer_10_var',
-            #  'k_mer_10_pct_90', 'k_mer_10_norm', 'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-            #  'k_mer_20_norm',  'number_of_mismatches', 'sp_score_subs', 'nj_parsimony_sd'] #TODO to comment
+                       any(upper_triangle[column] > 0.9)]
             if self.verbose == 1:
                 print("Correlated features to drop:", to_drop)
             self.X = self.X.drop(columns=to_drop)
-
-
-        # all features
-        if self.mode == 1:
-            self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                         'pypythia_msa_difficulty',
-                         'class_label', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true'])
-            self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'code', 'code1',
-                         'pypythia_msa_difficulty',
-                         'class_label', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true'])
-        if self.mode == 2:
-            self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'aligner'])
-            self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'rf_from_true', 'normalized_rf', 'class_label', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'sop_score', 'normalised_sop_score', 'aligner'])
-
-        # 2 sop features
-        if self.mode == 3:
-            # self.X_train = self.train_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            # self.X_test = self.test_df[['sp_ge_count', 'sp_score_subs', 'number_of_gap_segments', 'sop_score']]
-            self.X_train = self.train_df[
-                ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps', 'total_gaps',
-                 'entropy_var',
-                 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps', 'n_unique_sites', 'skew_bl',
-                 'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var', 'k_mer_10_top_10_norm',
-                 'gaps_2seq_len3plus',
-                 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count']]
-            self.X_test = self.test_df[
-                ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps', 'total_gaps',
-                 'entropy_var',
-                 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps', 'n_unique_sites', 'skew_bl',
-                 'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var', 'k_mer_10_top_10_norm',
-                 'gaps_2seq_len3plus',
-                 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count']]
-
-        if self.mode == 4:
-            self.X_train = self.train_df.drop(
-                columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf',
-                         'class_label',
-                         'code', 'code1', 'aligner',
-                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
-                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
-                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
-                         'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
-                         'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
-                         'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-                         'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
-                         'sp_score_gap_e_norm',
-                         'double_char_count', 'k_mer_10_max', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
-                         'k_mer_10_top_10_norm',
-                         'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-                         'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
-                         'seq_min_len',
-                         'clustal_mid_root', 'clustal_differential_sum'])
-            self.X_test = self.test_df.drop(
-                columns=['dpos_dist_from_true', 'dpos_ng_dist_from_true', 'rf_from_true', 'normalized_rf',
-                         'class_label',
-                         'code', 'code1', 'aligner',
-                         'pypythia_msa_difficulty', 'normalised_sop_score', 'entropy_median',
-                         'entropy_pct_25', 'entropy_min', 'entropy_max', 'bl_25_pct', 'bl_75_pct', 'var_bl',
-                         'skew_bl', 'kurtosis_bl', 'bl_max', 'bl_min', 'gaps_len_two',
-                         'gaps_len_three', 'gaps_len_three_plus', 'gaps_1seq_len1',
-                         'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
-                         'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-                         'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus',
-                         'sp_score_gap_e_norm',
-                         'double_char_count', 'k_mer_10_max', 'k_mer_10_pct_95', 'k_mer_10_pct_90',
-                         'k_mer_10_top_10_norm',
-                         'k_mer_20_max', 'k_mer_20_mean', 'k_mer_20_var', 'k_mer_20_pct_95', 'k_mer_20_pct_90',
-                         'k_mer_20_top_10_norm', 'median_bl', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
-                         'seq_min_len',
-                         'clustal_mid_root', 'clustal_differential_sum']
-            )
-
-        if self.remove_correlated_features:
             self.X_train = self.X_train.drop(columns=to_drop)
             self.X_test = self.X_test.drop(columns=to_drop)
 
