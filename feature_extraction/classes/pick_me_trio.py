@@ -1,8 +1,10 @@
+import os
+
 import numpy as np
 import pandas as pd
 from typing import Literal, List, Any, Iterator, Tuple, Optional, Dict
 from matplotlib import pyplot as plt
-
+from feature_extraction.classes.regressor import _read_features_into_df
 
 class PickMeGameTrio:
     def __init__(self, features_file: str, prediction_file: str, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance', error: float = 0.0, subset = None) -> None:
@@ -52,7 +54,7 @@ class PickMeGameTrio:
                 df = df.sample(min(self.subset, len(df)))
             max_SoP_score_row = df.loc[df[self.sum_of_pairs_score].idxmax()]
             max_SoP_true_score = max_SoP_score_row[self.true_score]
-            # max_SoP_score_row = df.loc[df['normalised_sop_score'].idxmin()]
+            # max_SoP_score_row = df.loc[df['normalised_sop_score'].idxmax()]
             # max_SoP_true_score = max_SoP_score_row[self.true_score]
 
             # group1 = df.nlargest(20, self.sum_of_pairs_score)
@@ -116,7 +118,8 @@ class PickMeGameTrio:
     def run(self,i=0):
 
         # Load the two CSV files into DataFrames
-        df1 = pd.read_csv(self.features_file)
+        # df1 = pd.read_csv(self.features_file)
+        df1 = _read_features_into_df(self.features_file)
         df2 = pd.read_csv(self.prediction_file)
 
         df1['code1'] = df1['code1'].astype(str)
@@ -129,7 +132,7 @@ class PickMeGameTrio:
         # groups = ['BBS11','BBS12','BBS50','BBS30','BBS20', 'BBA']
 
         for code in df['code1'].unique():
-            # if not code.startswith(groups[5]):
+            # if not code.startswith(groups[0]):
             #     continue
             code_df = df[df['code1'] == code]
             substrings = ['original', 'concat', '_alt_']
@@ -179,9 +182,9 @@ class PickMeGameTrio:
             baliphy_scores.append(default_baliphy_true_score)
 
             overall_scores = self.set_scores(code_df)
-            overall_scores.extend([default_mafft_true_score, default_prank_true_score, default_muscle_true_score, default_baliphy_true_score])
-            # overall_scores.extend([np.nan, np.nan, np.nan,
-            #                        np.nan]) #TODO - use this line if you want to exclude defaults from overall results
+            # overall_scores.extend([default_mafft_true_score, default_prank_true_score, default_muscle_true_score, default_baliphy_true_score])
+            overall_scores.extend([np.nan, np.nan, np.nan,
+                                   np.nan]) #TODO - use this line if you want to exclude defaults from overall results
 
             mafft_winner = self.choose_winner(mafft_scores)
             prank_winner = self.choose_winner(prank_scores)

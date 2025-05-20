@@ -29,11 +29,11 @@ if gpus:
 regressor = Regressor(features_file="../out/orthomam_features_w_xtr_NS_KP_290425.parquet",
                                      test_size=0.2,
                                      mode=3,
-                                     predicted_measure='msa_distance', i=0, remove_correlated_features=False)
+                                     predicted_measure='msa_distance', i=0, remove_correlated_features=False, empirical=False, scaler_type="rank")
 
 
 
-def get_regularizer_info(reg):
+def _get_regularizer_info(reg):
     if isinstance(reg, l1_l2):
         return {
             'type': 'L1L2',
@@ -169,8 +169,8 @@ param_grid = {
     'validation_split': 0.2,
     'learning_rate': [0.001, 0.0001, 0.00001],
     'regularizer': [l2(0.001), l1_l2(l1=0.001, l2=0.001), l2(1e-4), l1(1e-4), l1(0.001), l1_l2(l1=1e-4, l2=1e-4)],
-    'top_k': [0, 4, 10, 20],
-    'ranking_weight': [0.2, 1, 2, 10, 20],
+    'top_k': [1, 4, 10, 20],
+    'ranking_weight': [0.0, 0.2, 1, 2, 10, 20],
     'loss_func': ['mean_squared_error', 'custom']
     }
 
@@ -192,6 +192,8 @@ for round in range(150):
     loss_func = random.choice(param_grid['loss_func'])
     top_k = random.choice(param_grid['top_k'])
     ranking_weight = random.choice(param_grid['ranking_weight'])
+
+    reg_info = _get_regularizer_info(regularizer)
 
     try:
         model = create_model(optimizer='adam', learning_rate=learning_rate, dropout_rate=dropout_rate, neurons=neurons_combo, kernel_init=GlorotUniform(), kernel_reg=regularizer, activations=activation_combo, loss_func=loss_func, top_k=top_k, mse_weight=1,
@@ -246,7 +248,6 @@ for round in range(150):
         with open('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/grid_search.txt', 'a') as f:
             f.write(f"Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Optimizer: {param_grid['optimizer'][0]}, Learning rate: {learning_rate} and lr_scheduler, Validation split: {param_grid['validation_split']}, Regularizer: {reg_info}, Loss_func: {loss_func}, Top_k: {top_k}, Ranking_Weight: {ranking_weight}, Loss: {loss}, MSE: {mse}, Pearson: {corr_coefficient}, p-value: {p_value}\n")
 
-        reg_info = get_regularizer_info(regularizer)
 
         if corr_coefficient > best_score:
             best_score = corr_coefficient
@@ -270,5 +271,5 @@ for round in range(150):
                 f.write(
                     f"NEW BEST\n")
     except Exception as e:
-        print(f'Failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Regularizer: {regularizer}, Loss_func: {loss_func}, top_k: {top_k}, ranking_weight: {ranking_weight}. Error: {e}')
+        print(f'Failed with parameters: Activation: {activation_combo}, Batch Size: {batch_size}, Epochs: {epochs}, Dropout: {dropout_rate}, Neurons: {neurons_combo}, Regularizer: {reg_info}, Loss_func: {loss_func}, top_k: {top_k}, ranking_weight: {ranking_weight}. Error: {e}')
 print(f"Best Score: {best_score} using {best_params}")

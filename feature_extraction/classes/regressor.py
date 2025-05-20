@@ -77,7 +77,7 @@ def _rank_percentile_scale_targets(y_true: pd.Series, group_codes: pd.Series) ->
         else:
             ranks = rankdata(vals, method="average")
             scaled = (ranks - 1) / (len(vals) - 1)
-        scaled_series.loc[group_df.index] = scaled
+        scaled_series.loc[group_df.index] = scaled.astype('float32')
 
     return scaled_series
 
@@ -128,7 +128,8 @@ class Regressor:
     predicted_measure: 'msa_distance' is a default measure
     scale_labels: y-labels by default are also rank-percentile scaled
     '''
-    def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False, predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0, scale_labels: bool = True, verbose: int = 1) -> None:
+    def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False, predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard') -> None:
+        self.empirical = empirical
         self.verbose = verbose
         self.features_file: str = features_file
         self.test_size: float = test_size
@@ -144,6 +145,7 @@ class Regressor:
         self.file_codes_test = None
         self.final_features_names = None
         self.remove_correlated_features: bool = remove_correlated_features
+        self.scaler_type = scaler_type
 
         df = _read_features_into_df(self.features_file)
         self.true_score_name = _assign_true_score_name(self.predicted_measure)
@@ -159,7 +161,7 @@ class Regressor:
         self._split_into_training_test(df, test_size)
 
         self._finalize_features(df)
-        self._scale(scale_labels = scale_labels, i = i)
+        self._scale(i=i)
 
         if self.verbose == 1:
             _print_correlations(self.test_df, self.true_score_name)
@@ -167,22 +169,33 @@ class Regressor:
 
 
 
-    def _scale(self, scale_labels: bool = True, i: int = 0):
-        scaler = GroupAwareScaler(global_scaler=RobustScaler())
-        self.X_train_scaled = scaler.fit_transform(self.train_df, group_col="code1", feature_cols=self.X_train.columns)
-        self.X_test_scaled = scaler.transform(self.test_df)
-        scaler.save(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
-        self.final_features_names = scaler.get_feature_names_out()
+    def _scale(self, i: int = 0):
+        if self.scaler_type == 'standard':
+            self.scaler = StandardScaler()
+            self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit)
+            self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling
+            joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+
+        elif self.scaler_type == 'rank':
+            self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
+            self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1", feature_cols=self.X_train.columns)
+            self.X_test_scaled = self.scaler.transform(self.test_df)
+            self.final_features_names = self.scaler.get_feature_names_out()
+            self.scaler.save(
+                f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+
+            """ SCALED y-labels """
+            self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
+                                                                 group_codes=self.main_codes_train)  # TODO remove this line
+            self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test,
+                                                                group_codes=self.main_codes_test)  # TODO remove this line
+            self.y_train = self.y_train_scaled  # TODO remove this line
+            self.y_test = self.y_test_scaled  # TODO remove this line
+            """ SCALED y-labels """
+
         # scaler = GroupAwareScaler()
         # scaler.load("group_aware_scaler.pkl")
 
-        """ SCALED y-labels """
-        self.y_train_scaled = _rank_percentile_scale_targets(y_true =self.y_train , group_codes = self.main_codes_train) #TODO remove this line
-        self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test, group_codes=self.main_codes_test)  # TODO remove this line
-        self.y_train = self.y_train_scaled # TODO remove this line
-        self.y_test = self.y_test_scaled # TODO remove this line
-        """ SCALED y-labels """
 
         # Check the size of each set
         if self.verbose == 1:
@@ -256,12 +269,24 @@ class Regressor:
         columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
                          'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
         columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
-        columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                         'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps', 'total_gaps',
-                         'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps',
-                         'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var',
-                         'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap',
-                         'single_char_count']
+        if self.empirical == True:
+            columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
+                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+                                 'total_gaps',
+                                 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps',
+                                 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+                                 'k_mer_20_var',
+                                 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap',
+                                 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'n_unique_sites',
+                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio',
+                                 'single_char_count']
+        else:
+            columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
+                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps', 'total_gaps',
+                                 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps',
+                                 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var',
+                                 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap',
+                                 'single_char_count']
 
         self.y = df[self.true_score_name]
 
@@ -302,7 +327,7 @@ class Regressor:
         self.y_train = self.train_df[self.true_score_name]
         self.y_test = self.test_df[self.true_score_name]
 
-    def deep_learning(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1, learning_rate: float = 0.01, dropout_rate: float = 0.2, l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1, mixed_portion: float = 0.3, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 50, per_aligner: bool = False) -> float:
+    def deep_learning(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1, learning_rate: float = 0.01, neurons: list[int] = [128, 64, 16], dropout_rate: float = 0.2, l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1, mixed_portion: float = 0.3, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 50, per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse"] = 'mse', regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2') -> float:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
@@ -343,22 +368,31 @@ class Regressor:
             model = Sequential()
             model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
+            if regularizer_name == "l1":
+                ker_regularizer = regularizers.l1(l1=l1)
+
+            if regularizer_name == "l2":
+                ker_regularizer = regularizers.l2(l2=l2)
+
+            if regularizer_name == "l1_l2":
+                ker_regularizer = regularizers.l1_l2(l1=l1, l2=l2)
+
             #first hidden
             model.add(
-                Dense(128, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+                Dense(neurons[0], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
             model.add(Dropout(dropout_rate))
 
             # second hidden
             model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=regularizers.l2(l2=l2)))
+                Dense(neurons[1], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
             model.add(Dropout(dropout_rate))
 
             # third hidden
-            model.add(Dense(16, kernel_initializer=GlorotUniform(),kernel_regularizer=regularizers.l2(l2=l2)))
+            model.add(Dense(neurons[2], kernel_initializer=GlorotUniform(),kernel_regularizer=ker_regularizer))
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
             model.add(Dropout(dropout_rate))
@@ -368,9 +402,12 @@ class Regressor:
             optimizer = Adam(learning_rate=learning_rate)
             # optimizer = RMSprop(learning_rate=learning_rate)
 
-            # model.compile(optimizer=optimizer, loss='mean_squared_error')
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
-                                                        ranking_weight=ranking_weight))
+            if loss_fn == 'mse':
+                model.compile(optimizer=optimizer, loss='mean_squared_error')
+
+            elif loss_fn == "custom_mse":
+                model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
+                                                            ranking_weight=ranking_weight))
 
             unique_train_codes = self.main_codes_train.unique()
             train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
