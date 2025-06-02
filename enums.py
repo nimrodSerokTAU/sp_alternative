@@ -32,3 +32,8 @@ class StatsOutput(Enum):
     ALL = 'all_stats'
     ALL_FEATURES = 'all_features'
 
+class DistanceType(Enum):
+    D_SSP = 'd_ssp'
+    D_SEQ = 'd_seq'
+    D_POS = 'd_pos'
+

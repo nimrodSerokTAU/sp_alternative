@@ -18,9 +18,9 @@ from classes.sp_score import SPScore
 from classes.tree_stats import calc_parsimony, TreeStats
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
 from classes.w_sop_stats import WSopStats
-from enums import SopCalcTypes, RootingMethods, WeightMethods
+from enums import SopCalcTypes, RootingMethods, WeightMethods, DistanceType
 from multi_msa_service import multiple_msa_calc_features_and_labels
-from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance, compute_dpos_no_g_distance
+from dpos import translate_profile_naming, get_column, get_place_hpos, compute_distance
 from ete3 import Tree, TreeNode
 
 newick_of_AATF = (
@@ -215,7 +215,7 @@ def test_translate_profile_hpos():
         'A--ATTAG',
         'A--A-TAG'
     ]
-    res = translate_profile_naming(profile)
+    res = translate_profile_naming(profile, DistanceType.D_POS)
     assert res == [
         ['S^1_1', 'S^1_2', 'S^1_3', 'S^1_4', 'S^1_5', 'S^1_6', 'S^1_7', 'G^1_7'],
         ['S^2_1', 'G^2_1', 'G^2_1', 'S^2_2', 'S^2_3', 'S^2_4', 'S^2_5', 'S^2_6'],
@@ -228,7 +228,7 @@ def test_get_specific_hpos():
         'A--ATTAG',
         'A--A-TAG'
     ]
-    trans_prof = translate_profile_naming(profile)
+    trans_prof = translate_profile_naming(profile, DistanceType.D_POS)
     res_2 = []
     res_3 = []
     for col_inx in range(len(profile[0])):
@@ -256,7 +256,7 @@ def test_compute_dpos_distance_for_same():
         'A--ATTAG',
         'A--A-TAG'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert res == 0
 
 
@@ -271,7 +271,7 @@ def test_compute_dpos_distance_for_diff():
         'A-A-TTAG',
         'A--A-TAG'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.417
 
 
@@ -288,7 +288,7 @@ def compute_dpos_distance_for_diff_case_b():
         'AB-DEFGH',
         'AB-DEFGH'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.417
 
 
@@ -303,7 +303,7 @@ def test_dpos_for_diff_length_case_a():
         'A-A--TTAG',
         'A--A-T-AG'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.639
 
 
@@ -323,8 +323,8 @@ def test_dpos_for_diff_length_case_qu_a():
         'GC---ATT-AG',
         'GC---A-TA-G'
     ]
-    res_ab = compute_dpos_distance(profile_a, profile_b)
-    res_ac = compute_dpos_distance(profile_a, profile_c)
+    res_ab = compute_distance(profile_a, profile_b, DistanceType.D_POS)
+    res_ac = compute_distance(profile_a, profile_c, DistanceType.D_POS)
     assert round(res_ab, 3) == 0.364
     assert round(res_ac, 3) == 0.295
 
@@ -359,9 +359,9 @@ def test_dpos_for_diff_length_case_qu_b():
         'GT------A--TC',
     ]
 
-    res_a = compute_dpos_distance(true_profile, profile_a)
-    res_b = compute_dpos_distance(true_profile, profile_b)
-    res_c = compute_dpos_distance(true_profile, profile_c)
+    res_a = compute_distance(true_profile, profile_a, DistanceType.D_POS)
+    res_b = compute_distance(true_profile, profile_b, DistanceType.D_POS)
+    res_c = compute_distance(true_profile, profile_c, DistanceType.D_POS)
     assert round(res_a, 3) == 0.303
     assert round(res_b, 3) == 0.182
     assert round(res_c, 3) == 0.121
@@ -383,8 +383,8 @@ def test_dpos_no_g_for_diff_length_case_qu_a():
         'GC---ATT-AG',
         'GC---A-TA-G'
     ]
-    res_ab = compute_dpos_no_g_distance(profile_a, profile_b)
-    res_ac = compute_dpos_no_g_distance(profile_a, profile_c)
+    res_ab = compute_distance(profile_a, profile_b, DistanceType.D_SSP)
+    res_ac = compute_distance(profile_a, profile_c, DistanceType.D_SSP)
     assert round(res_ab, 3) == 0.242
     assert round(res_ac, 3) == 0.273
 
@@ -419,9 +419,9 @@ def test_dpos_no_g_for_diff_length_case_qu_b():
         'GT------A--TC',
     ]
 
-    res_a = compute_dpos_no_g_distance(true_profile, profile_a)
-    res_b = compute_dpos_no_g_distance(true_profile, profile_b)
-    res_c = compute_dpos_no_g_distance(true_profile, profile_c)
+    res_a = compute_distance(true_profile, profile_a, DistanceType.D_SSP)
+    res_b = compute_distance(true_profile, profile_b, DistanceType.D_SSP)
+    res_c = compute_distance(true_profile, profile_c, DistanceType.D_SSP)
     assert round(res_a, 3) == 0.091
     assert round(res_b, 3) == 0.091
     assert round(res_c, 3) == 0.091
@@ -437,7 +437,7 @@ def test_dpos_for_diff_length_case_c():
         '---T',
         '--CG'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.5
 
 
@@ -452,7 +452,7 @@ def test_dpos_for_diff_length_case_d():
         '--T-',
         '-CG-'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.5
 
 
@@ -580,7 +580,7 @@ def test_dpos_for_diff_length_case_e():
         '--T-G',
         '-CG-G'
     ]
-    res = compute_dpos_distance(profile_a, profile_b)
+    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.333
 
 

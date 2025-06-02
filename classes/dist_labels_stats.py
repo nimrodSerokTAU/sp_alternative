@@ -1,6 +1,7 @@
 from classes.msa_basic_stats import BasicStats
 from classes.unrooted_tree import UnrootedTree
-from dpos import compute_dpos_distance, compute_dpos_no_g_distance
+from dpos import compute_distance
+from enums import DistanceType
 
 
 class DistanceLabelsStats(BasicStats):
@@ -21,8 +22,8 @@ class DistanceLabelsStats(BasicStats):
         self.rf_from_true = -1
 
     def set_my_dpos_dist_from_true(self, inferred_msa: list[str], true_msa: list[str]): # TODO: fix this
-        self.dpos_from_true = compute_dpos_distance(true_msa, inferred_msa)
-        self.ssp_from_true = compute_dpos_no_g_distance(true_msa, inferred_msa)
+        self.dpos_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_POS)
+        self.ssp_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_SSP)
 
     def set_rf_from_true(self, my_tree: UnrootedTree, true_tree: UnrootedTree):
         self.rf_from_true = my_tree.calc_rf(true_tree)
