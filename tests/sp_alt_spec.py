@@ -731,7 +731,7 @@ def test_msa_stats():
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
     dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     dist_labels_stats.set_my_dpos_dist_from_true(true_msa.sequences, inferred_msa.sequences)
-    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.107, -1, 0.134]
+    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.854, 0.132, 0.134]
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     entropy_stats.calc_entropy(inferred_msa.sequences)

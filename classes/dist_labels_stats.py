@@ -23,6 +23,7 @@ class DistanceLabelsStats(BasicStats):
 
     def set_my_dpos_dist_from_true(self, inferred_msa: list[str], true_msa: list[str]): # TODO: fix this
         self.dpos_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_POS)
+        self.dseq_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_SEQ)
         self.ssp_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_SSP)
 
     def set_rf_from_true(self, my_tree: UnrootedTree, true_tree: UnrootedTree):
