@@ -3,17 +3,23 @@ from pathlib import Path
 
 from classes.compare_msas import msa_comp_main
 from classes.config import Configuration
-from classes.gap_interval import GapInterval
+from classes.dist_labels_stats import DistanceLabelsStats
+from classes.entropy_stats import EntropyStats
+from classes.gaps_stats import GapStats
 from classes.global_alignment import GlobalAlign
+from classes.kmer_stats import KMerStats
 from classes.msa import MSA
-from classes.msa_stats import calc_parsimony, MSAStats
+from classes.msa_basic_stats import BasicStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
 from classes.rooted_tree import RootedTree
+from classes.sop_stats import SopStats
 from classes.sp_score import SPScore
+from classes.tree_stats import calc_parsimony, TreeStats
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
+from classes.w_sop_stats import WSopStats
 from enums import SopCalcTypes, RootingMethods, WeightMethods
-from multi_msa_service import calc_multiple_msa_sp_scores
+from multi_msa_service import multiple_msa_calc_features_and_labels
 from dpos import translate_profile_naming, get_column, get_place_hpos, compute_dpos_distance, compute_dpos_no_g_distance
 from ete3 import Tree, TreeNode
 
@@ -176,7 +182,7 @@ def test_compute_efficient_sp():
 
 def test_compare_naive_sop_to_efficient():
     configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                                 SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+                                                 SopCalcTypes.EFFICIENT, 'comparison_files')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         '-EETTEESLKRIVADNENRAEQVHLYLSTTFVIADPEPKYGIVRSKDMNWYEQKTHKFLGMGPVLGVQFAF',
@@ -190,7 +196,7 @@ def test_compare_naive_sop_to_efficient():
 
 def test_compare_naive_sop_to_efficient_min_example():
     configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                                 SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+                                                 SopCalcTypes.EFFICIENT, 'comparison_files')
     sp: SPScore = SPScore(configuration)
     profile: list[str] = [
         'LLKYR-K',
@@ -435,7 +441,7 @@ def test_dpos_for_diff_length_case_c():
     assert round(res, 3) == 0.5
 
 
-def test_dpos_for_diff_length_case_c():
+def test_dpos_for_diff_length_case_d():
     profile_a: list[str] = [
         'ATA',
         '-T-',
@@ -563,7 +569,7 @@ def test_tree_from_newick():
         {'children_ids': [], 'id': 0, 'keys': {'Macropus'}}]
 
 
-def test_dpos_for_diff_length_case_d():
+def test_dpos_for_diff_length_case_e():
     profile_a: list[str] = [
         'ATAG',
         '-T-G',
@@ -581,11 +587,10 @@ def test_dpos_for_diff_length_case_d():
 def test_multi():
     configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
-                                                 False, False,
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
                                                   WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
-    calc_multiple_msa_sp_scores(configuration)
+    multiple_msa_calc_features_and_labels(configuration)
 
 
 def add_nodes_recursively_to_list(nodes_to_add: list[Node]) -> list:
@@ -635,7 +640,7 @@ def test_rf_for_nj_using_ours():
     msa = MSA('AATF')
     msa.read_me_from_fasta(Path('./comparison_files/AATF/MSA.MAFFT.aln.With_Names'))
     config: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                          SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
+                                          SopCalcTypes.EFFICIENT, 'comparison_files')
     sp_score: SPScore = SPScore(config)
     msa.build_nj_tree()
     nj_unrooted_tree = msa.tree
@@ -714,7 +719,6 @@ def test_msa_stats():
     ]
     config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
-                                          False, False,
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
                                            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
@@ -722,25 +726,42 @@ def test_msa_stats():
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config)
-    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count, ge_count = sp.compute_efficient_sp_parts(
-        inferred_msa.sequences)
-    inferred_msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                        sp_missmatch_count, sp_gpo_count, ge_count)
-    inferred_msa.order_sequences(true_msa.seq_names)
-    dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-    dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
-    inferred_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
-    inferred_msa.set_my_alignment_features()
+    basic_stats = BasicStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),
+                             ['code', 'taxa_num', 'msa_len'])
+    assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
+    dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    dist_labels_stats.set_my_dpos_dist_from_true(true_msa.sequences, inferred_msa.sequences)
+    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.107, -1, 0.134]
+
+    entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    entropy_stats.calc_entropy(inferred_msa.sequences)
+    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0, 0.092, 0.0, 0.637, 0.0, 0.693]
+
+    gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gaps_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.125, 8, 7, 1, 0, 0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5]
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    k_mer_stats.set_k_mer_features(inferred_msa.sequences)
+    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # TODO: handle this?
+
     inferred_msa.build_nj_tree()
-    inferred_msa.tree.longest_path()
     true_msa.build_nj_tree()
-    inferred_msa.set_rf_from_true(true_msa.tree)
-    inferred_msa.calc_seq_weights(config.additional_weights)
-    inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
-    assert inferred_msa.stats.get_my_features() == (
-        'inferred,-12.0,-0.12,0,0.134,5,0.4,9,0,0.364,0,0.092,0.0,0.637,0.0,0.693,1.125,10,10,7,8,7,1,0,0,1.25,4,3,2,0,'
-        '1,0,0,0,0,0,0,0,0,5,2,2,0,2.51,-0.13,-0.13,0.47,0.22,1,5,1.676,0.183,0.093,0.396,0.03,0.304,'
-        '-1.5226555580702366,0.174,0.491,0.026,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,22,-1.135,-0.586,-7.131,-6.979,251.0,26,12,0.8717797887081347,0.107,')
+    tree_stats = TreeStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    tree_stats.set_tree_stats(inferred_msa.tree.get_branches_lengths_list(), inferred_msa.tree, inferred_msa.sequences, inferred_msa.seq_names)
+    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.183, 0.093, 0.396, 0.03, 0.304, -1.523, 0.174, 0.491, 0.026, 12, 0.872]
+    dist_labels_stats.set_rf_from_true(inferred_msa.tree, true_msa.tree)
+    data_to_print, col_names = dist_labels_stats.get_print_rf()
+    assert data_to_print == ['inferred', 0]
+    assert col_names == ['code','rf_from_true']
+
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.get_my_features_as_list() == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 0.47, 0.22, 251.0, 26, 25, 22]
+
+    w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
+    w_sop_stats.calc_w_sp(inferred_msa.sequences, sp)
+    assert w_sop_stats.get_my_features_as_list() == ['inferred', -1.135, -0.586, -7.131, -6.979]
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
@@ -812,7 +833,8 @@ def test_henikoff_w():
     ]
     msa = MSA('test')
     msa.sequences = aln
-    seq_weights_with_gap, seq_weights_no_gap = msa.compute_seq_w_henikoff_vars()
+    w_sop = WSopStats(msa.dataset_name, msa.get_taxa_num(), msa.get_msa_len())
+    seq_weights_with_gap, seq_weights_no_gap = w_sop.compute_seq_w_henikoff_vars(msa.sequences)
     res = {'seq_weights_with_gap': seq_weights_with_gap, 'seq_weights_no_gap': seq_weights_no_gap}
     assert res == {
         'seq_weights_no_gap': [
@@ -841,16 +863,12 @@ def test_mid_point_rooting():
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
     config: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                          SopCalcTypes.EFFICIENT, 'comparison_files',
-                                          False, False)
+                                          SopCalcTypes.EFFICIENT, 'comparison_files')
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config)
-    sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_gpo_count, ge_count = sp.compute_efficient_sp_parts(
-        inferred_msa.sequences)
-    inferred_msa.set_my_sop_score_parts(sp_score_subs=sp_score_subs, go_score=go_score, sp_score_gap_e=sp_score_gap_e,
-                                        sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count,
-                                        sp_go_count=sp_gpo_count, sp_ge_count=ge_count)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
     inferred_msa.build_nj_tree()
     path, max_dist = inferred_msa.tree.longest_path()
     tree = RootedTree.root_tree(inferred_msa.tree, RootingMethods.LONGEST_PATH_MID)
@@ -882,12 +900,7 @@ def test_mid_point_rooting_case_b():
                     'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
 
 
-def test_comp_3():
-    res = msa_comp_main()
-    assert res is None
-
-
-def test_differential_sum_rooting():
+def test_differential_sum_rooting(): # TODO: check this
     unrooted = create_unrooted_tree_for_test()
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
@@ -953,17 +966,20 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
 def test_single_msas():
     config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
-                                                 False, False,
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
                                                   WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
 
-    calc_single_msas(config)
+    all_msa_ws = calc_single_msas(config)
+    assert all_msa_ws == [
+        ['bali_phy_msa.8.fasta', 401.38, 402.452, 1607.46, 1396.584],
+        ['MUSCLE_diversified_replicate.none.216.afa', 401.042, 399.857, 2136.42, 1578.571],
+        ['PRANK_b1#0003_hhT_tree_3_OP_0.38975399874169636_Split_3.fasta', 400.989, 402.289, 2314.664, 1444.722],
+        ['PRANK_b1#0024_hhT_tree_21_OP_0.2963379796789501_Split_24.fasta', 403.128, 405.134, 2286.363, 1451.505]]
 
 def test_global_alignment_blosum_affine_gap_case_a():
     config: Configuration = Configuration(-4, -0.5, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'tests/comparison_files',
-                                          False, False,
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
                                            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
@@ -1000,7 +1016,6 @@ def test_create_alternative_msas_by_realign():
     ]
     config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
-                                          False, False,
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
                                            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
@@ -1008,16 +1023,16 @@ def test_create_alternative_msas_by_realign():
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
     res = inferred_msa.create_alternative_msas_by_realign(config)
     msa_list: list[MSA] = []
+    msa_list_stats: list[DistanceLabelsStats] = []
     for msa_data in res:
         alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
-        dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
-        dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
-        alt_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
+        alt_dops_stats = DistanceLabelsStats(alt_msa.dataset_name, len(alt_msa.sequences), len(alt_msa.sequences[0]))
+        alt_dops_stats.set_my_dpos_dist_from_true(alt_msa.sequences, true_msa.sequences)
         msa_list.append(alt_msa)
-    dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-    dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
-    inferred_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
-    dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
+        msa_list_stats.append(alt_dops_stats)
+    dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences), len(inferred_msa.sequences[0]))
+    dpos_stats.set_my_dpos_dist_from_true(inferred_msa.sequences, true_msa.sequences)
+    dpos_ratio = abs(dpos_stats.dpos_from_true - msa_list_stats[0].dpos_from_true) / dpos_stats.dpos_from_true
     assert dpos_ratio <= 3
 
 
@@ -1045,20 +1060,18 @@ def test_create_alternative_msas_by_moving_smallest():
     for inx, msa_data in enumerate(res):
         print(inx)
         alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
-        dpos: float = compute_dpos_distance(true_msa.sequences, alt_msa.sequences)
-        dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
-        alt_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
-        dpos_list.append(dpos)
+        alt_msa_dpos_stats = DistanceLabelsStats(alt_msa.dataset_name, len(alt_msa.sequences), len(alt_msa.sequences[0]))
+        alt_msa_dpos_stats.set_my_dpos_dist_from_true(alt_msa.sequences, true_msa.sequences)
+        dpos_list.append(alt_msa_dpos_stats.dpos_from_true)
         msa_list.append(alt_msa)
-    dpos: float = compute_dpos_distance(true_msa.sequences, inferred_msa.sequences)
-    dpos_ng: float = compute_dpos_no_g_distance(true_msa.sequences, inferred_msa.sequences)
-    inferred_msa.stats.set_my_dpos_dist_from_true(dpos, dpos_ng)
-    dpos_ratio = abs(dpos - msa_list[0].stats.dpos_dist_from_true) / dpos
+    inferred_msa_dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences), len(inferred_msa.sequences[0]))
+    inferred_msa_dpos_stats.set_my_dpos_dist_from_true(inferred_msa.sequences, true_msa.sequences)
+    dpos_ratio = abs(inferred_msa_dpos_stats.dpos_from_true - dpos_list[0]) / inferred_msa_dpos_stats.dpos_from_true
     assert dpos_ratio <= 1
 
 
 def calc_single_msas(config: Configuration):
-    all_msa_ws: list[list[int]] = []
+    all_msa_ws: list[list[float]] = []
     sp: SPScore = SPScore(config)
     project_path: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent.absolute()
     dir_path: Path = Path(str(project_path) + '/msa_to_test')
@@ -1068,16 +1081,12 @@ def calc_single_msas(config: Configuration):
         print(msa_name)
         inferred_msa = MSA(msa_name)
         inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
-        if len(inferred_msa.weight_names) > 0:
-            inferred_msa.set_w(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
         inferred_msa.build_nj_tree()
-        inferred_msa.calc_seq_weights(config.additional_weights)
-        all_msa_ws.append(sp.compute_naive_sp_score(inferred_msa.sequences, inferred_msa.seq_weights_options))
-    assert all_msa_ws == [
-        [401.3797261063572, 402.45238292922056, 1607.4598272053804, 1396.584222219682],
-        [401.0417600554709, 399.8565813655558, 2136.4204964575442, 1578.570699310766],
-        [400.98871068138055, 402.2891297632128, 2314.664373827455, 1444.721691365885],
-        [403.1283990916456, 405.13410889386114, 2286.363206046346, 1451.505481668867]]
+        w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+        w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
+        w_sop_stats.calc_w_sp(inferred_msa.sequences, sp)
+        all_msa_ws.append(w_sop_stats.get_my_features_as_list())
+    return all_msa_ws
 
 def test_henikoff_with_gaps_value():
     # Create a simple test alignment with known gap patterns
@@ -1097,22 +1106,27 @@ def test_henikoff_with_gaps_value():
     
     config: Configuration = Configuration(-10, -0.5, 'Blosum62',
                                         SopCalcTypes.EFFICIENT, 'comparison_files',
-                                        False, False,
                                         {WeightMethods.HENIKOFF_WG})
     
     # Calculate sequence weights
-    msa.calc_seq_weights(config.additional_weights)
+    msa.build_nj_tree()
+    w_sop_stats = WSopStats(msa.dataset_name, msa.get_taxa_num(), msa.get_msa_len())
+    w_sop_stats.calc_seq_weights(config.additional_weights, msa.sequences, msa.seq_names, msa.tree)
     
     # Compute SP score with weights
     sp = SPScore(config)
-    sop_w_options = sp.compute_naive_sp_score(msa.sequences, msa.seq_weights_options)
+    sop_w_options = w_sop_stats.calc_w_sp(msa.sequences, sp)
     
     # Set the weights in stats
-    msa.stats.set_my_w_sop({WeightMethods.HENIKOFF_WG.value: sop_w_options[0]})
+    henikoff_with_gaps = w_sop_stats.henikoff_with_gaps
     
     # The expected value is the actual calculated SP score with Henikoff weights
     expected_value = -1.682110969387752
     
     # Check if the henikoff_with_gaps value is set correctly
-    assert abs(msa.stats.henikoff_with_gaps - expected_value) < 1e-10, \
-        f"Expected henikoff_with_gaps to be {expected_value}, but got {msa.stats.henikoff_with_gaps}"
+    assert abs(henikoff_with_gaps - expected_value) < 1e-10, \
+        f"Expected henikoff_with_gaps to be {expected_value}, but got {henikoff_with_gaps}"
+
+    def test_comp_3():
+        res = msa_comp_main()
+        assert res is None

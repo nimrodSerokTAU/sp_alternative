@@ -1,5 +1,5 @@
+import numpy as np
 import math
-from pathlib import Path
 
 
 def read_matching_matrix(file_path: str) -> tuple[list[list[int]], dict[str, int]]:
@@ -60,3 +60,6 @@ def calc_kimura_distance_from_other(aligned_seq: str, other_aligned_seq: str) ->
         return 2
     return -math.log(kimura_exponent)
 
+def calc_percentile(values, percentile: int) -> float:
+    values.sort()
+    return float(np.percentile(values, percentile))

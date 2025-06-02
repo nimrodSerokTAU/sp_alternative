@@ -1,14 +1,11 @@
 import os
 from pathlib import Path
-import pandas as pd
-import scipy.stats
 
-from classes.msa import MSA, MSAStats
+from classes.msa import MSA
 from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
-from dpos import compute_dpos_distance, compute_dpos_no_g_distance
-from enums import SopCalcTypes, RootingMethods, WeightMethods
+from enums import StatsOutput
 
 
 def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | None, list[str]]:
@@ -26,101 +23,47 @@ def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | Non
     return true_file_name, true_tree_file_name, other_file_names  # TODO: can protect
 
 
-def print_comparison_file(output_file_path: Path, all_msa_stats: list[MSAStats], pearsonr: float, spearmanr: float,
-                          sop_over_count: float, dir_name: str = ''):
-    if dir_name != '':
-        output_file_path = Path(f'{str(output_file_path)}_{dir_name}')
-    with (open(output_file_path, 'w') as outfile):
-        print(f'pearson r:{pearsonr}, spearman r:{spearmanr}, sop over 1 count: {sop_over_count}', file=outfile)
-        print(','.join(all_msa_stats[0].ordered_col_names), file=outfile)
-        for msa_stats in all_msa_stats:
-            print(msa_stats.get_my_features(), file=outfile)
-
-
-def analyze_msa_stats(all_msa_stats: list[MSAStats]) -> tuple[float, float, int]:
-    if len(all_msa_stats) < 2:
-        return 1, 1, int(all_msa_stats[0].normalised_sop_score > 1)
-    data: list[list] = []
-    sop_over_count: int = 0
-    for msa_stats in all_msa_stats:
-        data.append(msa_stats.get_my_features_as_list())
-        if msa_stats.normalised_sop_score > 1:
-            sop_over_count += 1
-
-    df: pd.DataFrame = pd.DataFrame(data, columns=all_msa_stats[0].get_ordered_col_names())
-    x = df['normalised_sop_score']
-    y = df['dpos_dist_from_true']
-    pearsonr: float = scipy.stats.pearsonr(x, y)
-    spearmanr: float = scipy.stats.spearmanr(x, y)
-    return pearsonr.statistic, spearmanr.statistic, sop_over_count
-
-
-def calc_multiple_msa_sp_scores(config: Configuration):
-    all_msa_stats: list[MSAStats] = []
+def multiple_msa_calc_features_and_labels(config: Configuration):
+    all_msa_stats: dict[str, dict] = {}
+    for stats_file_name in config.stats_output:
+        all_msa_stats[stats_file_name.value] = {}
     project_path: Path = Path(os.path.dirname(os.path.realpath(__file__)))
     # project_path: Path = script_path.parent.absolute()
     comparison_dir: Path = Path(os.path.join(str(project_path), config.input_files_dir_name))
     sp: SPScore = SPScore(config)
-    output_file_path = Path(os.path.join(str(project_path), 'output/comparison_results.csv'))
-    pearsonr = spearmanr = sop_over_count = 0
+    output_dir_path = Path(os.path.join(str(project_path), 'output/'))
     for dir_name in os.listdir(comparison_dir):
         dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
         true_file_name, true_tree_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
         true_msa = MSA(dir_name)
         if true_file_name:
             true_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), true_file_name)))
-        if true_tree_file_name:
-            true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
-        else:
-            true_msa.build_nj_tree()
-        true_msa.set_my_sop_score(sp.compute_efficient_sp(true_msa.sequences))
+        if len({StatsOutput.ALL, StatsOutput.RF_LABEL}.intersection(config.stats_output)) > 0:
+            if true_tree_file_name:
+                true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
+            else:
+                true_msa.build_nj_tree()
 
         # alternative_true: list[list[str]] = true_msa.create_alternative_msas_by_moving_smallest()
         # for i, m in enumerate(alternative_true):
         #     inf_alt_msa = MSA(f'true_alt_{i}')
         #     inf_alt_msa.set_sequences_to_me(m, true_msa.seq_names)
         #     add_msa_to_stats(all_msa_stats, true_msa, true_msa, config, sp)
-
+        is_init_files: bool = True
         for inferred_file_name in inferred_file_names:
-            msa_name = inferred_file_name if config.is_analyze_per_dir else dir_name
+            msa_name = inferred_file_name # if config.is_analyze_per_dir else dir_name
             print(msa_name)
             inferred_msa = MSA(msa_name)
             inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
             inferred_msa.order_sequences(true_msa.seq_names)
-            alternative_inferred: list[list[str]] = inferred_msa.create_alternative_msas_by_moving_one_part()
-            add_msa_to_stats(all_msa_stats, inferred_msa, true_msa, config, sp)
+            # alternative_inferred: list[list[str]] = inferred_msa.create_alternative_msas_by_moving_one_part()
+            inferred_msa.calc_and_print_stats(true_msa, config, sp, output_dir_path, true_msa.tree, is_init_files)
+            is_init_files = False
             # for i, m in enumerate(alternative_inferred):
             #     inf_alt_msa = MSA(f'{msa_name}_alt_{i}')
             #     inf_alt_msa.set_sequences_to_me(m, inferred_msa.seq_names)
             #     add_msa_to_stats(all_msa_stats, inferred_msa, true_msa, config, sp)
-
-        if config.is_analyze_per_dir:
-            if config.is_compute_correlation:
-                pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
-            print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count, dir_name)
-            all_msa_stats = []
-    if not config.is_analyze_per_dir:
-        if config.is_compute_correlation:
-            pearsonr, spearmanr, sop_over_count = analyze_msa_stats(all_msa_stats)
-        print_comparison_file(output_file_path, all_msa_stats, pearsonr, spearmanr, sop_over_count)
+        if true_msa is not None:
+            true_msa.calc_and_print_stats(true_msa, config, sp, output_dir_path, true_msa.tree, is_init_files)
     print('done')
-
-
-def add_msa_to_stats(all_msa_stats: list[MSAStats], msa: MSA, true_msa: MSA, config: Configuration, sp: SPScore):
-    sop_w_options: list[float] = []
-    if config.sop_clac_type == SopCalcTypes.NAIVE:
-        sop_w_options = sp.compute_naive_sp_score(msa.sequences)
-    else:
-        sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count, ge_count = sp.compute_efficient_sp_parts(
-            msa.sequences)
-        msa.set_my_sop_score_parts(sp_score_subs, go_score, sp_score_gap_e, sp_match_count,
-                                            sp_missmatch_count, go_count, ge_count)
-        if len(msa.weight_names) > 0:
-            sop_w_options = sp.compute_naive_sp_score(msa.sequences, msa.seq_weights_options)
-    additional_weights: set[WeightMethods] = config.additional_weights
-    dpos: float = compute_dpos_distance(true_msa.sequences, msa.sequences)
-    dpos_no_gp: float = compute_dpos_no_g_distance(true_msa.sequences, msa.sequences)
-
-    msa.set_my_features(additional_weights, sop_w_options, true_msa.tree, dpos, dpos_no_gp)
-    all_msa_stats.append(msa.stats)
-
+    # TODO: handle alternative_inferred

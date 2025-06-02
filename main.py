@@ -1,12 +1,12 @@
 from classes.config import Configuration
-from enums import SopCalcTypes, WeightMethods
-from multi_msa_service import calc_multiple_msa_sp_scores
+from enums import SopCalcTypes, WeightMethods, StatsOutput
+from multi_msa_service import multiple_msa_calc_features_and_labels
 
 configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                             SopCalcTypes.EFFICIENT, 'comparison_files', False, False,
+                                             SopCalcTypes.EFFICIENT, 'comparison_files',
                                              {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT,
                                               WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
-                                             3)
+                                             {StatsOutput.ALL})
 
 if __name__ == '__main__':
-    calc_multiple_msa_sp_scores(configuration)
+    multiple_msa_calc_features_and_labels(configuration)
