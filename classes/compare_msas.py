@@ -5,7 +5,7 @@ from fpdf import FPDF
 from enum import Enum
 
 from classes.sp_score import SPScore
-from dpos import translate_profile_naming, create_hpos_table, get_place_dpos
+from distance_calc import translate_profile_naming, create_h_table, get_place_d
 from enums import SopCalcTypes, WeightMethods, DistanceType
 
 
@@ -38,8 +38,8 @@ class MSACompare:
         profile_a_naming: list[list[str]] = translate_profile_naming(profile_a, DistanceType.D_POS)
         profile_b_naming: list[list[str]] = translate_profile_naming(profile_b, DistanceType.D_POS)
         seq_count: int = len(profile_a)
-        profile_a_hpos: list[list[set[str]]] = create_hpos_table(profile_a_naming, DistanceType.D_POS)
-        profile_b_hpos: list[list[set[str]]] = create_hpos_table(profile_b_naming, DistanceType.D_POS)
+        profile_a_hpos: list[list[set[str]]] = create_h_table(profile_a_naming, DistanceType.D_POS)
+        profile_b_hpos: list[list[set[str]]] = create_h_table(profile_b_naming, DistanceType.D_POS)
         dpos_count: int = 0
         dpos_sum: float = 0
         for i in range(seq_count):
@@ -48,7 +48,7 @@ class MSACompare:
                 hpos_a_i: set[str] = profile_a_hpos[i][j]
                 hpos_b_i: set[str] = profile_b_hpos[i][j]
                 if len(hpos_a_i) > 0 or len(hpos_b_i) > 0:
-                    dpos_i_j = get_place_dpos(hpos_a_i, hpos_b_i, DistanceType.D_POS)
+                    dpos_i_j = get_place_d(hpos_a_i, hpos_b_i, DistanceType.D_POS)
                     if i == 21 and j == 17:
                         stop = True
                     if dpos_i_j > 0:

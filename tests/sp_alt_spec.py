@@ -20,7 +20,7 @@ from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
 from classes.w_sop_stats import WSopStats
 from enums import SopCalcTypes, RootingMethods, WeightMethods, DistanceType
 from multi_msa_service import multiple_msa_calc_features_and_labels
-from dpos import translate_profile_naming, get_column, get_place_hpos, compute_distance
+from distance_calc import translate_profile_naming, get_column, get_place_h, compute_distance
 from ete3 import Tree, TreeNode
 
 newick_of_AATF = (
@@ -233,9 +233,9 @@ def test_get_specific_hpos():
     res_3 = []
     for col_inx in range(len(profile[0])):
         col = get_column(trans_prof, col_inx)
-        hpos_2 = get_place_hpos(col, 1)
+        hpos_2 = get_place_h(col, 1)
         res_2.append(hpos_2)
-        hpos_3 = get_place_hpos(col, 2)
+        hpos_3 = get_place_h(col, 2)
         res_3.append(hpos_3)
     print(res_2)
     print(res_3)
@@ -367,7 +367,29 @@ def test_dpos_for_diff_length_case_qu_b():
     assert round(res_c, 3) == 0.121
 
 
-def test_dpos_no_g_for_diff_length_case_qu_a():
+def test_dseq_for_diff_length_case_qu_a():
+    profile_a: list[str] = [
+        'GCATCATT-G',
+        'GC---ATTAG',
+        'GC---AT-AG'
+    ]
+    profile_b: list[str] = [
+        'GCATCATT-G',
+        'GCA---TTAG',
+        'GCA----TAG'
+    ]
+    profile_c: list[str] = [
+        'GCATCATT-G-',
+        'GC---ATT-AG',
+        'GC---A-TA-G'
+    ]
+    res_ab = compute_distance(profile_a, profile_b, DistanceType.D_SEQ)
+    res_ac = compute_distance(profile_a, profile_c, DistanceType.D_SEQ)
+    assert round(res_ab, 3) == 0.273
+    assert round(res_ac, 3) == 0.265
+
+
+def test_dssp_for_diff_length_case_qu_a():
     profile_a: list[str] = [
         'GCATCATT-G',
         'GC---ATTAG',
@@ -385,11 +407,49 @@ def test_dpos_no_g_for_diff_length_case_qu_a():
     ]
     res_ab = compute_distance(profile_a, profile_b, DistanceType.D_SSP)
     res_ac = compute_distance(profile_a, profile_c, DistanceType.D_SSP)
-    assert round(res_ab, 3) == 0.242
-    assert round(res_ac, 3) == 0.273
+    assert round(res_ab, 3) == 0.381
+    assert round(res_ac, 3) == 0.4
 
 
-def test_dpos_no_g_for_diff_length_case_qu_b():
+def test_d_seq_for_diff_length_case_qu_b():
+    true_profile: list[str] = [
+        'GAAGTTAGACATC',
+        'GA--------ATC',
+        'GA--------ATG',
+        'GT--------ATG',
+        'GT--------ATC',
+    ]
+    profile_a: list[str] = [
+        'GAAGTTAGACATC',
+        'GAA--------TC',
+        'GAA--------TG',
+        'GTA--------TG',
+        'GTA--------TC',
+    ]
+    profile_b: list[str] = [
+        'GAAGTTAGACATC',
+        'GA----A----TC',
+        'GA----A----TG',
+        'GT----A----TG',
+        'GT----A----TC',
+    ]
+    profile_c: list[str] = [
+        'GAAGTTAGACATC',
+        'GA------A--TC',
+        'GA------A--TG',
+        'GT------A--TG',
+        'GT------A--TC',
+    ]
+
+    res_a = compute_distance(true_profile, profile_a, DistanceType.D_SEQ)
+    res_b = compute_distance(true_profile, profile_b, DistanceType.D_SEQ)
+    res_c = compute_distance(true_profile, profile_c, DistanceType.D_SEQ)
+    assert round(res_a, 3) == 0.091
+    assert round(res_b, 3) == 0.091
+    assert round(res_c, 3) == 0.091
+
+
+def test_d_ssp_for_diff_length_case_qu_b():
     true_profile: list[str] = [
         'GAAGTTAGACATC',
         'GA--------ATC',
@@ -422,9 +482,9 @@ def test_dpos_no_g_for_diff_length_case_qu_b():
     res_a = compute_distance(true_profile, profile_a, DistanceType.D_SSP)
     res_b = compute_distance(true_profile, profile_b, DistanceType.D_SSP)
     res_c = compute_distance(true_profile, profile_c, DistanceType.D_SSP)
-    assert round(res_a, 3) == 0.091
-    assert round(res_b, 3) == 0.091
-    assert round(res_c, 3) == 0.091
+    assert round(res_a, 3) == 0.148
+    assert round(res_b, 3) == 0.148
+    assert round(res_c, 3) == 0.148
 
 def test_dpos_for_diff_length_case_c():
     profile_a: list[str] = [
@@ -731,7 +791,7 @@ def test_msa_stats():
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
     dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     dist_labels_stats.set_my_dpos_dist_from_true(true_msa.sequences, inferred_msa.sequences)
-    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.854, 0.132, 0.134]
+    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.182, 0.132, 0.134]
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     entropy_stats.calc_entropy(inferred_msa.sequences)

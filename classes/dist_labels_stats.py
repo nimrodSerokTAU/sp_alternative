@@ -1,6 +1,6 @@
 from classes.msa_basic_stats import BasicStats
 from classes.unrooted_tree import UnrootedTree
-from dpos import compute_distance
+from distance_calc import compute_distance
 from enums import DistanceType
 
 
