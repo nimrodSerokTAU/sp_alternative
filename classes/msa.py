@@ -173,7 +173,7 @@ class MSA:
                 print(f'>{self.seq_names[i]}', file=outfile)
                 print(seq, file=outfile)
 
-    def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp: SPScore, output_dir_path: Path,
+    def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp_models: list[SPScore], output_dir_path: Path,
                              true_tree: UnrootedTree, is_init_file: bool):
         basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
                                  ['code', 'taxa_num', 'msa_len'])
@@ -222,22 +222,22 @@ class MSA:
             #     sop_w_options = sp.compute_naive_sp_score(self.sequences, self.seq_weights_options)
             #     if len(sop_w_options) > 0:
             #         self.set_w(sop_w_options)
-
-            sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
-            sop_stats.set_my_sop_score_parts(sp, self.sequences)
-            self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
-                                  is_init_file, dist_labels_stats.get_ordered_col_names())
-
-        # TODO: different sop configs
+            for i, sp in enumerate(sp_models):  # TODO: different sop configs
+                # TODO: use i
+                sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+                sop_stats.set_my_sop_score_parts(sp, self.sequences)
+                self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
+                                      is_init_file, dist_labels_stats.get_ordered_col_names())
 
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
                 self.build_nj_tree()
-            w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
-            w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
-            w_sop_stats.calc_w_sp(self.sequences, sp)
-            self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
-                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+            for i, sp in enumerate(sp_models):
+                w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+                w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
+                w_sop_stats.calc_w_sp(self.sequences, sp)
+                self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
+                                      is_init_file, dist_labels_stats.get_ordered_col_names())
 
 
     @staticmethod

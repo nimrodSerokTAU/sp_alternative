@@ -825,6 +825,32 @@ def test_msa_stats():
     assert w_sop_stats.get_my_features_as_list() == ['inferred', -1.135, -0.586, -7.131, -6.979]
 
 
+def test_msa_stats_two_models():
+    aln: list[str] = [
+        'AT-CGC-GGT',
+        'ACATG-T-GA',
+        'AT-CG--GGT',
+        'ATC-GA-GGA',
+        'TTATGCTGGA'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    config: Configuration = Configuration([
+            EvoModel(-10, -0.5, 'Blosum62'),
+            EvoModel(-3, -1, 'Blosum50')
+        ], SopCalcTypes.EFFICIENT, 'comparison_files',
+        {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT, WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+
+    sp_models: list[SPScore] = [SPScore(i) for i in config.models]
+    res: list[list] = []
+    for i, sp in enumerate(sp_models):
+        sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+        sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+        res.append(sop_stats.get_my_features_as_list())
+    assert res[0] == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 251.0, 0.47, 0.22, 26, 25, 22]
+    assert res[1] == ['inferred', 216.0, 2.16, 3.17, -0.75, -0.26, 317.0, 0.47, 0.22, 26, 25, 22]
+
+
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
     new_tree_root = Tree()
     add_child_to_tree(new_tree_root, tree.anchor)
