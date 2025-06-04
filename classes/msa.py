@@ -102,7 +102,7 @@ class MSA:
         seq_b: str = self.sequences[get_seq_inx_to_realign_b]
         seq_a = seq_a.replace('-','')
         seq_b = seq_b.replace('-','')
-        ga = GlobalAlign(seq_a, seq_b, config)
+        ga = GlobalAlign(seq_a, seq_b, config.models[0])
         res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
         res: list[list[str]] = []
         for option in res_seq:

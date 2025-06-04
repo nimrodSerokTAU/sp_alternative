@@ -5,6 +5,7 @@ from classes.compare_msas import msa_comp_main
 from classes.config import Configuration
 from classes.dist_labels_stats import DistanceLabelsStats
 from classes.entropy_stats import EntropyStats
+from classes.evo_model import EvoModel
 from classes.gaps_stats import GapStats
 from classes.global_alignment import GlobalAlign
 from classes.kmer_stats import KMerStats
@@ -47,8 +48,8 @@ keys_case_nj = ['a', 'b', 'c', 'd', 'e']
 
 
 def test_sp_perfect():
-    configuration: Configuration = Configuration(-1, -1, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -1, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDCQEGHI',
         'ARNDCQEGHI',
@@ -59,8 +60,8 @@ def test_sp_perfect():
 
 
 def test_sp_no_gaps():
-    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDCQEGHI',
         'AANDCQEGAI',
@@ -72,8 +73,8 @@ def test_sp_no_gaps():
 
 
 def test_sp_local_gaps():
-    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDCQ-GHI',
         'AANDCQ-GAI',
@@ -84,8 +85,8 @@ def test_sp_local_gaps():
 
 
 def test_naive_algo_case_a_subs_only():
-    configuration: Configuration = Configuration(0, 0, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(0, 0, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -96,8 +97,8 @@ def test_naive_algo_case_a_subs_only():
 
 
 def test_naive_algo_case_a_subs_and_ge():
-    configuration: Configuration = Configuration(0, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(0, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -108,8 +109,8 @@ def test_naive_algo_case_a_subs_and_ge():
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs():
-    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -119,8 +120,8 @@ def test_naive_algo_case_a_subs_and_ge_and_gs():
 
 
 def test_naive_algo_case_a_subs_and_ge_and_gs_with_weights():
-    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -130,8 +131,8 @@ def test_naive_algo_case_a_subs_and_ge_and_gs_with_weights():
 
 
 def test_compute_sp_s_and_sp_ge():  # our function
-    configuration: Configuration = Configuration(0, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(0, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -146,8 +147,8 @@ def test_compute_sp_s_and_sp_ge():  # our function
 
 
 def test_only_gap_open_and_ext_cost_same():
-    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -169,8 +170,8 @@ def test_only_gap_open_and_ext_cost_same():
 
 
 def test_compute_efficient_sp():
-    configuration: Configuration = Configuration(-1, -5, 'Blosum50')
-    sp: SPScore = SPScore(configuration)
+    configuration: Configuration = Configuration([EvoModel(-1, -5, 'Blosum50')])
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'ARNDC---HI',
         'AA-DCQ--AI',
@@ -181,9 +182,9 @@ def test_compute_efficient_sp():
 
 
 def test_compare_naive_sop_to_efficient():
-    configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                                  SopCalcTypes.EFFICIENT, 'comparison_files')
-    sp: SPScore = SPScore(configuration)
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         '-EETTEESLKRIVADNENRAEQVHLYLSTTFVIADPEPKYGIVRSKDMNWYEQKTHKFLGMGPVLGVQFAF',
         'YEETSEESL-RIAADNENRAE-VHLYLGTNFVIADPEPKW--LRSKDVNWYDQRTH-FLGMGPVLGIQFLI',
@@ -195,9 +196,9 @@ def test_compare_naive_sop_to_efficient():
 
 
 def test_compare_naive_sop_to_efficient_min_example():
-    configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                                  SopCalcTypes.EFFICIENT, 'comparison_files')
-    sp: SPScore = SPScore(configuration)
+    sp: SPScore = SPScore(configuration.models[0])
     profile: list[str] = [
         'LLKYR-K',
         'Y--ERAK',
@@ -645,7 +646,7 @@ def test_dpos_for_diff_length_case_e():
 
 
 def test_multi():
-    configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
@@ -699,9 +700,9 @@ def test_rf_for_nj_using_ours():
     unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
     msa = MSA('AATF')
     msa.read_me_from_fasta(Path('./comparison_files/AATF/MSA.MAFFT.aln.With_Names'))
-    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files')
-    sp_score: SPScore = SPScore(config)
+    sp_score: SPScore = SPScore(config.models[0])
     msa.build_nj_tree()
     nj_unrooted_tree = msa.tree
     rf = unrooted_tree.calc_rf(nj_unrooted_tree)
@@ -777,7 +778,7 @@ def test_msa_stats():
         'AT-CGA-GGA',
         'TTATGCTGGA'
     ]
-    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -785,7 +786,7 @@ def test_msa_stats():
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
-    sp: SPScore = SPScore(config)
+    sp: SPScore = SPScore(config.models[0])
     basic_stats = BasicStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),
                              ['code', 'taxa_num', 'msa_len'])
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
@@ -816,7 +817,7 @@ def test_msa_stats():
 
     sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
-    assert sop_stats.get_my_features_as_list() == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 0.47, 0.22, 251.0, 26, 25, 22]
+    assert sop_stats.get_my_features_as_list() == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 251.0, 0.47, 0.22, 26, 25, 22]
 
     w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
@@ -922,11 +923,11 @@ def test_mid_point_rooting():
         'TTATGCTGGA'
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files')
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
-    sp: SPScore = SPScore(config)
+    sp: SPScore = SPScore(config.models[0])
     sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
     inferred_msa.build_nj_tree()
@@ -1024,7 +1025,7 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
 
 
 def test_single_msas():
-    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
@@ -1038,12 +1039,12 @@ def test_single_msas():
         ['PRANK_b1#0024_hhT_tree_21_OP_0.2963379796789501_Split_24.fasta', 403.128, 405.134, 2286.363, 1451.505]]
 
 def test_global_alignment_blosum_affine_gap_case_a():
-    config: Configuration = Configuration(-4, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-4, -0.5, 'Blosum62')],
                                           SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
                                            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
-    ga = GlobalAlign('PAWHEAE', 'HEAGAWGHEE', config)
+    ga = GlobalAlign('PAWHEAE', 'HEAGAWGHEE', config.models[0])
     ga.print_matrix()
     ga.get_score()
     res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
@@ -1074,7 +1075,7 @@ def test_create_alternative_msas_by_realign():
         'AT-CGA-GG-AT',
         'TTATGCTGG-A-'
     ]
-    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -1132,7 +1133,7 @@ def test_create_alternative_msas_by_moving_smallest():
 
 def calc_single_msas(config: Configuration):
     all_msa_ws: list[list[float]] = []
-    sp: SPScore = SPScore(config)
+    sp: SPScore = SPScore(config.models[0])
     project_path: Path = Path(os.path.dirname(os.path.realpath(__file__))).parent.absolute()
     dir_path: Path = Path(str(project_path) + '/msa_to_test')
     file_names = os.listdir(dir_path)
@@ -1164,7 +1165,7 @@ def test_henikoff_with_gaps_value():
     msa.sequences = aln
     msa.seq_names = names
     
-    config: Configuration = Configuration(-10, -0.5, 'Blosum62',
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
                                         SopCalcTypes.EFFICIENT, 'comparison_files',
                                         {WeightMethods.HENIKOFF_WG})
     
@@ -1174,7 +1175,7 @@ def test_henikoff_with_gaps_value():
     w_sop_stats.calc_seq_weights(config.additional_weights, msa.sequences, msa.seq_names, msa.tree)
     
     # Compute SP score with weights
-    sp = SPScore(config)
+    sp = SPScore(config.models[0])
     sop_w_options = w_sop_stats.calc_w_sp(msa.sequences, sp)
     
     # Set the weights in stats

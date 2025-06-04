@@ -1,4 +1,5 @@
 from classes.config import Configuration
+from classes.evo_model import EvoModel
 from classes.msa import MSA
 from pathlib import Path
 from fpdf import FPDF
@@ -6,7 +7,7 @@ from enum import Enum
 
 from classes.sp_score import SPScore
 from distance_calc import translate_profile_naming, create_h_table, get_place_d
-from enums import SopCalcTypes, WeightMethods, DistanceType
+from enums import SopCalcTypes, DistanceType
 
 
 class MSACompare:
@@ -27,9 +28,9 @@ class MSACompare:
         self.compared_msa.read_me_from_fasta(compared_dataset_path)
         self.test_msa.order_sequences(self.true_msa.seq_names)
         self.compared_msa.order_sequences(self.true_msa.seq_names)
-        configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                                     SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
-        self.sop = SPScore(configuration)
+        configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+                                                     SopCalcTypes.EFFICIENT, 'comparison_files')
+        self.sop = SPScore(configuration.models[0])
 
 
     @staticmethod

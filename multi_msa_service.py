@@ -30,7 +30,7 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
     project_path: Path = Path(os.path.dirname(os.path.realpath(__file__)))
     # project_path: Path = script_path.parent.absolute()
     comparison_dir: Path = Path(os.path.join(str(project_path), config.input_files_dir_name))
-    sp: SPScore = SPScore(config)
+    sp: SPScore = SPScore(config.models[0])
     output_dir_path = Path(os.path.join(str(project_path), 'output/'))
     for dir_name in os.listdir(comparison_dir):
         dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
