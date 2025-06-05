@@ -48,7 +48,8 @@ class GapStats(BasicStats):
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
             'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
-            'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'single_char_count', 'double_char_count'
+            'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'single_char_count', 'double_char_count',
+                             'seq_max_len', 'seq_min_len'
                          ])
         self.av_gaps = 0
         self.total_gaps = 0
