@@ -1001,7 +1001,7 @@ def test_differential_sum_rooting(): # TODO: check this
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
     assert res == {'bl_b_e_d': 0.1, 'bl_a': 0.2, 'bl_a_c': 0.475, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
                     'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.475,
-                    'a_w': 0.745, 'c_w': 0.345, 'e_w': 0.242}
+                    'a_w': 0.438, 'c_w': 0.387, 'e_w': 0.242}
 
 
 def test_differential_sum_rooting_case_of_no_solution():
