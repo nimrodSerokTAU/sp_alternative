@@ -19,3 +19,21 @@ class AffineGapMatrixTypes(Enum):
     M = 'm'
     X = 'x'
     Y = 'y'
+
+class StatsOutput(Enum):
+    SP = 'sop'
+    GAPS = 'gaps'
+    ENTROPY = 'entropy'
+    TREE = 'tree'
+    K_MER = 'k_mer'
+    W_SP = 'w_sop'
+    DISTANCE_LABELS = 'distances'
+    RF_LABEL = 'rf'
+    ALL = 'all_stats'
+    ALL_FEATURES = 'all_features'
+
+class DistanceType(Enum):
+    D_SSP = 'd_ssp'
+    D_SEQ = 'd_seq'
+    D_POS = 'd_pos'
+

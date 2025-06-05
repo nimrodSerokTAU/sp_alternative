@@ -1,12 +1,13 @@
 from classes.config import Configuration
+from classes.evo_model import EvoModel
 from classes.msa import MSA
 from pathlib import Path
 from fpdf import FPDF
 from enum import Enum
 
 from classes.sp_score import SPScore
-from dpos import translate_profile_naming, create_hpos_table, get_place_dpos
-from enums import SopCalcTypes, WeightMethods
+from distance_calc import translate_profile_naming, create_h_table, get_place_d
+from enums import SopCalcTypes, DistanceType
 
 
 class MSACompare:
@@ -27,20 +28,19 @@ class MSACompare:
         self.compared_msa.read_me_from_fasta(compared_dataset_path)
         self.test_msa.order_sequences(self.true_msa.seq_names)
         self.compared_msa.order_sequences(self.true_msa.seq_names)
-        configuration: Configuration = Configuration(-10, -0.5, 'Blosum62',
-                                                     SopCalcTypes.EFFICIENT, 'comparison_files', False, False)
-        self.sop = SPScore(configuration)
+        configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+                                                     SopCalcTypes.EFFICIENT, 'comparison_files')
+        self.sop = SPScore(configuration.models[0])
 
 
     @staticmethod
     def compute_dpos_distance_by_percent(profile_a: list[str], profile_b: list[str]):
         dpos_list: list[dict] = []
-        profile_a_naming: list[list[str]] = translate_profile_naming(profile_a)
-        profile_b_naming: list[list[str]] = translate_profile_naming(profile_b)
+        profile_a_naming: list[list[str]] = translate_profile_naming(profile_a, DistanceType.D_POS)
+        profile_b_naming: list[list[str]] = translate_profile_naming(profile_b, DistanceType.D_POS)
         seq_count: int = len(profile_a)
-        profile_a_hpos: list[list[set[str]]] = create_hpos_table(profile_a_naming)
-        profile_b_hpos: list[list[set[str]]] = create_hpos_table(profile_b_naming)
-        two_sets_size: int = (seq_count - 1) * 2
+        profile_a_hpos: list[list[set[str]]] = create_h_table(profile_a_naming, DistanceType.D_POS)
+        profile_b_hpos: list[list[set[str]]] = create_h_table(profile_b_naming, DistanceType.D_POS)
         dpos_count: int = 0
         dpos_sum: float = 0
         for i in range(seq_count):
@@ -49,7 +49,7 @@ class MSACompare:
                 hpos_a_i: set[str] = profile_a_hpos[i][j]
                 hpos_b_i: set[str] = profile_b_hpos[i][j]
                 if len(hpos_a_i) > 0 or len(hpos_b_i) > 0:
-                    dpos_i_j = get_place_dpos(hpos_a_i, hpos_b_i, two_sets_size)
+                    dpos_i_j = get_place_d(hpos_a_i, hpos_b_i, DistanceType.D_POS)
                     if i == 21 and j == 17:
                         stop = True
                     if dpos_i_j > 0:
@@ -190,7 +190,6 @@ def get_i_inx_from_pos(pos: str) -> int:
 
 
 def msa_comp_main():
-    # TODO: calc SoP to all. use different methods, try to understand the diff in SoP, use visual
     comp: MSACompare = MSACompare(Path('../compThree/PRANK_b1#0015_hhT_tree_10_OP_0.21782315330463242_Split_15.fasta'),
                                   # Path('../compThree/AATF_TRUE.fas'),
                                   Path('../compThree/MUSCLE_diversified_replicate.none.84.afa'),

@@ -96,7 +96,7 @@ class UnrootedTree:
 
         # second DFS to find the actual longest path
         node_2, path, max_dist = self.get_longest_path(node)
-        print('Longest path is:', path)
+        # print('Longest path is:', path)
         return path, max_dist
 
     def get_longest_dist_to(self, dest: Node) -> float:

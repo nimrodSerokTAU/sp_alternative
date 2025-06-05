@@ -2,7 +2,7 @@ import os
 import sys
 from copy import copy
 
-from classes.config import Configuration
+from classes.evo_model import EvoModel
 from enums import AffineGapMatrixTypes
 from utils import read_matching_matrix
 
@@ -47,7 +47,7 @@ def fill_matrix_cell_dict(matrix_cells_dict: dict[int, dict[int, dict[str, Inter
 
 
 class GlobalAlign:
-    def __init__(self, seq_a: str, seq_b: str, configuration: Configuration):
+    def __init__(self, seq_a: str, seq_b: str, configuration: EvoModel):
         self.seq_a: str = seq_a
         self.seq_b: str = seq_b
 
@@ -55,8 +55,8 @@ class GlobalAlign:
         self.codes_dict_to_inx: dict[str, int] = {}
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        blosum_file_path = os.path.join(script_dir, f'../input_config_files/{configuration.blosum_file_name}.txt')
-        matching_matrix, codes_dict_to_inx = read_matching_matrix(blosum_file_path)
+        matrix_file_path = os.path.join(script_dir, f'../input_config_files/{configuration.matrix_file_name}.txt')
+        matching_matrix, codes_dict_to_inx = read_matching_matrix(matrix_file_path)
         self.matching_matrix = matching_matrix
         self.codes_dict_to_inx = codes_dict_to_inx
         self.gs = configuration.gs_cost

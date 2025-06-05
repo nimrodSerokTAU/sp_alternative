@@ -1,6 +1,6 @@
 import os
 
-from classes.config import Configuration
+from classes.evo_model import EvoModel
 from classes.gap_interval import GapInterval
 from utils import read_matching_matrix, translate_to_matrix_index
 
@@ -11,17 +11,19 @@ class SPScore:
     gs_cost: int
     ge_cost: float
     gs_cost_extremities: int
+    model_name: str
 
-    def __init__(self, configuration: Configuration):
+    def __init__(self, evo_model: EvoModel):
 
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        blosum_file_path = os.path.join(script_dir, f'../input_config_files/{configuration.blosum_file_name}.txt')
+        blosum_file_path = os.path.join(script_dir, f'../input_config_files/{evo_model.matrix_file_name}.txt')
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
-        self.gs_cost = configuration.gs_cost
-        self.ge_cost = configuration.ge_cost
+        self.gs_cost = evo_model.gs_cost
+        self.ge_cost = evo_model.ge_cost
+        self.model_name = evo_model.name
 
     def compute_naive_sp_score(self, profile: list[str], seq_w_options: list[list[float]] = None) -> list[int]:
         if seq_w_options is None:

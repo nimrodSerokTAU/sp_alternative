@@ -1,16 +1,22 @@
-from random import shuffle
 from pathlib import Path
 from random import randrange
+from typing import Self
 
 from classes.config import Configuration
+from classes.dist_labels_stats import DistanceLabelsStats
+from classes.entropy_stats import EntropyStats
+from classes.gaps_stats import GapStats
 from classes.global_alignment import GlobalAlign
-from classes.msa_stats import MSAStats
+from classes.kmer_stats import KMerStats
+from classes.msa_basic_stats import BasicStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
-from classes.rooted_tree import RootedTree
+from classes.sop_stats import SopStats
 from classes.sp_score import SPScore
+from classes.tree_stats import TreeStats
 from classes.unrooted_tree import UnrootedTree
-from enums import RootingMethods, WeightMethods
+from classes.w_sop_stats import WSopStats
+from enums import StatsOutput
 from utils import calc_kimura_distance_from_other
 
 
@@ -19,19 +25,11 @@ class MSA:
     sequences: list[str]
     seq_names: list[str]
     tree: UnrootedTree
-    stats: MSAStats
-    rooted_trees: dict[str, RootedTree]
-    weight_names: list[str]
-    seq_weights_options: list[list[float]]
 
     def __init__(self, dataset_name: str):
         self.dataset_name = dataset_name
         self.sequences = []
         self.seq_names = []
-        self.stats = MSAStats(self.dataset_name)
-        self.rooted_trees = {}
-        self.weight_names = []
-        self.seq_weights_options = []
 
     def add_sequence_to_me(self, sequence: str, seq_name: str):
         self.sequences.append(sequence)
@@ -74,23 +72,6 @@ class MSA:
             self.sequences = ordered_seq
             self.seq_names = ordered_seq_names
 
-    def set_my_sop_score_parts(self, sp_score_subs: float, go_score: float, sp_score_gap_e: float, sp_match_count: int,
-                               sp_missmatch_count: int, sp_go_count: int, sp_ge_count: int):
-        self.stats.set_my_sop_score_parts(seqs_count=len(self.sequences), alignment_length=len(self.sequences[0]),
-                                          sp_score_subs=sp_score_subs, go_score=go_score, sp_score_gap_e=sp_score_gap_e,
-                                          sp_match_count=sp_match_count, sp_missmatch_count=sp_missmatch_count,
-                                          sp_go_count=sp_go_count, sp_ge_count=sp_ge_count)
-
-    def set_w(self, sop_w_options: list[float]):
-        sop_w_options_dict: dict[str, float] = {}
-        for index, weight_name in enumerate(self.weight_names):
-            sop_w_options_dict[weight_name] = sop_w_options[index]
-        self.stats.set_my_w_sop(sop_w_options_dict)
-        print(sop_w_options_dict)
-
-    def set_my_sop_score(self, sop_score: float):
-        self.stats.set_my_sop_score(sop_score)
-
     def build_nj_tree(self):
         distance_matrix: list[list[float]] = [[0] * len(self.sequences) for i in range(len(self.sequences))]
         nodes: list[Node] = []
@@ -104,80 +85,15 @@ class MSA:
                 distance_matrix[j][i] = kimura_distance
         nj = NeighborJoining(distance_matrix, nodes)
         self.tree = nj.tree_res
-        self.stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
 
     def set_tree(self, tree: UnrootedTree):
         self.tree = tree
 
-    def set_rf_from_true(self, true_tree: UnrootedTree):
-        self.stats.set_rf_from_true(self.tree, true_tree)
+    def get_msa_len(self) -> int:
+        return len(self.sequences[0])
 
-    def set_tree_stats(self):
-        self.stats.set_tree_stats(self.tree.get_branches_lengths_list())
-
-    def set_my_alignment_features(self):
-        self.stats.set_my_alignment_features(self.sequences)
-
-    def root_tree(self, rooting_method: RootingMethods):
-        self.rooted_trees[rooting_method.value] = RootedTree.root_tree(self.tree, rooting_method)
-
-    def get_weight_list(self, rooting_method: RootingMethods) -> list[float]:
-        self.root_tree(rooting_method)
-        self.rooted_trees[rooting_method.value].calc_seq_w()
-        return [self.rooted_trees[rooting_method.value].seq_weight_dict[s_name] for s_name in self.seq_names]
-
-    def set_my_features(self, weights: set[WeightMethods], sop_w_options: list[float], true_tree: UnrootedTree,
-                        dpos: float, dpos_no_gp: float):
-        self.set_my_alignment_features()
-        self.build_nj_tree()
-        self.calc_seq_weights(weights)
-        if len(sop_w_options) > 0:
-            self.set_w(sop_w_options)
-        self.set_rf_from_true(true_tree)
-        self.stats.set_my_dpos_dist_from_true(dpos, dpos_no_gp)
-
-    def compute_seq_w_henikoff_vars(self) -> tuple[list[float], list[float]]:
-        seq_len: int = len(self.sequences[0])
-        seq_num: int = len(self.sequences)
-        seq_weights_with_gap: list[float] = [0] * seq_num
-        seq_weights_no_gap: list[float] = [0] * seq_num
-        for k in range(seq_len):
-            seq_dict: dict[str, list[int]] = {}
-            for i in range(seq_num):
-                char = self.sequences[i][k]
-                if not char in seq_dict:
-                    seq_dict[char] = []
-                seq_dict[char].append(i)
-            for cluster_key in seq_dict.keys():
-                w: float = 1 / len(seq_dict[cluster_key])
-                for seq_inx in seq_dict[cluster_key]:
-                    seq_weights_with_gap[seq_inx] += w
-                    if cluster_key != '-':
-                        seq_weights_no_gap[seq_inx] += w
-        seq_weights_with_gap_sum: float = sum(seq_weights_with_gap)
-        seq_weights_no_gap_sum: float = sum(seq_weights_no_gap)
-        for seq_inx in range(seq_num):
-            seq_weights_with_gap[seq_inx] = seq_weights_with_gap[seq_inx] / seq_weights_with_gap_sum
-            seq_weights_no_gap[seq_inx] = seq_weights_no_gap[seq_inx] / seq_weights_no_gap_sum
-        return seq_weights_with_gap, seq_weights_no_gap
-
-    def calc_seq_weights(self, additional_weights: set[WeightMethods]):
-        if len(additional_weights) == 0:
-            return None
-        if WeightMethods.HENIKOFF_WG in additional_weights or WeightMethods.HENIKOFF_WOG in additional_weights:
-            seq_weights_with_gap, seq_weights_no_gap = self.compute_seq_w_henikoff_vars()
-            if WeightMethods.HENIKOFF_WG in additional_weights:
-                self.seq_weights_options.append(seq_weights_with_gap)
-                self.weight_names.append(WeightMethods.HENIKOFF_WG.value)
-            if WeightMethods.HENIKOFF_WOG in additional_weights:
-                self.seq_weights_options.append(seq_weights_no_gap)
-                self.weight_names.append(WeightMethods.HENIKOFF_WOG.value)
-            if WeightMethods.CLUSTAL_MID_ROOT in additional_weights:
-                self.seq_weights_options.append(self.get_weight_list(RootingMethods.LONGEST_PATH_MID))
-                self.weight_names.append(WeightMethods.CLUSTAL_MID_ROOT.value)
-            if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
-                self.seq_weights_options.append(self.get_weight_list(RootingMethods.MIN_DIFFERENTIAL_SUM))
-                self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
+    def get_taxa_num(self) -> int:
+        return len(self.sequences)
 
     def create_alternative_msas_by_realign(self, config: Configuration) -> list[list[str]]:
         get_seq_inx_to_realign_a: int = randrange(len(self.seq_names) - 1)
@@ -186,7 +102,7 @@ class MSA:
         seq_b: str = self.sequences[get_seq_inx_to_realign_b]
         seq_a = seq_a.replace('-','')
         seq_b = seq_b.replace('-','')
-        ga = GlobalAlign(seq_a, seq_b, config)
+        ga = GlobalAlign(seq_a, seq_b, config.models[0])
         res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
         res: list[list[str]] = []
         for option in res_seq:
@@ -215,7 +131,6 @@ class MSA:
             new_msa_seqs[get_seq_inx_to_realign_b] = seq_b
             res.append(new_msa_seqs)
         return res
-
 
     def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
         res_msas: list[list[str]] = []
@@ -258,9 +173,80 @@ class MSA:
                 print(f'>{self.seq_names[i]}', file=outfile)
                 print(seq, file=outfile)
 
+    def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp_models: list[SPScore], output_dir_path: Path,
+                             true_tree: UnrootedTree, is_init_file: bool):
+        basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
+                                 ['code', 'taxa_num', 'msa_len'])
+        self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
+                              is_init_file, basic_stats.get_ordered_col_names())
+        dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+
+        if len({StatsOutput.ALL, StatsOutput.DISTANCE_LABELS }.intersection(config.stats_output)) > 0:
+            dist_labels_stats.set_my_distance_from_true(true_msa.sequences, self.sequences)
+            self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path, StatsOutput.DISTANCE_LABELS.value,
+                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+
+        if len({StatsOutput.ALL, StatsOutput.ENTROPY}.intersection(config.stats_output)) > 0:
+            entropy_stats = EntropyStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+            entropy_stats.calc_entropy(self.sequences)
+            self.print_stats_file(entropy_stats.get_my_features_as_list(), output_dir_path, StatsOutput.ENTROPY.value,
+                                  is_init_file, entropy_stats.get_ordered_col_names())
+
+        if len({StatsOutput.ALL, StatsOutput.GAPS}.intersection(config.stats_output)) > 0:
+            gaps_stats = GapStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+            gaps_stats.calc_gaps_values(self.sequences)
+            self.print_stats_file(gaps_stats.get_my_features_as_list(), output_dir_path, StatsOutput.GAPS.value,
+                                  is_init_file, gaps_stats.get_ordered_col_names())
+
+        if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
+            k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+            k_mer_stats.set_k_mer_features(self.sequences)
+            self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
+                                  is_init_file, k_mer_stats.get_ordered_col_names())
+
+        if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
+            self.build_nj_tree()
+            tree_stats = TreeStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+            tree_stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
+            self.print_stats_file(tree_stats.get_my_features_as_list(), output_dir_path, StatsOutput.TREE.value,
+                                  is_init_file, tree_stats.get_ordered_col_names())
+            if len({StatsOutput.ALL, StatsOutput.RF_LABEL}.intersection(config.stats_output)) > 0:
+                dist_labels_stats.set_rf_from_true(self.tree, true_tree)
+                data_to_print, col_names = dist_labels_stats.get_print_rf()
+                self.print_stats_file(data_to_print, output_dir_path, StatsOutput.RF_LABEL.value,
+                                      is_init_file, col_names)
+
+        if len({StatsOutput.ALL, StatsOutput.SP}.intersection(config.stats_output)) > 0:
+            for sp in sp_models:
+                sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+                sop_stats.set_my_sop_score_parts(sp, self.sequences)
+                self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
+                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name),
+                                      sp.model_name)
+
+        if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
+            if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
+                self.build_nj_tree()
+            for sp in sp_models:
+                w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
+                w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
+                w_sop_stats.calc_w_sp(self.sequences, sp)
+                self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
+                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name),
+                                      sp.model_name)
 
 
-
-
+    @staticmethod
+    def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
+                         col_names: list[str], model_name: str = None):
+        model_str = f'_{model_name}' if model_name is not None else ''
+        output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}.csv')
+        if is_init_file:
+            with (open(output_file_path, 'w') as outfile):
+                print(','.join(col_names), file=outfile)
+                print(str(dist_labels_stats)[1:-1], file=outfile)
+        else:
+            with (open(output_file_path, 'a') as outfile):
+                print(str(dist_labels_stats)[1:-1], file=outfile)
 
 
