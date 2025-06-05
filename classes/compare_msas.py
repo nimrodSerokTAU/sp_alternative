@@ -190,7 +190,6 @@ def get_i_inx_from_pos(pos: str) -> int:
 
 
 def msa_comp_main():
-    # TODO: calc SoP to all. use different methods, try to understand the diff in SoP, use visual
     comp: MSACompare = MSACompare(Path('../compThree/PRANK_b1#0015_hhT_tree_10_OP_0.21782315330463242_Split_15.fasta'),
                                   # Path('../compThree/AATF_TRUE.fas'),
                                   Path('../compThree/MUSCLE_diversified_replicate.none.84.afa'),

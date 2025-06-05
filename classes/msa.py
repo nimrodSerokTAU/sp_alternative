@@ -182,7 +182,7 @@ class MSA:
         dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
 
         if len({StatsOutput.ALL, StatsOutput.DISTANCE_LABELS }.intersection(config.stats_output)) > 0:
-            dist_labels_stats.set_my_dpos_dist_from_true(true_msa.sequences, self.sequences)
+            dist_labels_stats.set_my_distance_from_true(true_msa.sequences, self.sequences)
             self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path, StatsOutput.DISTANCE_LABELS.value,
                                   is_init_file, dist_labels_stats.get_ordered_col_names())
 
@@ -217,11 +217,6 @@ class MSA:
                                       is_init_file, col_names)
 
         if len({StatsOutput.ALL, StatsOutput.SP}.intersection(config.stats_output)) > 0:
-
-            # if len(self.weight_names) > 0:
-            #     sop_w_options = sp.compute_naive_sp_score(self.sequences, self.seq_weights_options)
-            #     if len(sop_w_options) > 0:
-            #         self.set_w(sop_w_options)
             for sp in sp_models:
                 sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)

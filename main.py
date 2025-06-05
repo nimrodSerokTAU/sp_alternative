@@ -11,3 +11,6 @@ configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62'), E
 
 if __name__ == '__main__':
     multiple_msa_calc_features_and_labels(configuration)
+
+# TODO: check test
+# TODO: consider alternatives creation.

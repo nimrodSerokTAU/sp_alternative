@@ -21,7 +21,7 @@ class DistanceLabelsStats(BasicStats):
         self.dpos_from_true = -1
         self.rf_from_true = -1
 
-    def set_my_dpos_dist_from_true(self, inferred_msa: list[str], true_msa: list[str]): # TODO: fix this
+    def set_my_distance_from_true(self, inferred_msa: list[str], true_msa: list[str]):
         self.dpos_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_POS)
         self.dseq_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_SEQ)
         self.ssp_from_true = compute_distance(true_msa, inferred_msa, DistanceType.D_SSP)

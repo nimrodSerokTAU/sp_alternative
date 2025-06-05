@@ -80,7 +80,7 @@ class WSopStats(BasicStats):
                 self.seq_weights_options.append(self.get_weight_list(tree, RootingMethods.MIN_DIFFERENTIAL_SUM, seq_names))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
 
-    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]): # TODO: continue from here. use default
+    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]):
         self.henikoff_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
         self.henikoff_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
         self.clustal_mid_root = sop_w_options_dict[

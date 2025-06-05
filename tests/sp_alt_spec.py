@@ -330,44 +330,6 @@ def test_dpos_for_diff_length_case_qu_a():
     assert round(res_ac, 3) == 0.295
 
 
-def test_dpos_for_diff_length_case_qu_b():
-    true_profile: list[str] = [
-        'GAAGTTAGACATC',
-        'GA--------ATC',
-        'GA--------ATG',
-        'GT--------ATG',
-        'GT--------ATC',
-    ]
-    profile_a: list[str] = [
-        'GAAGTTAGACATC',
-        'GAA--------TC',
-        'GAA--------TG',
-        'GTA--------TG',
-        'GTA--------TC',
-    ]
-    profile_b: list[str] = [
-        'GAAGTTAGACATC',
-        'GA----A----TC',
-        'GA----A----TG',
-        'GT----A----TG',
-        'GT----A----TC',
-    ]
-    profile_c: list[str] = [
-        'GAAGTTAGACATC',
-        'GA------A--TC',
-        'GA------A--TG',
-        'GT------A--TG',
-        'GT------A--TC',
-    ]
-
-    res_a = compute_distance(true_profile, profile_a, DistanceType.D_POS)
-    res_b = compute_distance(true_profile, profile_b, DistanceType.D_POS)
-    res_c = compute_distance(true_profile, profile_c, DistanceType.D_POS)
-    assert round(res_a, 3) == 0.303
-    assert round(res_b, 3) == 0.182
-    assert round(res_c, 3) == 0.121
-
-
 def test_dseq_for_diff_length_case_qu_a():
     profile_a: list[str] = [
         'GCATCATT-G',
@@ -410,6 +372,44 @@ def test_dssp_for_diff_length_case_qu_a():
     res_ac = compute_distance(profile_a, profile_c, DistanceType.D_SSP)
     assert round(res_ab, 3) == 0.381
     assert round(res_ac, 3) == 0.4
+
+
+def test_dpos_for_diff_length_case_qu_b():
+    true_profile: list[str] = [
+        'GAAGTTAGACATC',
+        'GA--------ATC',
+        'GA--------ATG',
+        'GT--------ATG',
+        'GT--------ATC',
+    ]
+    profile_a: list[str] = [
+        'GAAGTTAGACATC',
+        'GAA--------TC',
+        'GAA--------TG',
+        'GTA--------TG',
+        'GTA--------TC',
+    ]
+    profile_b: list[str] = [
+        'GAAGTTAGACATC',
+        'GA----A----TC',
+        'GA----A----TG',
+        'GT----A----TG',
+        'GT----A----TC',
+    ]
+    profile_c: list[str] = [
+        'GAAGTTAGACATC',
+        'GA------A--TC',
+        'GA------A--TG',
+        'GT------A--TG',
+        'GT------A--TC',
+    ]
+
+    res_a = compute_distance(true_profile, profile_a, DistanceType.D_POS)
+    res_b = compute_distance(true_profile, profile_b, DistanceType.D_POS)
+    res_c = compute_distance(true_profile, profile_c, DistanceType.D_POS)
+    assert round(res_a, 3) == 0.303
+    assert round(res_b, 3) == 0.182
+    assert round(res_c, 3) == 0.121
 
 
 def test_d_seq_for_diff_length_case_qu_b():
@@ -740,7 +740,7 @@ def test_neighbor_joining():
     assert bl_list == [1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0]
 
 
-def test_parsimony():  # TODO: continue from here
+def test_parsimony():
     n_a: Node = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0)
     n_b: Node = Node(node_id=1, keys={'b'}, children=[], children_bl_sum=0)
     n_c: Node = Node(node_id=2, keys={'c'}, children=[], children_bl_sum=0)
@@ -791,7 +791,7 @@ def test_msa_stats():
                              ['code', 'taxa_num', 'msa_len'])
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
     dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
-    dist_labels_stats.set_my_dpos_dist_from_true(true_msa.sequences, inferred_msa.sequences)
+    dist_labels_stats.set_my_distance_from_true(true_msa.sequences, inferred_msa.sequences)
     assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.182, 0.132, 0.134]
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
@@ -803,7 +803,7 @@ def test_msa_stats():
     assert gaps_stats.get_my_features_as_list() == ['inferred', 1.125, 8, 7, 1, 0, 0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5]
     k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
-    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # TODO: test this separately?
+    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     inferred_msa.build_nj_tree()
     true_msa.build_nj_tree()
@@ -1114,11 +1114,11 @@ def test_create_alternative_msas_by_realign():
     for msa_data in res:
         alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
         alt_dops_stats = DistanceLabelsStats(alt_msa.dataset_name, len(alt_msa.sequences), len(alt_msa.sequences[0]))
-        alt_dops_stats.set_my_dpos_dist_from_true(alt_msa.sequences, true_msa.sequences)
+        alt_dops_stats.set_my_distance_from_true(alt_msa.sequences, true_msa.sequences)
         msa_list.append(alt_msa)
         msa_list_stats.append(alt_dops_stats)
     dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences), len(inferred_msa.sequences[0]))
-    dpos_stats.set_my_dpos_dist_from_true(inferred_msa.sequences, true_msa.sequences)
+    dpos_stats.set_my_distance_from_true(inferred_msa.sequences, true_msa.sequences)
     dpos_ratio = abs(dpos_stats.dpos_from_true - msa_list_stats[0].dpos_from_true) / dpos_stats.dpos_from_true
     assert dpos_ratio <= 3
 
@@ -1148,11 +1148,11 @@ def test_create_alternative_msas_by_moving_smallest():
         print(inx)
         alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
         alt_msa_dpos_stats = DistanceLabelsStats(alt_msa.dataset_name, len(alt_msa.sequences), len(alt_msa.sequences[0]))
-        alt_msa_dpos_stats.set_my_dpos_dist_from_true(alt_msa.sequences, true_msa.sequences)
+        alt_msa_dpos_stats.set_my_distance_from_true(alt_msa.sequences, true_msa.sequences)
         dpos_list.append(alt_msa_dpos_stats.dpos_from_true)
         msa_list.append(alt_msa)
     inferred_msa_dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences), len(inferred_msa.sequences[0]))
-    inferred_msa_dpos_stats.set_my_dpos_dist_from_true(inferred_msa.sequences, true_msa.sequences)
+    inferred_msa_dpos_stats.set_my_distance_from_true(inferred_msa.sequences, true_msa.sequences)
     dpos_ratio = abs(inferred_msa_dpos_stats.dpos_from_true - dpos_list[0]) / inferred_msa_dpos_stats.dpos_from_true
     assert dpos_ratio <= 1
 

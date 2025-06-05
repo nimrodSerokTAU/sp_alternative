@@ -66,4 +66,4 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
         if true_msa is not None:
             true_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
     print('done')
-    # TODO: handle alternative_inferred
+    # TODO: decide how to handle alternative_inferred
