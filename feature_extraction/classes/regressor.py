@@ -98,7 +98,7 @@ def _print_correlations(df: pd.DataFrame, true_score_name: str) -> None:
 def _assign_true_score_name(predicted_measure: str) -> str:
     if predicted_measure == 'msa_distance':
         # true_score_name = "dpos_dist_from_true"
-        true_score_name = "dpos_ng_dist_from_true"
+        true_score_name = "dpos_ng_dist_from_true" #TODO: return new dpos / dseq
     elif predicted_measure == 'tree_distance':
         true_score_name = 'normalized_rf'
     elif predicted_measure == 'class_label':
@@ -128,7 +128,9 @@ class Regressor:
     predicted_measure: 'msa_distance' is a default measure
     scale_labels: y-labels by default are also rank-percentile scaled
     '''
-    def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False, predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard') -> None:
+    def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False,
+                 predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0,
+                 verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard') -> None:
         self.empirical = empirical
         self.verbose = verbose
         self.features_file: str = features_file
@@ -168,7 +170,6 @@ class Regressor:
         self._save_scaled(i)
 
 
-
     def _scale(self, i: int = 0):
         if self.scaler_type == 'standard':
             self.scaler = StandardScaler()
@@ -186,16 +187,12 @@ class Regressor:
 
             """ SCALED y-labels """
             self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
-                                                                 group_codes=self.main_codes_train)  # TODO remove this line
+                                                                 group_codes=self.main_codes_train)
             self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test,
-                                                                group_codes=self.main_codes_test)  # TODO remove this line
-            self.y_train = self.y_train_scaled  # TODO remove this line
-            self.y_test = self.y_test_scaled  # TODO remove this line
+                                                                group_codes=self.main_codes_test)
+            self.y_train = self.y_train_scaled
+            self.y_test = self.y_test_scaled
             """ SCALED y-labels """
-
-        # scaler = GroupAwareScaler()
-        # scaler.load("group_aware_scaler.pkl")
-
 
         # Check the size of each set
         if self.verbose == 1:
@@ -243,8 +240,8 @@ class Regressor:
     def _split_into_training_test(self, df, test_size):
         self.unique_code1 = df['code1'].unique()
         self.train_code1, self.test_code1 = train_test_split(self.unique_code1,
-                                                   test_size=test_size)  # TODO add random state for reproducability
-        # train_code1, test_code1 = train_test_split(unique_code1, test_size=test_size, random_state=42)
+                                                   test_size=test_size)
+        # self.train_code1, self.test_code1 = train_test_split(self.unique_code1, test_size=test_size, random_state=42) # TODO add random state for reproducability
 
         if self.verbose == 1:
             print(f"the training set is: {self.train_code1} \n")
@@ -268,25 +265,36 @@ class Regressor:
     def _finalize_features(self, df):
         columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
                          'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
+        # columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
+        #                        'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner'] #TODO: this is  version for old dpos file
         columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
         if self.empirical == True:
             columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
                                  'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps',
-                                 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps',
-                                 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-                                 'k_mer_20_var',
-                                 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap',
-                                 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'n_unique_sites',
-                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio',
-                                 'single_char_count']
+                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+                                 'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+                                 'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+                                 'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
+                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
+                                 'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
+            # columns_to_choose = ['MEAN_RES_PAIR_SCORE']
+            # columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm',
+            #                      'number_of_gap_segments', 'msa_len', 'num_cols_no_gaps',
+            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+            #                      'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
+            #                      'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio',
+            #                      'var_bl', 'gaps_len_one', 'gaps_len_three', 'sp_match_ratio', 'taxa_num'] #TODO the version for old dpos file
         else:
             columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps', 'total_gaps',
-                                 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps',
-                                 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var',
-                                 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap',
-                                 'single_char_count']
+                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+                                 'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+                                 'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+                                 'num_cols_1_gap', 'single_char_count',
+                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
+                                 'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
 
         self.y = df[self.true_score_name]
 
@@ -327,7 +335,13 @@ class Regressor:
         self.y_train = self.train_df[self.true_score_name]
         self.y_test = self.test_df[self.true_score_name]
 
-    def deep_learning(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1, learning_rate: float = 0.01, neurons: list[int] = [128, 64, 16], dropout_rate: float = 0.2, l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1, mixed_portion: float = 0.3, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 50, per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse"] = 'mse', regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2') -> float:
+    def deep_learning(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1,
+                      learning_rate: float = 0.01, neurons: list[int] = [128, 64, 16], dropout_rate: float = 0.2,
+                      l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1,
+                      mixed_portion: float = 0.3, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 50,
+                      per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse"] = 'mse',
+                      regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2',
+                      batch_generation: Literal['standard', 'custom'] = 'custom') -> float:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
@@ -380,21 +394,21 @@ class Regressor:
             #first hidden
             model.add(
                 Dense(neurons[0], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
-            model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
+            model.add(LeakyReLU(negative_slope=0.01))
             model.add(Dropout(dropout_rate))
 
             # second hidden
             model.add(
                 Dense(neurons[1], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
-            model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
+            model.add(LeakyReLU(negative_slope=0.01))
             model.add(Dropout(dropout_rate))
 
             # third hidden
             model.add(Dense(neurons[2], kernel_initializer=GlorotUniform(),kernel_regularizer=ker_regularizer))
-            model.add(LeakyReLU(negative_slope=0.01))
             model.add(BatchNormalization())
+            model.add(LeakyReLU(negative_slope=0.01))
             model.add(Dropout(dropout_rate))
 
             model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
@@ -439,7 +453,13 @@ class Regressor:
                 early_stopping,
                 lr_scheduler
             ]
-            history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
+
+            if batch_generation == 'custom':
+                history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
+                                        callbacks=callbacks)
+            elif batch_generation == 'standard':
+                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
+                                    validation_split=validation_split, verbose=verbose,
                                     callbacks=callbacks)
 
         plt.plot(history.history['loss'], label='Training Loss')

@@ -26,7 +26,7 @@ class PickMeGameTrio:
         self.overall_win: List[Any] = []
         self.subset: Optional[float] = subset
         if predicted_measure == "msa_distance":
-            # self.true_score = 'dpos_dist_from_true'
+            # self.true_score = 'dpos_dist_from_true' #TODO
             self.true_score = 'dpos_ng_dist_from_true'
 
     # def set_scores(self, df):
@@ -82,7 +82,19 @@ class PickMeGameTrio:
 
     def choose_winner(self, scores):
         #{0:predicted, 1:sop, 2:default}
+        # scores = np.array(scores)
+        # scores[np.isnan(scores)] = np.inf
+
         if scores:
+            # nan_count = sum(np.isnan(scores))
+            #
+            # if nan_count == 3:
+            #     return np.nan
+            #
+            # if nan_count == 1:
+            #     scores = np.array(scores, dtype=np.float64)
+            #     scores[np.isnan(scores)] = np.inf
+
             if scores[1] < scores[0] and scores[1] <= scores[2]:  # sop < predicted and sop <= default
                 winner = "sop"
             elif scores[2] < scores[0] and scores[2] < scores[1]:  # default < predicted and default < sop
@@ -127,6 +139,7 @@ class PickMeGameTrio:
 
         df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
         df = df[~df['code'].str.contains('test_original', na=False)]
+        df = df[df['taxa_num'] > 3]
         # df = df[~df['code'].str.contains('muscle', case=False, na=False, regex=True)] #TODO remove
         df.to_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_predictions.csv")
         # groups = ['BBS11','BBS12','BBS50','BBS30','BBS20', 'BBA']
