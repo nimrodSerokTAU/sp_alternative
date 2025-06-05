@@ -190,26 +190,26 @@ class MSA:
             entropy_stats = EntropyStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             entropy_stats.calc_entropy(self.sequences)
             self.print_stats_file(entropy_stats.get_my_features_as_list(), output_dir_path, StatsOutput.ENTROPY.value,
-                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+                                  is_init_file, entropy_stats.get_ordered_col_names())
 
         if len({StatsOutput.ALL, StatsOutput.GAPS}.intersection(config.stats_output)) > 0:
             gaps_stats = GapStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             gaps_stats.calc_gaps_values(self.sequences)
             self.print_stats_file(gaps_stats.get_my_features_as_list(), output_dir_path, StatsOutput.GAPS.value,
-                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+                                  is_init_file, gaps_stats.get_ordered_col_names())
 
         if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
             k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             k_mer_stats.set_k_mer_features(self.sequences)
             self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
-                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+                                  is_init_file, k_mer_stats.get_ordered_col_names())
 
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
             self.build_nj_tree()
             tree_stats = TreeStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             tree_stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
             self.print_stats_file(tree_stats.get_my_features_as_list(), output_dir_path, StatsOutput.TREE.value,
-                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+                                  is_init_file, tree_stats.get_ordered_col_names())
             if len({StatsOutput.ALL, StatsOutput.RF_LABEL}.intersection(config.stats_output)) > 0:
                 dist_labels_stats.set_rf_from_true(self.tree, true_tree)
                 data_to_print, col_names = dist_labels_stats.get_print_rf()
@@ -222,28 +222,30 @@ class MSA:
             #     sop_w_options = sp.compute_naive_sp_score(self.sequences, self.seq_weights_options)
             #     if len(sop_w_options) > 0:
             #         self.set_w(sop_w_options)
-            for i, sp in enumerate(sp_models):  # TODO: different sop configs
-                # TODO: use i
+            for sp in sp_models:
                 sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)
                 self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
-                                      is_init_file, dist_labels_stats.get_ordered_col_names())
+                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name),
+                                      sp.model_name)
 
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
                 self.build_nj_tree()
-            for i, sp in enumerate(sp_models):
+            for sp in sp_models:
                 w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
                 w_sop_stats.calc_w_sp(self.sequences, sp)
                 self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
-                                      is_init_file, dist_labels_stats.get_ordered_col_names())
+                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name),
+                                      sp.model_name)
 
 
     @staticmethod
     def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
-                         col_names: list[str]):
-        output_file_path = Path(f'{str(output_dir_path)}/{file_name}.csv')
+                         col_names: list[str], model_name: str = None):
+        model_str = f'_{model_name}' if model_name is not None else ''
+        output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}.csv')
         if is_init_file:
             with (open(output_file_path, 'w') as outfile):
                 print(','.join(col_names), file=outfile)

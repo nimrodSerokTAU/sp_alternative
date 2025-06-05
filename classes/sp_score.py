@@ -11,6 +11,7 @@ class SPScore:
     gs_cost: int
     ge_cost: float
     gs_cost_extremities: int
+    model_name: str
 
     def __init__(self, evo_model: EvoModel):
 
@@ -22,6 +23,7 @@ class SPScore:
         self.code_to_index_dict = code_to_index_dict
         self.gs_cost = evo_model.gs_cost
         self.ge_cost = evo_model.ge_cost
+        self.model_name = evo_model.name
 
     def compute_naive_sp_score(self, profile: list[str], seq_w_options: list[list[float]] = None) -> list[int]:
         if seq_w_options is None:

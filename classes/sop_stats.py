@@ -56,18 +56,11 @@ class SopStats(BasicStats):
     def set_my_sop_score(self, sop_score: float):
         self.sop_score = sop_score
 
-    def get_my_model_features_as_list(self) -> list:
-        values: list = []
-        attrs = vars(self)
-        mode_specific_ordered_col_names = [x for x in self.ordered_col_names if x not in self.model_agnostic_col_names]
-        for col_name in mode_specific_ordered_col_names:
-            value = attrs[col_name]
-            if type(value) == float:
-                value = round(value, 3)
-            values.append(value)
-        return values
-
-
-
-
-
+    def get_ordered_col_names_with_model(self, model_name: str) -> list[str]:
+        col_names: list[str] = []
+        for col_name in self.ordered_col_names:
+            if col_name not in self.model_agnostic_col_names:
+                col_names.append(f'{col_name}_{model_name}')
+            else:
+                col_names.append(col_name)
+        return col_names

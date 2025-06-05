@@ -40,8 +40,6 @@ def add_children_to_list(keys_structure: list, res: list[str]):
                 add_children_to_list(item, res)
             else:
                 res.append(item)
-                print(len(res))
-                print(item)
 
 
 def calc_p_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> float:
@@ -54,7 +52,7 @@ def calc_p_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> floa
 
 def calc_kimura_distance_from_other(aligned_seq: str, other_aligned_seq: str) -> float:
     fractional_identity: float = calc_p_distance_from_other(aligned_seq, other_aligned_seq)
-    print('fractional_identity: ', fractional_identity)
+    # print('fractional_identity: ', fractional_identity)
     kimura_exponent = 1 - fractional_identity - 0.2 * fractional_identity * fractional_identity
     if kimura_exponent < 0:
         return 2

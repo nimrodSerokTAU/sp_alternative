@@ -48,6 +48,7 @@ class EntropyStats(BasicStats):
         self.entropy_max = float(np.max(entropy))
         self.entropy_min = float(np.min(entropy))
         self.entropy_mean = float(np.mean(entropy))
+        self.entropy_median = float(np.median(entropy))
         self.entropy_var = float(np.var(entropy))
         self.entropy_pct_25 = calc_percentile(entropy, 25)
         self.entropy_pct_75 = calc_percentile(entropy, 75)

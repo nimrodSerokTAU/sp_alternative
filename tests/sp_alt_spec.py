@@ -796,14 +796,14 @@ def test_msa_stats():
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     entropy_stats.calc_entropy(inferred_msa.sequences)
-    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0, 0.092, 0.0, 0.637, 0.0, 0.693]
+    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0.5, 0.092, 0.0, 0.637, 0.0, 0.693]
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
     assert gaps_stats.get_my_features_as_list() == ['inferred', 1.125, 8, 7, 1, 0, 0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5]
     k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
-    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # TODO: handle this?
+    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # TODO: test this separately?
 
     inferred_msa.build_nj_tree()
     true_msa.build_nj_tree()

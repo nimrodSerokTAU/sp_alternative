@@ -98,7 +98,5 @@ class WSopStats(BasicStats):
         self.set_my_w_sop(sop_w_options_dict)
         print(sop_w_options_dict)
 
-
-
-
-
+    def get_ordered_col_names_with_model(self, model_name: str) -> list[str]:
+        return [f'{col_name}_{model_name}' for col_name in self.ordered_col_names]
