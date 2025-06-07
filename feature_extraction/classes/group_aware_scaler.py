@@ -29,13 +29,10 @@ class GroupAwareScaler:
         elif self.group_col in df.index.names:
             df = df.reset_index()
 
-        # Apply global scaler
         global_scaled = self.global_scaler.transform(df[self.feature_names])
 
-        # Pre-allocate for rank-percentile scaled features
         rank_scaled = np.zeros_like(global_scaled)
 
-        # For each feature, compute per-group ranks in row order
         for i, feature in enumerate(self.feature_names):
             percentiles = np.zeros(len(df))
             for group_value, group_df in df.groupby(self.group_col):

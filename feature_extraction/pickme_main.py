@@ -12,7 +12,7 @@ from scipy import stats
 
 if __name__ == '__main__':
     # aggregator = PickMeAggregator()
-    n = 5
+    n = 1
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         #                         error=0, subset = None)
 
 
-        pickme = PickMeGameTrio(features_file='./out/orthomam_features_new_dpos_280425.csv',
+        pickme = PickMeGameTrio(features_file='./out/orthomam_features_NEW_060625_f.csv',
                                 prediction_file=f'./out/prediction_DL_{i}_mode3_msa_distance.csv',
                                 error=0, subset = None)
 

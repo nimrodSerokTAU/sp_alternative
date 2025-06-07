@@ -52,7 +52,9 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
             if true_tree_file_name:
                 true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
             else:
-                true_msa.build_nj_tree()
+                print("No true tree provided \n")
+                continue
+                # true_msa.build_nj_tree()
 
         # alternative_true: list[list[str]] = true_msa.create_alternative_msas_by_moving_smallest()
         # for i, m in enumerate(alternative_true):

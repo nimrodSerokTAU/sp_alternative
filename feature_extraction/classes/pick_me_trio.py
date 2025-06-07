@@ -16,7 +16,7 @@ class PickMeGameTrio:
         self.predicted_class: str = 'predicted_class_prob'
         # self.predicted_score = 'predicted_score2'
         # self.sum_of_pairs_score = 'normalised_sop_score'
-        self.sum_of_pairs_score: str = 'sop_score'
+        self.sum_of_pairs_score: str = 'sop_score_Blosum50'
         self.pickme_df: Optional[pd.DataFrame] = None
         self.pickme_sop_df: Optional[pd.DataFrame] = None
         self.accumulated_data: Dict[str, float] = {}
@@ -26,8 +26,7 @@ class PickMeGameTrio:
         self.overall_win: List[Any] = []
         self.subset: Optional[float] = subset
         if predicted_measure == "msa_distance":
-            # self.true_score = 'dpos_dist_from_true' #TODO
-            self.true_score = 'dpos_ng_dist_from_true'
+            self.true_score = 'dpos_from_true'
 
     # def set_scores(self, df):
     #     scores = []
@@ -139,6 +138,7 @@ class PickMeGameTrio:
 
         df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
         df = df[~df['code'].str.contains('test_original', na=False)]
+        df = df[df['code'] != 'code1']
         df = df[df['taxa_num'] > 3]
         # df = df[~df['code'].str.contains('muscle', case=False, na=False, regex=True)] #TODO remove
         df.to_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_predictions.csv")

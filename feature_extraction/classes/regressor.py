@@ -39,9 +39,11 @@ def _assign_aligner(row: pd.Series) -> str:
     code = row['code'].lower()
     not_mafft = ['muscle', 'prank', '_true.fas', 'true_tree.txt', 'bali_phy', 'baliphy', 'original']
 
-    if not any(sub in code for sub in not_mafft):
+    if row['code'] == row['code1']: #TODO - added, check that works properly
+        return 'true'
+    elif not any(sub in code for sub in not_mafft):
         return 'mafft'
-    if 'muscle' in code:
+    elif 'muscle' in code:
         return 'muscle'
     elif 'prank' in code:
         return 'prank'
@@ -89,16 +91,23 @@ def _check_missing_values(df: pd.DataFrame, verbose) -> pd.DataFrame:
     return df
 
 def _print_correlations(df: pd.DataFrame, true_score_name: str) -> None:
-    corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df[true_score_name])
-    print(f"Pearson Correlation of Normalized SOP and {true_score_name}: {corr_coefficient1:.4f}\n",
+    corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score_Blosum50'], df[true_score_name])
+    print(f"Pearson Correlation of Normalized SOP Blosum50 and {true_score_name}: {corr_coefficient1:.4f}\n",
           f"P-value of non-correlation: {p_value1:.6f}\n")
-    corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df[true_score_name])
-    print(f"Pearson Correlation of SOP and {true_score_name}: {corr_coefficient1:.4f}\n",
+    corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score_Blosum62'], df[true_score_name])
+    print(f"Pearson Correlation of Normalized SOP Blosum62 and {true_score_name}: {corr_coefficient1:.4f}\n",
+          f"P-value of non-correlation: {p_value1:.6f}\n")
+    corr_coefficient1, p_value1 = pearsonr(df['sop_score_Blosum50'], df[true_score_name])
+    print(f"Pearson Correlation of SOP Blosum 50 and {true_score_name}: {corr_coefficient1:.4f}\n",
+          f"P-value of non-correlation: {p_value1:.6f}\n")
+    corr_coefficient1, p_value1 = pearsonr(df['sop_score_Blosum62'], df[true_score_name])
+    print(f"Pearson Correlation of SOP Blosum 62 and {true_score_name}: {corr_coefficient1:.4f}\n",
           f"P-value of non-correlation: {p_value1:.6f}\n")
 def _assign_true_score_name(predicted_measure: str) -> str:
     if predicted_measure == 'msa_distance':
-        # true_score_name = "dpos_dist_from_true"
-        true_score_name = "dpos_ng_dist_from_true" #TODO: return new dpos / dseq
+        true_score_name = "dpos_from_true"
+        # true_score_name = "dseq_from_true"
+        # true_score_name = "ssp_from_true"
     elif predicted_measure == 'tree_distance':
         true_score_name = 'normalized_rf'
     elif predicted_measure == 'class_label':
@@ -130,7 +139,8 @@ class Regressor:
     '''
     def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False,
                  predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0,
-                 verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard') -> None:
+                 verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard',
+                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dpos_from_true') -> None:
         self.empirical = empirical
         self.verbose = verbose
         self.features_file: str = features_file
@@ -148,12 +158,16 @@ class Regressor:
         self.final_features_names = None
         self.remove_correlated_features: bool = remove_correlated_features
         self.scaler_type = scaler_type
+        self.true_score_name = true_score_name
 
         df = _read_features_into_df(self.features_file)
-        self.true_score_name = _assign_true_score_name(self.predicted_measure)
+        # self.true_score_name = _assign_true_score_name(self.predicted_measure) #TODO - instead of assigning it testing assigning it a parameter above
+
 
         # df["conserved_col_pct"] = df['num_cols_no_gaps'] / df['msa_len']
         df['aligner'] = df.apply(_assign_aligner, axis=1)
+        df = df[df['aligner'] != 'true'] #TODO - removed all True MSAs
+
         df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_aligner.csv', index=False)
 
         df = _check_missing_values(df, self.verbose)
@@ -263,11 +277,16 @@ class Regressor:
 
 
     def _finalize_features(self, df):
-        columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
+        # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
+        #                  'normalised_sop_score_Blosum50', 'normalised_sop_score_Blosum62', 'aligner']
+        columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
+                               'normalised_sop_score_Blosum50', 'aligner'] + ['sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
+                                                                              'sp_ge_count_Blosum50', 'sp_score_gap_e_norm_Blosum50',
+                                                                              'sp_missmatch_ratio_Blosum50','sp_match_ratio_Blosum50',
+                                                                              'number_of_mismatches_Blosum50']
         # columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
         #                        'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner'] #TODO: this is  version for old dpos file
-        columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
+        columns_to_drop_extended = columns_to_drop_dft + ['sop_score_Blosum62', 'sop_score_Blosum50']
         if self.empirical == True:
             columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
                                  'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
@@ -287,14 +306,22 @@ class Regressor:
             #                      'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio',
             #                      'var_bl', 'gaps_len_one', 'gaps_len_three', 'sp_match_ratio', 'taxa_num'] #TODO the version for old dpos file
         else:
-            columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+            # columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
+            #                      'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+            #                      'num_cols_1_gap', 'single_char_count',
+            #                      'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
+            #                      'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
+            columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean', 'sp_score_subs_norm_Blosum62',
+                                 'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62', 'k_mer_10_mean',
                                  'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
                                  'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-                                 'num_cols_1_gap', 'single_char_count',
-                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-                                 'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
+                                 'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus', 'sp_missmatch_ratio_Blosum62',
+                                 'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one', 'gaps_len_three',
+                                 'number_of_mismatches_Blosum62']
 
         self.y = df[self.true_score_name]
 
