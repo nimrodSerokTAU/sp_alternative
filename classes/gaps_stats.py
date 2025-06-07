@@ -13,7 +13,7 @@ class GapStats(BasicStats):
     gaps_len_two: int
     gaps_len_three: int
     gaps_len_three_plus: int
-    avg_unique_gap: float
+    avg_unique_gap_length: float
     num_unique_gaps: int
     gaps_1seq_len1: int
     gaps_2seq_len1: int
@@ -31,7 +31,7 @@ class GapStats(BasicStats):
     num_cols_1_gap: int
     num_cols_2_gaps: int
     num_cols_all_gaps_except1: int
-    av_gaps: float
+    av_gap_segment_length: float
     single_char_count: int
     double_char_count: int
     seq_max_len: int  # TODO: rename
@@ -43,21 +43,21 @@ class GapStats(BasicStats):
         super().__init__(code, taxa_num, msa_len,
                          [
                               'code',
-            'av_gaps', 'num_gap_segments', 'gaps_len_one', 'gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap', 'num_unique_gaps', 'gaps_1seq_len1',
+            'av_gap_segment_length', 'num_gap_segments', 'gaps_len_one', 'gaps_len_two',
+            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap_length', 'num_unique_gaps', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
             'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
             'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'single_char_count', 'double_char_count',
                              'seq_max_len', 'seq_min_len'
                          ])
-        self.av_gaps = 0
+        self.av_gap_segment_length = 0
         self.num_gap_segments = 0
         self.gaps_len_one = 0
         self.gaps_len_two = 0
         self.gaps_len_three = 0
         self.gaps_len_three_plus = 0
-        self.avg_unique_gap = 0
+        self.avg_unique_gap_length = 0
         self.num_unique_gaps = 0
         self.gaps_1seq_len1 = 0
         self.gaps_2seq_len1 = 0
@@ -188,9 +188,9 @@ class GapStats(BasicStats):
                 unique_gaps_length += length
             total_length += len(seq_set) * length
 
-        self.av_gaps = total_length / self.num_gap_segments
+        self.av_gap_segment_length = total_length / self.num_gap_segments
         self.num_unique_gaps = unique_gaps
-        self.avg_unique_gap = unique_gaps_length / max(unique_gaps, 1)
+        self.avg_unique_gap_length = unique_gaps_length / max(unique_gaps, 1)
         self.gaps_1seq_len1 = length_count[1][1]
         self.gaps_2seq_len1 = length_count[1][2]
         self.gaps_all_except_1_len1 = length_count[1][self.taxa_num - 1]
