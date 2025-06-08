@@ -280,31 +280,36 @@ class Regressor:
         # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
         #                  'normalised_sop_score_Blosum50', 'normalised_sop_score_Blosum62', 'aligner']
         columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
-                               'normalised_sop_score_Blosum50', 'aligner'] + ['sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
+                               'aligner'] + ['normalised_sop_score_Blosum50', 'sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
                                                                               'sp_ge_count_Blosum50', 'sp_score_gap_e_norm_Blosum50',
                                                                               'sp_missmatch_ratio_Blosum50','sp_match_ratio_Blosum50',
-                                                                              'number_of_mismatches_Blosum50']
+                                                                              'number_of_mismatches_Blosum50'] #TODO - dropping all Blosum 50 statistics
         # columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
         #                        'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner'] #TODO: this is  version for old dpos file
-        columns_to_drop_extended = columns_to_drop_dft + ['sop_score_Blosum62', 'sop_score_Blosum50']
+        columns_to_drop_extended = columns_to_drop_dft + ['sop_score_Blosum62', 'sop_score_Blosum50', 'normalised_sop_score_Blosum62']
         if self.empirical == True:
-            columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+            # columns_to_choose = ['constant_sites_pct', 'sop_score', 'normalised_sop_score_Blosum62', 'entropy_mean',
+            #                      'sp_score_subs_norm', 'sp_ge_count', 'number_of_gap_segments', 'nj_parsimony_score',
+            #                      'msa_len', 'num_cols_no_gaps', 'total_gaps', 'entropy_var', 'num_unique_gaps',
+            #                      'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps', 'n_unique_sites', 'skew_bl',
+            #                      'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var', 'k_mer_10_top_10_norm',
+            #                      'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count',
+            #                      'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'gaps_len_three_plus', 'number_of_mismatches',
+            #                      'sp_missmatch_ratio', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one','gaps_len_three',
+            #                      'sp_match_ratio', 'taxa_num']
+            columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean',
+                                 'sp_score_subs_norm_Blosum62',
+                                 'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62',
+                                 'k_mer_10_mean',
                                  'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
                                  'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-                                 'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
-                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-                                 'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
+                                 'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus',
+                                 'sp_missmatch_ratio_Blosum62',
+                                 'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one',
+                                 'gaps_len_three',
+                                 'number_of_mismatches_Blosum62', 'taxa_num', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE']
             # columns_to_choose = ['MEAN_RES_PAIR_SCORE']
-            # columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm',
-            #                      'number_of_gap_segments', 'msa_len', 'num_cols_no_gaps',
-            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
-            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-            #                      'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
-            #                      'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio',
-            #                      'var_bl', 'gaps_len_one', 'gaps_len_three', 'sp_match_ratio', 'taxa_num'] #TODO the version for old dpos file
         else:
             # columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
             #                      'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
@@ -321,7 +326,7 @@ class Regressor:
                                  'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
                                  'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus', 'sp_missmatch_ratio_Blosum62',
                                  'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one', 'gaps_len_three',
-                                 'number_of_mismatches_Blosum62']
+                                 'number_of_mismatches_Blosum62', 'taxa_num']
 
         self.y = df[self.true_score_name]
 
@@ -340,6 +345,7 @@ class Regressor:
                 columns=columns_to_drop_extended)
             self.X_test = self.test_df.drop(
                 columns=columns_to_drop_extended)
+
         if self.mode == 3:
             self.X = df[columns_to_choose]
             self.X_train = self.train_df[
@@ -421,6 +427,13 @@ class Regressor:
             #first hidden
             model.add(
                 Dense(neurons[0], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
+            model.add(BatchNormalization())
+            model.add(LeakyReLU(negative_slope=0.01))
+            model.add(Dropout(dropout_rate))
+
+            #first hidden #TODO remove
+            model.add(
+                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
             model.add(BatchNormalization())
             model.add(LeakyReLU(negative_slope=0.01))
             model.add(Dropout(dropout_rate))

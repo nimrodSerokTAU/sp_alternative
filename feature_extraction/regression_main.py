@@ -46,9 +46,9 @@ if __name__ == '__main__':
         #                              predicted_measure='msa_distance', i=i, remove_correlated_features=False,
         #                              empirical=True, scaler_type="rank")
 
-        mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=32, learning_rate=0.0001, neurons =[128, 32, 16],
-                               dropout_rate=0.2, l1=0.0001, l2=0.0001, repeats=1, mixed_portion=0, per_aligner=None, top_k=4,
-                               mse_weight=1, ranking_weight=1, loss_fn="custom_mse", regularizer_name='l1_l2', batch_generation='custom')
+        mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.0001, neurons =[128, 32, 16],
+                               dropout_rate=0.2, l1=0.001, l2=0.001, repeats=1, mixed_portion=0, per_aligner=None, top_k=4,
+                               mse_weight=1, ranking_weight=1, loss_fn="mse", regularizer_name='l1_l2', batch_generation='standard')
         mse_values.append(mse)
         regressor.plot_results("dl", mse, i)
     print(mse_values)
