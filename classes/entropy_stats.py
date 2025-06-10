@@ -16,8 +16,8 @@ class EntropyStats(BasicStats):
     constant_sites_pct: float
     n_unique_sites: int
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
                              'code',
                              'constant_sites_pct', 'n_unique_sites', 'entropy_mean',

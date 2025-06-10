@@ -16,8 +16,8 @@ class WSopStats(BasicStats):
     weight_names: list[str]
     seq_weights_options: list[list[float]]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
             'code',
             'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root', 'clustal_differential_sum',
@@ -33,7 +33,7 @@ class WSopStats(BasicStats):
     def compute_seq_w_henikoff_vars(self, sequences: list[str]) -> tuple[list[float], list[float]]:
         seq_weights_with_gap: list[float] = [0] * self.taxa_num
         seq_weights_no_gap: list[float] = [0] * self.taxa_num
-        for k in range(self.msa_len):
+        for k in range(self.msa_length):
             seq_dict: dict[str, list[int]] = {}
             for i in range(self.taxa_num):
                 char = sequences[i][k]
@@ -96,7 +96,7 @@ class WSopStats(BasicStats):
         for index, weight_name in enumerate(self.weight_names):
             sop_w_options_dict[weight_name] = sop_w_options[index]
         self.set_my_w_sop(sop_w_options_dict)
-        print(sop_w_options_dict)
+        # print(sop_w_options_dict)
 
     def get_ordered_col_names_with_model(self, model_name: str) -> list[str]:
         return [f'{col_name}_{model_name}' for col_name in self.ordered_col_names]

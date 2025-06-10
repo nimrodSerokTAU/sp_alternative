@@ -24,8 +24,8 @@ class TreeStats(BasicStats):
 
     ordered_col_names: list[str]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
             'code',
             'bl_sum', 'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std',

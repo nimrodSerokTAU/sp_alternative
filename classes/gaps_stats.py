@@ -5,14 +5,12 @@ from classes.msa_basic_stats import BasicStats
 
 class GapStats(BasicStats):
     code: str
-    msa_len: int
-    taxa_num: int
 
-    num_gap_segments: int
-    gaps_len_one: int
-    gaps_len_two: int
-    gaps_len_three: int
-    gaps_len_three_plus: int
+    num_gap_segments_norm: float
+    gaps_len_one: float
+    gaps_len_two: float
+    gaps_len_three: float
+    gaps_len_three_plus: float
     avg_unique_gap_length: float
     num_unique_gaps: int
     gaps_1seq_len1: int
@@ -39,11 +37,11 @@ class GapStats(BasicStats):
 
     ordered_col_names: list[str]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
                               'code',
-            'av_gap_segment_length', 'num_gap_segments', 'gaps_len_one', 'gaps_len_two',
+            'av_gap_segment_length', 'num_gap_segments_norm', 'gaps_len_one', 'gaps_len_two',
             'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap_length', 'num_unique_gaps', 'gaps_1seq_len1',
             'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
             'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
@@ -52,7 +50,7 @@ class GapStats(BasicStats):
                              'seq_max_len', 'seq_min_len'
                          ])
         self.av_gap_segment_length = 0
-        self.num_gap_segments = 0
+        self.num_gap_segments_norm = 0
         self.gaps_len_one = 0
         self.gaps_len_two = 0
         self.gaps_len_three = 0
@@ -99,7 +97,7 @@ class GapStats(BasicStats):
         self.calculate_counts(gap_positions)
 
         # per column
-        for pos in range(self.msa_len):
+        for pos in range(self.msa_length):
             # Extract the column by iterating over all sequences
             column = [record[pos] for record in aln]
 
@@ -115,11 +113,11 @@ class GapStats(BasicStats):
                 self.num_cols_all_gaps_except1 += 1
         self.seq_min_len = min_length
         self.seq_max_len = max_length
-        self.gaps_len_one = gaps_length_histogram[1]  # double counts the "same" gap in different sequences
-        self.gaps_len_two = gaps_length_histogram[2]  # double counts the "same" gap in different sequences
-        self.gaps_len_three = gaps_length_histogram[3]  # double counts the "same" gap in different sequences
+        self.gaps_len_one = gaps_length_histogram[1] / self.taxa_num  # double counts the "same" gap in different sequences
+        self.gaps_len_two = gaps_length_histogram[2] / self.taxa_num  # double counts the "same" gap in different sequences
+        self.gaps_len_three = gaps_length_histogram[3] / self.taxa_num  # double counts the "same" gap in different sequences
         self.gaps_len_three_plus = sum(count for length, count in gaps_length_histogram.items() if
-                                       length > 3)  # double counts the "same" gap in different sequences
+                                       length > 3) / self.taxa_num  # double counts the "same" gap in different sequences
 
 
     def record_gap_lengths(self, sequence: str, seq_index: int, gap_positions: dict, gaps_length_histogram) -> None:
@@ -163,7 +161,7 @@ class GapStats(BasicStats):
             elif current_index == last_gap_index + 3:
                 double_char_count += 1
 
-        self.num_gap_segments = sum(count for length, count in gaps_length_histogram.items())
+        self.num_gap_segments_norm = sum(count for length, count in gaps_length_histogram.items()) / self.taxa_num
         self.single_char_count += single_char_count
         self.double_char_count += double_char_count
 
@@ -188,7 +186,7 @@ class GapStats(BasicStats):
                 unique_gaps_length += length
             total_length += len(seq_set) * length
 
-        self.av_gap_segment_length = total_length / self.num_gap_segments
+        self.av_gap_segment_length = total_length / self.num_gap_segments_norm
         self.num_unique_gaps = unique_gaps
         self.avg_unique_gap_length = unique_gaps_length / max(unique_gaps, 1)
         self.gaps_1seq_len1 = length_count[1][1]

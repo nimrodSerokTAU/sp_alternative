@@ -176,7 +176,7 @@ class MSA:
     def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp_models: list[SPScore], output_dir_path: Path,
                              true_tree: UnrootedTree, is_init_file: bool):
         basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
-                                 ['code', 'taxa_num', 'msa_len'])
+                                 ['code', 'taxa_num', 'msa_length'])
         self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
                               is_init_file, basic_stats.get_ordered_col_names())
         dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
@@ -199,10 +199,11 @@ class MSA:
                                   is_init_file, gaps_stats.get_ordered_col_names())
 
         if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
-            k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
-            k_mer_stats.set_k_mer_features(self.sequences)
-            self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
-                                  is_init_file, k_mer_stats.get_ordered_col_names())
+            for k_value in list(config.k_values):
+                k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
+                k_mer_stats.set_k_mer_features(self.sequences)
+                self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
+                                      is_init_file, k_mer_stats.get_ordered_col_names(), str(k_value))
 
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
             self.build_nj_tree()
@@ -238,9 +239,10 @@ class MSA:
 
     @staticmethod
     def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
-                         col_names: list[str], model_name: str = None):
+                         col_names: list[str], model_name: str = None, k_value: str = None):
         model_str = f'_{model_name}' if model_name is not None else ''
-        output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}.csv')
+        k_value_str = f'_{k_value}' if k_value is not None else ''
+        output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}{k_value_str}.csv')
         if is_init_file:
             with (open(output_file_path, 'w') as outfile):
                 print(','.join(col_names), file=outfile)

@@ -11,8 +11,8 @@ class DistanceLabelsStats(BasicStats):
     dpos_from_true: float
     rf_from_true: int
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
               [
                   'code', 'ssp_from_true', 'dseq_from_true', 'dpos_from_true',
               ])

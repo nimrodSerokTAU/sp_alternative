@@ -70,18 +70,18 @@ class MSACompare:
         the squashing of the sequence is better for our SoP model even for mismatches with this cost parameters. probably no place to do it on empirical
         empirical has less seq....and less spaces.
         """
-        msa_len = len(sequences[0])
+        msa_length = len(sequences[0])
         naive_sop_score = self.sop.compute_naive_sp_score(sequences)
         efficient_sop_score = self.sop.compute_efficient_sp(sequences)
         sp_score_subs, sp_score_gap_o, sp_score_gap_e = self.sop.compute_naive_sp_score_per_col(sequences)
         naive_sop_score_col = sum(sp_score_subs) + sum(sp_score_gap_o) + sum(sp_score_gap_e)
-        sop_per_col = [sp_score_subs[i] + sp_score_gap_o[i] + sp_score_gap_e[i] for i in range(msa_len)]
+        sop_per_col = [sp_score_subs[i] + sp_score_gap_o[i] + sp_score_gap_e[i] for i in range(msa_length)]
         sorted_cols = sorted(sop_per_col)
-        higher_score_th = sorted_cols[int(msa_len * 0.9)]
+        higher_score_th = sorted_cols[int(msa_length * 0.9)]
         seq_count = len(sequences)
         lower_score_th = (seq_count - 1) * (self.sop.ge_cost + self.sop.gs_cost)
-        best = [i for i in range(msa_len) if sop_per_col[i] >= higher_score_th]
-        worse = [i for i in range(msa_len) if sop_per_col[i] < lower_score_th]
+        best = [i for i in range(msa_length) if sop_per_col[i] >= higher_score_th]
+        worse = [i for i in range(msa_length) if sop_per_col[i] < lower_score_th]
 
         dict_i_j_color, dpos_grade = self.calc_colors(first_p_th, second_p_th, sequences)
         pdf = FPDF(format='letter', unit='in')

@@ -17,8 +17,8 @@ class SopStats(BasicStats):
     number_of_mismatches: int
     model_agnostic_col_names: list[str]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
                              'code',
             'sop_score', 'normalised_sop_score', 'sp_score_subs_norm', 'sp_go_score_norm', 'sp_ge_score_norm', 'sp_score_subs',
@@ -40,7 +40,7 @@ class SopStats(BasicStats):
 
     def set_my_sop_score_parts(self, sp:SPScore, sequences: list[str]):
         sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, sp_go_count, sp_ge_count = sp.compute_efficient_sp_parts(sequences)
-        number_of_pairs = self.taxa_num * (self.taxa_num - 1) / 2 * self.msa_len
+        number_of_pairs = self.taxa_num * (self.taxa_num - 1) / 2 * self.msa_length
         self.sop_score = sp_score_subs + go_score + sp_score_gap_e
         self.normalised_sop_score = self.sop_score / number_of_pairs
         self.sp_score_subs_norm = sp_score_subs / number_of_pairs

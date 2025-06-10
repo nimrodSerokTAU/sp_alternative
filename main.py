@@ -7,7 +7,7 @@ configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62'), E
                                              SopCalcTypes.EFFICIENT, 'comparison_files',
                                              {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT,
                                               WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
-                                             {StatsOutput.ALL})
+                                             [5, 10, 20], {StatsOutput.ALL})
 
 if __name__ == '__main__':
     multiple_msa_calc_features_and_labels(configuration)

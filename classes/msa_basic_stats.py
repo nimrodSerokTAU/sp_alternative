@@ -1,13 +1,13 @@
 class BasicStats:
     code: str
     taxa_num: int
-    msa_len: int
+    msa_length: int
     ordered_col_names: list[str]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int, ordered_col_names: list[str]):
+    def __init__(self, code: str, taxa_num: int, msa_length: int, ordered_col_names: list[str]):
         self.code = code
         self.taxa_num = taxa_num
-        self.msa_len = msa_len
+        self.msa_length = msa_length
         self.ordered_col_names = ordered_col_names
 
     def get_my_features_as_list(self) -> list:

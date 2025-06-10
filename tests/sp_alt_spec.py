@@ -650,7 +650,9 @@ def test_multi():
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
-                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
+                                                 [10, 20]
+                                                 )
     multiple_msa_calc_features_and_labels(configuration)
 
 
@@ -782,13 +784,14 @@ def test_msa_stats():
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
-                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
+                                          [10, 20])
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config.models[0])
     basic_stats = BasicStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),
-                             ['code', 'taxa_num', 'msa_len'])
+                             ['code', 'taxa_num', 'msa_length'])
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
     dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     dist_labels_stats.set_my_distance_from_true(true_msa.sequences, inferred_msa.sequences)
@@ -800,10 +803,10 @@ def test_msa_stats():
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
-    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.125, 8, 7, 1, 0, 0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
-    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    assert gaps_stats.get_my_features_as_list() == ['inferred', 5.625, 1.6, 1.4, 0.2, 0.0, 0.0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),10)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
-    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0]
 
     inferred_msa.build_nj_tree()
     true_msa.build_nj_tree()
