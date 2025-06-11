@@ -7,12 +7,10 @@ from utils import calc_percentile
 
 class EntropyStats(BasicStats):
     entropy_mean: float
-    entropy_median: float
-    entropy_var: float
-    entropy_pct_25: float
-    entropy_pct_75: float
-    entropy_min: float
+    entropy_25_pct: float
+    entropy_75_pct: float
     entropy_max: float
+    entropy_sum: float
     constant_sites_pct: float
     n_unique_sites: int
 
@@ -21,17 +19,14 @@ class EntropyStats(BasicStats):
                          [
                              'code',
                              'constant_sites_pct', 'n_unique_sites', 'entropy_mean',
-                             'entropy_median', 'entropy_var', 'entropy_pct_25', 'entropy_pct_75', 'entropy_min',
-                             'entropy_max',
+                             'entropy_25_pct', 'entropy_75_pct', 'entropy_sum', 'entropy_max',
                          ])
         self.constant_sites_pct = 0
         self.n_unique_sites = 0
         self.entropy_mean = 0
-        self.entropy_median = 0
-        self.entropy_var = 0
-        self.entropy_pct_25 = 0
-        self.entropy_pct_75 = 0
-        self.entropy_min = 0
+        self.entropy_25_pct = 0
+        self.entropy_75_pct = 0
+        self.entropy_sum = 0
         self.entropy_max = 0
 
     def calc_entropy(self, aln: list[str]):  # Noa's part
@@ -46,12 +41,10 @@ class EntropyStats(BasicStats):
         self.n_unique_sites = len(alignment_df_unique.columns)
 
         self.entropy_max = float(np.max(entropy))
-        self.entropy_min = float(np.min(entropy))
         self.entropy_mean = float(np.mean(entropy))
-        self.entropy_median = float(np.median(entropy))
-        self.entropy_var = float(np.var(entropy))
-        self.entropy_pct_25 = calc_percentile(entropy, 25)
-        self.entropy_pct_75 = calc_percentile(entropy, 75)
+        self.entropy_sum = float(sum(entropy))
+        self.entropy_25_pct = calc_percentile(entropy, 25)
+        self.entropy_75_pct = calc_percentile(entropy, 75)
 
 def get_alignment_df(data: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     original_alignment_df = alignment_list_to_df(data)

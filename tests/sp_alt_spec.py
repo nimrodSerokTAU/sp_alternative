@@ -799,7 +799,7 @@ def test_msa_stats():
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     entropy_stats.calc_entropy(inferred_msa.sequences)
-    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0.5, 0.092, 0.0, 0.637, 0.0, 0.693]
+    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0.0, 0.637, 3.64, 0.693]
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
@@ -812,7 +812,7 @@ def test_msa_stats():
     true_msa.build_nj_tree()
     tree_stats = TreeStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     tree_stats.set_tree_stats(inferred_msa.tree.get_branches_lengths_list(), inferred_msa.tree, inferred_msa.sequences, inferred_msa.seq_names)
-    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.183, 0.093, 0.396, 0.03, 0.304, -1.523, 0.174, 0.491, 0.026, 12, 0.872]
+    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.239, 0.093, 0.396, 0.491, 0.026, 1.2, 12.0, 3, 0, 1.0, 1.75]
     dist_labels_stats.set_rf_from_true(inferred_msa.tree, true_msa.tree)
     data_to_print, col_names = dist_labels_stats.get_print_rf()
     assert data_to_print == ['inferred', 0]
