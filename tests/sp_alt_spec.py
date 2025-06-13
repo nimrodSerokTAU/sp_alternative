@@ -140,9 +140,9 @@ def test_compute_sp_s_and_sp_ge():  # our function
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
     sp_score_subs: int
     sp_score_gap_e: int
-    sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(profile)
+    sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(profile)
     naive_score = sp.compute_naive_sp_score(profile)
-    res = {'sp_score_subs': sp_score_subs, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_score_subs + sp_score_gap_e}
+    res = {'sp_score_subs': sp_match_score + sp_mismatch_score, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_match_score + sp_mismatch_score + sp_score_gap_e}
     assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -50, 'total':naive_score[0]}  # this is correct without gs cost
 
 
@@ -803,7 +803,7 @@ def test_msa_stats():
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
-    assert gaps_stats.get_my_features_as_list() == ['inferred', 5.625, 1.6, 1.4, 0.2, 0.0, 0.0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
+    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.6, 5.625, 1.4, 0.2, 0.0, 0.0, 4, 0.8, 1.25, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
     k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),10)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
     assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0]
@@ -820,8 +820,7 @@ def test_msa_stats():
 
     sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
-    assert sop_stats.get_my_features_as_list() == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 251.0, 0.47, 0.22, 26, 25, 22]
-
+    assert sop_stats.get_my_features_as_list() == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 259.0, 2.59, -8, -0.08, -12.0, -0.12]
     w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
     w_sop_stats.calc_w_sp(inferred_msa.sequences, sp)
@@ -850,8 +849,8 @@ def test_msa_stats_two_models():
         sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
         sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
         res.append(sop_stats.get_my_features_as_list())
-    assert res[0] == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 251.0, 0.47, 0.22, 26, 25, 22]
-    assert res[1] == ['inferred', 216.0, 2.16, 3.17, -0.75, -0.26, 317.0, 0.47, 0.22, 26, 25, 22]
+    assert res[0] == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 259.0, 2.59, -8, -0.08, -12.0, -0.12]
+    assert res[1] == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 329.0, 3.29, -12, -0.12, 216.0, 2.16]
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:

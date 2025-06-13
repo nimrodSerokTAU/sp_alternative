@@ -1,5 +1,4 @@
 from collections import defaultdict, Counter
-
 from classes.msa_basic_stats import BasicStats
 
 
@@ -7,33 +6,35 @@ class GapStats(BasicStats):
     code: str
 
     num_gap_segments_norm: float
+    av_gap_segment_length: float
     gaps_len_one: float
     gaps_len_two: float
     gaps_len_three: float
-    gaps_len_three_plus: float
-    avg_unique_gap_length: float
+    gaps_len_four_plus: float
     num_unique_gaps: int
+    num_unique_gaps_norm: float
+    avg_unique_gap_length: float
     gaps_1seq_len1: int
     gaps_2seq_len1: int
-    gaps_all_except_1_len1: int
     gaps_1seq_len2: int
     gaps_2seq_len2: int
-    gaps_all_except_1_len2: int
     gaps_1seq_len3: int
     gaps_2seq_len3: int
+    gaps_1seq_len4plus: int
+    gaps_2seq_len4plus: int
+    gaps_all_except_1_len1: int
+    gaps_all_except_1_len2: int
     gaps_all_except_1_len3: int
-    gaps_1seq_len3plus: int
-    gaps_2seq_len3plus: int
-    gaps_all_except_1_len3plus: int
+    gaps_all_except_1_len4plus: int
     num_cols_no_gaps: int
     num_cols_1_gap: int
     num_cols_2_gaps: int
     num_cols_all_gaps_except1: int
-    av_gap_segment_length: float
     single_char_count: int
     double_char_count: int
-    seq_max_len: int  # TODO: rename
-    seq_min_len: int  # TODO: rename
+
+    seq_max_len: int
+    seq_min_len: int
 
     ordered_col_names: list[str]
 
@@ -41,34 +42,35 @@ class GapStats(BasicStats):
         super().__init__(code, taxa_num, msa_length,
                          [
                               'code',
-            'av_gap_segment_length', 'num_gap_segments_norm', 'gaps_len_one', 'gaps_len_two',
-            'gaps_len_three', 'gaps_len_three_plus', 'avg_unique_gap_length', 'num_unique_gaps', 'gaps_1seq_len1',
-            'gaps_2seq_len1', 'gaps_all_except_1_len1', 'gaps_1seq_len2', 'gaps_2seq_len2',
-            'gaps_all_except_1_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_all_except_1_len3',
-            'gaps_1seq_len3plus', 'gaps_2seq_len3plus', 'gaps_all_except_1_len3plus', 'num_cols_no_gaps',
-            'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1', 'single_char_count', 'double_char_count',
+            'num_gap_segments_norm', 'av_gap_segment_length', 'gaps_len_one', 'gaps_len_two',
+            'gaps_len_three', 'gaps_len_four_plus', 'num_unique_gaps', 'num_unique_gaps_norm', 'avg_unique_gap_length',
+            'gaps_1seq_len1', 'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_1seq_len4plus', 'gaps_2seq_len4plus',
+            'gaps_all_except_1_len1', 'gaps_all_except_1_len2', 'gaps_all_except_1_len3', 'gaps_all_except_1_len4plus',
+            'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
+                             'single_char_count', 'double_char_count',
                              'seq_max_len', 'seq_min_len'
                          ])
-        self.av_gap_segment_length = 0
         self.num_gap_segments_norm = 0
+        self.av_gap_segment_length = 0
         self.gaps_len_one = 0
         self.gaps_len_two = 0
         self.gaps_len_three = 0
-        self.gaps_len_three_plus = 0
-        self.avg_unique_gap_length = 0
+        self.gaps_len_four_plus = 0
         self.num_unique_gaps = 0
+        self.num_unique_gaps_norm = 0
+        self.avg_unique_gap_length = 0
         self.gaps_1seq_len1 = 0
         self.gaps_2seq_len1 = 0
-        self.gaps_all_except_1_len1 = 0
         self.gaps_1seq_len2 = 0
         self.gaps_2seq_len2 = 0
-        self.gaps_all_except_1_len2 = 0
         self.gaps_1seq_len3 = 0
         self.gaps_2seq_len3 = 0
+        self.gaps_1seq_len4plus = 0
+        self.gaps_2seq_len4plus = 0
+        self.gaps_all_except_1_len1 = 0
+        self.gaps_all_except_1_len2 = 0
         self.gaps_all_except_1_len3 = 0
-        self.gaps_1seq_len3plus = 0
-        self.gaps_2seq_len3plus = 0
-        self.gaps_all_except_1_len3plus = 0
+        self.gaps_all_except_1_len4plus = 0
         self.num_cols_no_gaps = 0
         self.num_cols_1_gap = 0
         self.num_cols_2_gaps = 0
@@ -116,7 +118,7 @@ class GapStats(BasicStats):
         self.gaps_len_one = gaps_length_histogram[1] / self.taxa_num  # double counts the "same" gap in different sequences
         self.gaps_len_two = gaps_length_histogram[2] / self.taxa_num  # double counts the "same" gap in different sequences
         self.gaps_len_three = gaps_length_histogram[3] / self.taxa_num  # double counts the "same" gap in different sequences
-        self.gaps_len_three_plus = sum(count for length, count in gaps_length_histogram.items() if
+        self.gaps_len_four_plus = sum(count for length, count in gaps_length_histogram.items() if
                                        length > 3) / self.taxa_num  # double counts the "same" gap in different sequences
 
 
@@ -188,6 +190,7 @@ class GapStats(BasicStats):
 
         self.av_gap_segment_length = total_length / self.num_gap_segments_norm
         self.num_unique_gaps = unique_gaps
+        self.num_unique_gaps_norm = unique_gaps / self.taxa_num
         self.avg_unique_gap_length = unique_gaps_length / max(unique_gaps, 1)
         self.gaps_1seq_len1 = length_count[1][1]
         self.gaps_2seq_len1 = length_count[1][2]
@@ -198,6 +201,6 @@ class GapStats(BasicStats):
         self.gaps_1seq_len3 = length_count[3][1]
         self.gaps_2seq_len3 = length_count[3][2]
         self.gaps_all_except_1_len3 = length_count[3][self.taxa_num - 1]
-        self.gaps_1seq_len3plus = length_plus_count[1]
-        self.gaps_2seq_len3plus = length_plus_count[2]
-        self.gaps_all_except_1_len3plus = length_plus_count[self.taxa_num - 1]
+        self.gaps_1seq_len4plus = length_plus_count[1]
+        self.gaps_2seq_len4plus = length_plus_count[2]
+        self.gaps_all_except_1_len4plus = length_plus_count[self.taxa_num - 1]
