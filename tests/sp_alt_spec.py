@@ -646,7 +646,7 @@ def test_dpos_for_diff_length_case_e():
 
 
 def test_multi():
-    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
@@ -702,7 +702,7 @@ def test_rf_for_nj_using_ours():
     unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
     msa = MSA('AATF')
     msa.read_me_from_fasta(Path('./comparison_files/AATF/MSA.MAFFT.aln.With_Names'))
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files')
     sp_score: SPScore = SPScore(config.models[0])
     msa.build_nj_tree()
@@ -780,7 +780,7 @@ def test_msa_stats():
         'AT-CGA-GGA',
         'TTATGCTGGA'
     ]
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -837,8 +837,8 @@ def test_msa_stats_two_models():
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
     config: Configuration = Configuration([
-            EvoModel(-10, -0.5, 'Blosum62'),
-            EvoModel(-3, -1, 'Blosum50')
+            EvoModel(-10, -0.5, 'BLOSUM62'),
+            EvoModel(-3, -1, 'BLOSUM50')
         ], SopCalcTypes.EFFICIENT, 'comparison_files',
         {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT, WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
@@ -951,7 +951,7 @@ def test_mid_point_rooting():
         'TTATGCTGGA'
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files')
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
@@ -1053,7 +1053,7 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
 
 
 def test_single_msas():
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
@@ -1066,8 +1066,8 @@ def test_single_msas():
         ['PRANK_b1#0003_hhT_tree_3_OP_0.38975399874169636_Split_3.fasta', 400.989, 402.289, 2314.664, 1444.722],
         ['PRANK_b1#0024_hhT_tree_21_OP_0.2963379796789501_Split_24.fasta', 403.128, 405.134, 2286.363, 1451.505]]
 
-def test_global_alignment_blosum_affine_gap_case_a():
-    config: Configuration = Configuration([EvoModel(-4, -0.5, 'Blosum62')],
+def test_global_alignment_BLOSUM_affine_gap_case_a():
+    config: Configuration = Configuration([EvoModel(-4, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -1103,7 +1103,7 @@ def test_create_alternative_msas_by_realign():
         'AT-CGA-GG-AT',
         'TTATGCTGG-A-'
     ]
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -1193,7 +1193,7 @@ def test_henikoff_with_gaps_value():
     msa.sequences = aln
     msa.seq_names = names
     
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                         SopCalcTypes.EFFICIENT, 'comparison_files',
                                         {WeightMethods.HENIKOFF_WG})
     
@@ -1207,7 +1207,7 @@ def test_henikoff_with_gaps_value():
     sop_w_options = w_sop_stats.calc_w_sp(msa.sequences, sp)
     
     # Set the weights in stats
-    henikoff_with_gaps = w_sop_stats.henikoff_with_gaps
+    henikoff_with_gaps = w_sop_stats.sp_HENIKOFF_with_gaps
     
     # The expected value is the actual calculated SP score with Henikoff weights
     expected_value = -1.682110969387752
@@ -1219,7 +1219,7 @@ def test_henikoff_with_gaps_value():
 ############## Doc tests:
 
 def test_features_doc_sp_go():
-    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
     aln: list[str] = [
         'AKTTAC',
         '-A--C-',
@@ -1242,7 +1242,7 @@ def test_features_doc_sp_go():
 
 
 def test_features_doc_sp_ge():
-    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
     aln: list[str] = [
         'AKTTAC',
         '-A--C-',
@@ -1265,7 +1265,7 @@ def test_features_doc_sp_ge():
 
 
 def test_features_doc_sp_match():
-    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
     aln: list[str] = [
         'CAM-G',
         'CMELG',
@@ -1281,7 +1281,7 @@ def test_features_doc_sp_match():
 
 
 def test_features_doc_sp_mismatch():
-    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
     aln: list[str] = [
         'CAM-G',
         'CMELG',

@@ -203,7 +203,7 @@ class MSA:
                 k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
                 k_mer_stats.set_k_mer_features(self.sequences)
                 self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
-                                      is_init_file, k_mer_stats.get_ordered_col_names(), k_value=str(k_value))
+                                      is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value))
 
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
             self.build_nj_tree()
@@ -222,7 +222,7 @@ class MSA:
                 sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)
                 self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
-                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name),
+                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)
 
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
@@ -233,7 +233,7 @@ class MSA:
                 w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
                 w_sop_stats.calc_w_sp(self.sequences, sp)
                 self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
-                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name),
+                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)
 
 

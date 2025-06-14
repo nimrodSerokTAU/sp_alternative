@@ -38,7 +38,7 @@ class KMerStats(BasicStats):
             self.k_mer_max = histo[0]
 
     def get_ordered_col_names_with_k_value(self) -> list[str]:
-        return [f'{col_name}_{str(self.k_value)}' for col_name in self.ordered_col_names]
+        return [f'{col_name}_K{str(self.k_value)}' for col_name in self.ordered_col_names]
 
 
 def calc_kmer_histo(aln: list[str], k: int) -> list[int]:
