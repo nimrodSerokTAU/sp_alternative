@@ -24,6 +24,8 @@ from multi_msa_service import multiple_msa_calc_features_and_labels
 from distance_calc import translate_profile_naming, get_column, get_place_h, compute_distance
 from ete3 import Tree, TreeNode
 
+from utils import calc_percentile
+
 newick_of_AATF = (
     '((((Macropus:0.051803,Monodelphis:0.066021):0.016682,Sarcophilus:0.068964):0.114355,((Echinops:0.104144,'
     '(Loxodonta:0.076474,Procavia:0.076193):0.011550):0.013015,((Choloepus:0.056091,Dasypus:0.040600):0.013681,'
@@ -1215,6 +1217,14 @@ def test_henikoff_with_gaps_value():
     # Check if the henikoff_with_gaps value is set correctly
     assert abs(henikoff_with_gaps - expected_value) < 1e-10, \
         f"Expected henikoff_with_gaps to be {expected_value}, but got {henikoff_with_gaps}"
+
+def test_percentile():
+    values: list[int] = [23, 5, 3, 6, 9, 14, 1, 43]
+    res_25: float = calc_percentile(values, 25)
+    res_75: float = calc_percentile(values, 75)
+    assert res_25 == 3
+    assert res_75 == 23
+
 
 ############## Doc tests:
 
