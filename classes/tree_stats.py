@@ -9,11 +9,11 @@ class TreeStats(BasicStats):
     code: str
 
     bl_mean: float
-    bl_25_pct: float
-    bl_75_pct: float
+    bl_sum: float
     bl_max: float
     bl_min: float
-    bl_sum: float
+    bl_25_pct: float
+    bl_75_pct: float
 
     parsimony_mean: float
     parsimony_sum: float

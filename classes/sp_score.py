@@ -8,9 +8,9 @@ from utils import read_matching_matrix, translate_to_matrix_index
 class SPScore:
     w_matrix: list[list[int]]
     code_to_index_dict: dict[str, int]
-    gs_cost: int
+    go_cost: int
     ge_cost: float
-    gs_cost_extremities: int
+    go_cost_extremities: int
     model_name: str
 
     def __init__(self, evo_model: EvoModel):
@@ -21,7 +21,7 @@ class SPScore:
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
-        self.gs_cost = evo_model.gs_cost
+        self.go_cost = evo_model.go_cost
         self.ge_cost = evo_model.ge_cost
         self.model_name = evo_model.name
 
@@ -50,7 +50,7 @@ class SPScore:
                             sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * seq_weights_multiplication[w_option_index]
                 for gap_interval in (self.compute_gap_intervals(clean_seq_i) + self.compute_gap_intervals(clean_seq_j)):
                     for w_option_index in range(weight_options_count):
-                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.gs_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
+                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.go_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
         return [sp_score_subs[w_op] + sp_score_gaps[w_op] for w_op in range(weight_options_count)]
 
 
@@ -74,11 +74,11 @@ class SPScore:
                     elif seq_i[k] == '-' and seq_j[k] != '-':
                         sp_score_gap_e[k] += self.ge_cost
                         if k == 0 or (clean_seq_i[-2] != '-'):
-                            sp_score_gap_o[k] += self.gs_cost
+                            sp_score_gap_o[k] += self.go_cost
                     elif seq_j[k] == '-' and seq_i[k] != '-':
                         sp_score_gap_e[k] += self.ge_cost
                         if k == 0 or (clean_seq_j[-2] != '-'):
-                            sp_score_gap_o[k] += self.gs_cost
+                            sp_score_gap_o[k] += self.go_cost
         return sp_score_subs, sp_score_gap_o, sp_score_gap_e
 
 
@@ -162,7 +162,7 @@ class SPScore:
         for i in range(seq_len):
             for gap_interval in gap_closing[i]:
                 gpo_count = n - nb_open_gap[gap_interval.start]
-                sp_gp_open += gpo_count * self.gs_cost
+                sp_gp_open += gpo_count * self.go_cost
                 sp_gpo_count += gpo_count
             for gap_interval in gap_closing[i]:
                 for k in range(gap_interval.start, gap_interval.end + 1):

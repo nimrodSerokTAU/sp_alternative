@@ -44,10 +44,10 @@ class KMerStats(BasicStats):
 def calc_kmer_histo(aln: list[str], k: int) -> list[int]:
     histo: dict[str, int] = {}
     for seq in aln:
-        for i in range(len(seq) - k):
+        for i in range(len(seq) - k + 1):
             k_mer = seq[i:i+k]
             if k_mer not in histo:
                 histo[k_mer] = 0
             histo[k_mer] += 1
-    return list(filter(lambda x: x > 1, histo.values()))
+    return list(histo.values())
 

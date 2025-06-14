@@ -59,8 +59,8 @@ class GlobalAlign:
         matching_matrix, codes_dict_to_inx = read_matching_matrix(matrix_file_path)
         self.matching_matrix = matching_matrix
         self.codes_dict_to_inx = codes_dict_to_inx
-        self.gs = configuration.gs_cost
-        self.ge = configuration.gs_cost
+        self.gs = configuration.go_cost
+        self.ge = configuration.go_cost
         self.matrix, self.alignment_root, self.best_score = self.calculate_alignment_matrix_and_root_affine_gaps()
         self.aligned_sequences: list[AlignmentCandidate] = self.get_alignment()
 

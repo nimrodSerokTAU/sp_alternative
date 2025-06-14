@@ -785,7 +785,7 @@ def test_msa_stats():
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
                                            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
-                                          [10, 20])
+                                          [5, 10, 20])
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
@@ -803,10 +803,10 @@ def test_msa_stats():
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
-    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.6, 5.625, 1.4, 0.2, 0.0, 0.0, 4, 0.8, 1.25, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
-    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),10)
+    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.6, 1.125, 1.4, 0.2, 0.0, 0.0, 4, 0.8, 1.25, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),5)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
-    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0]
+    assert k_mer_stats.get_my_features_as_list() == ['inferred', 2, 1.034, 1, 1, 11]
 
     inferred_msa.build_nj_tree()
     true_msa.build_nj_tree()
@@ -1216,6 +1216,168 @@ def test_henikoff_with_gaps_value():
     assert abs(henikoff_with_gaps - expected_value) < 1e-10, \
         f"Expected henikoff_with_gaps to be {expected_value}, but got {henikoff_with_gaps}"
 
-    def test_comp_3():
-        res = msa_comp_main()
-        assert res is None
+############## Doc tests:
+
+def test_features_doc_sp_go():
+    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    aln: list[str] = [
+        'AKTTAC',
+        '-A--C-',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_go == 3
+    assert sop_stats.sp_go_norm == 0.5
+    aln = [
+        'A--C',
+        'A--G',
+    ]
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_go == 0
+    assert sop_stats.sp_go_norm == 0
+
+
+def test_features_doc_sp_ge():
+    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    aln: list[str] = [
+        'AKTTAC',
+        '-A--C-',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_ge == 4
+    assert round(sop_stats.sp_ge_norm, 3) == 0.667
+    aln = [
+        'A-LC',
+        'A--G',
+    ]
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_ge == 1
+    assert sop_stats.sp_ge_norm == 0.25
+
+
+def test_features_doc_sp_match():
+    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    aln: list[str] = [
+        'CAM-G',
+        'CMELG',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_match == 15
+    assert sop_stats.sp_match_count == 2
+    assert sop_stats.sp_match_norm == 3
+    assert sop_stats.sp_match_count_norm == 0.4
+
+
+def test_features_doc_sp_mismatch():
+    sp = SPScore(EvoModel(-10, -0.5, 'Blosum62'))
+    aln: list[str] = [
+        'CAM-G',
+        'CMELG',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_mismatch == -3
+    assert sop_stats.sp_mismatch_count == 2
+    assert sop_stats.sp_mismatch_norm == -0.6
+    assert sop_stats.sp_mismatch_count_norm == 0.4
+
+
+def test_features_doc_num_gap_segments_norm():
+    aln: list[str] = [
+        'L--C-T-----MMM',
+        'CMELGTTTTMMMMM',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.num_gap_segments_norm == 1.5
+    assert round(gap_stats.av_gap_segment_length,3) == 2.667
+
+
+def test_features_doc_gaps_len_one():
+    aln: list[str] = [
+        'C-M-G',
+        'C-MEL',
+        'CDM--',
+        'CDMQQ',
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.gaps_len_one == 0.75
+    assert gap_stats.gaps_len_two == 0.25
+
+
+def test_features_doc_num_cols_1_gap():
+    aln: list[str] = [
+        'C-M-G',
+        'C-MEL',
+        'CDM--',
+        'CDMQQ',
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.num_cols_1_gap == 1
+    assert gap_stats.num_cols_2_gaps == 2
+
+
+def test_features_doc_single_char_count():
+    aln: list[str] = [
+        'C-M-G',
+        'C-MEL',
+        'CDM--',
+        'CDM-Q',
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.single_char_count == 5
+
+
+def test_features_doc_double_char_count():
+    aln: list[str] = [
+        'AA-CTT---MM--QQQ-LL',
+        'C-MELLLLLTTTTQQQQLL',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.double_char_count == 3
+
+
+def test_features_doc_k_mer_average():
+    aln: list[str] = [
+        'C-M-G',
+        '-CMEL',
+        'CC-M-',
+    ]
+    names: list[str] = ['a', 'b', 'c']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(), 4)
+    k_mer_stats.set_k_mer_features(inferred_msa.sequences)
+    assert k_mer_stats.k_mer_average == 1.2
+
+
+def comp_3():  # use when needed # TODO: remove later
+    res = msa_comp_main()
+    assert res is None

@@ -79,7 +79,7 @@ class MSACompare:
         sorted_cols = sorted(sop_per_col)
         higher_score_th = sorted_cols[int(msa_length * 0.9)]
         seq_count = len(sequences)
-        lower_score_th = (seq_count - 1) * (self.sop.ge_cost + self.sop.gs_cost)
+        lower_score_th = (seq_count - 1) * (self.sop.ge_cost + self.sop.go_cost)
         best = [i for i in range(msa_length) if sop_per_col[i] >= higher_score_th]
         worse = [i for i in range(msa_length) if sop_per_col[i] < lower_score_th]
 

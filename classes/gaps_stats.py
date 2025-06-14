@@ -4,6 +4,7 @@ from classes.msa_basic_stats import BasicStats
 
 class GapStats(BasicStats):
     code: str
+    num_gap_segments: int
 
     num_gap_segments_norm: float
     av_gap_segment_length: float
@@ -50,6 +51,7 @@ class GapStats(BasicStats):
                              'single_char_count', 'double_char_count',
                              'seq_max_len', 'seq_min_len'
                          ])
+        self.num_gap_segments = -1
         self.num_gap_segments_norm = 0
         self.av_gap_segment_length = 0
         self.gaps_len_one = 0
@@ -163,7 +165,8 @@ class GapStats(BasicStats):
             elif current_index == last_gap_index + 3:
                 double_char_count += 1
 
-        self.num_gap_segments_norm = sum(count for length, count in gaps_length_histogram.items()) / self.taxa_num
+        self.num_gap_segments = sum(count for length, count in gaps_length_histogram.items())
+        self.num_gap_segments_norm = self.num_gap_segments / self.taxa_num
         self.single_char_count += single_char_count
         self.double_char_count += double_char_count
 
@@ -188,7 +191,7 @@ class GapStats(BasicStats):
                 unique_gaps_length += length
             total_length += len(seq_set) * length
 
-        self.av_gap_segment_length = total_length / self.num_gap_segments_norm
+        self.av_gap_segment_length = total_length / self.num_gap_segments
         self.num_unique_gaps = unique_gaps
         self.num_unique_gaps_norm = unique_gaps / self.taxa_num
         self.avg_unique_gap_length = unique_gaps_length / max(unique_gaps, 1)

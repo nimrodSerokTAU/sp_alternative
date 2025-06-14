@@ -7,10 +7,10 @@ from utils import calc_percentile
 
 class EntropyStats(BasicStats):
     entropy_mean: float
+    entropy_sum: float
+    entropy_max: float
     entropy_25_pct: float
     entropy_75_pct: float
-    entropy_max: float
-    entropy_sum: float
     constant_sites_pct: float
     n_unique_sites: int
 
