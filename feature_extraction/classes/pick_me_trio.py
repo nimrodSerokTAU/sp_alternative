@@ -26,7 +26,7 @@ class PickMeGameTrio:
         self.overall_win: List[Any] = []
         self.subset: Optional[float] = subset
         if predicted_measure == "msa_distance":
-            self.true_score = 'dpos_from_true'
+            self.true_score = 'dseq_from_true'
 
     # def set_scores(self, df):
     #     scores = []

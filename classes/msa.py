@@ -183,7 +183,7 @@ class MSA:
 
         basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
                                  ['code', 'taxa_num', 'msa_length'])
-        stats_list.append(basic_stats)  # TODO - KSENIA
+        # stats_list.append(basic_stats)  # TODO - KSENIA
         self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
                               is_init_file, basic_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
         dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
@@ -197,22 +197,24 @@ class MSA:
         if len({StatsOutput.ALL, StatsOutput.ENTROPY}.intersection(config.stats_output)) > 0:
             entropy_stats = EntropyStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             entropy_stats.calc_entropy(self.sequences)
-            stats_list.append(entropy_stats)  # TODO - KSENIA
+            # stats_list.append(entropy_stats)  #TODO - KSENIA
             self.print_stats_file(entropy_stats.get_my_features_as_list(), output_dir_path, StatsOutput.ENTROPY.value,
                                   is_init_file, entropy_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
 
         if len({StatsOutput.ALL, StatsOutput.GAPS}.intersection(config.stats_output)) > 0:
             gaps_stats = GapStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             gaps_stats.calc_gaps_values(self.sequences)
-            stats_list.append(gaps_stats)  # TODO - KSENIA
+            # stats_list.append(gaps_stats)  #TODO - KSENIA
             self.print_stats_file(gaps_stats.get_my_features_as_list(), output_dir_path, StatsOutput.GAPS.value,
                                   is_init_file, gaps_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
 
+        k_mer_stats_list = []  # TODO KSENIA
         if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
             for k_value in list(config.k_values):
                 k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
                 k_mer_stats.set_k_mer_features(self.sequences)
-                stats_list.append(k_mer_stats)  # TODO - KSENIA
+                # stats_list.append(k_mer_stats)  #TODO - KSENIA
+                k_mer_stats_list.append((k_mer_stats,k_value))  #TODO KSENIA
                 self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
                                       is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value)) # TODO - KSENIA uncomment
 
@@ -220,7 +222,7 @@ class MSA:
             self.build_nj_tree()
             tree_stats = TreeStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             tree_stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
-            stats_list.append(tree_stats)  # TODO - KSENIA
+            # stats_list.append(tree_stats)  # TODO - KSENIA
             self.print_stats_file(tree_stats.get_my_features_as_list(), output_dir_path, StatsOutput.TREE.value,
                                   is_init_file, tree_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
             if len({StatsOutput.ALL, StatsOutput.RF_LABEL}.intersection(config.stats_output)) > 0:
@@ -228,7 +230,13 @@ class MSA:
                 data_to_print, col_names = dist_labels_stats.get_print_rf()
                 self.print_stats_file(data_to_print, output_dir_path, StatsOutput.RF_LABEL.value,
                                       is_init_file, col_names) # TODO - KSENIA uncomment
-                stats_list.append(dist_labels_stats)  # TODO - KSENIA
+                # stats_list.append(dist_labels_stats)  # TODO - KSENIA
+
+        stats_list.append(dist_labels_stats) # TODO - KSENIA
+        stats_list.append(basic_stats)  # TODO - KSENIA
+        stats_list.append(entropy_stats)  # TODO - KSENIA
+        stats_list.append(gaps_stats) # TODO - KSENIA
+        stats_list.append(tree_stats) # TODO - KSENIA
 
         sop_stats_list = [] #TODO KSENIA
         if len({StatsOutput.ALL, StatsOutput.SP}.intersection(config.stats_output)) > 0:
@@ -240,6 +248,7 @@ class MSA:
                                       is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)  # TODO - KSENIA uncomment
 
+        weighted_sop_stats_list = []  # TODO KSENIA
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
                 self.build_nj_tree()
@@ -247,13 +256,14 @@ class MSA:
                 w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
                 w_sop_stats.calc_w_sp(self.sequences, sp)
-                stats_list.append(w_sop_stats)  # TODO - KSENIA
+                # stats_list.append(w_sop_stats)  # TODO - KSENIA
+                weighted_sop_stats_list.append((w_sop_stats, sp.model_name))  #TODO KSENIA
                 self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
                                       is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost) # TODO - KSENIA uncomment
 
             # #combine features #TODO - KSENIA ADDED THIS PART
-            self.combine_stats(stats_list, sop_stats_list, true_msa.dataset_name, self.dataset_name) #TODO - KSENIA
+            self.combine_stats(stats_list, sop_stats_list, weighted_sop_stats_list, k_mer_stats_list, true_msa.dataset_name, self.dataset_name) #TODO - KSENIA
 
     @staticmethod
     def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
@@ -270,7 +280,7 @@ class MSA:
                 print(str(dist_labels_stats)[1:-1], file=outfile)
 
     # @staticmethod
-    def combine_stats(self, stats_objects_list, sop_stats_list, code1, code): #TODO - KSENIA
+    def combine_stats(self, stats_objects_list, sop_stats_list, weighted_sop_stats_list, k_mer_stats_list, code1, code): #TODO - KSENIA
 
         # combined_dict = {}
         seen_keys = set()
@@ -295,7 +305,31 @@ class MSA:
             for key, value in zip(original_features, values):
                 if key == "code":
                     continue
+                if key in ['sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm',
+                           'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm']:
+                    renamed_key = key
+                else:
+                    renamed_key = f"{key}_{model_name}"
+                combined_dict[renamed_key] = value
+
+        for obj, model_name in weighted_sop_stats_list:
+            original_features = obj.get_ordered_col_names()
+            values = obj.get_my_features_as_list()
+
+            for key, value in zip(original_features, values):
+                if key == "code":
+                    continue
                 renamed_key = f"{key}_{model_name}"
+                combined_dict[renamed_key] = value
+
+        for obj, k_value in k_mer_stats_list:
+            original_features = obj.get_ordered_col_names()
+            values = obj.get_my_features_as_list()
+
+            for key, value in zip(original_features, values):
+                if key == "code":
+                    continue
+                renamed_key = f"{key}_K{k_value}"
                 combined_dict[renamed_key] = value
 
         df = pd.DataFrame([combined_dict])

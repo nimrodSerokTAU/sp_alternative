@@ -280,7 +280,7 @@ class Regressor:
         # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
         #                  'normalised_sop_score_Blosum50', 'normalised_sop_score_Blosum62', 'aligner']
         columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
-                               'aligner'] + ['normalised_sop_score_Blosum50', 'sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
+                               'aligner'] + ['normalised_sop_score_Blosum62', 'normalised_sop_score_Blosum50', 'sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
                                                                               'sp_ge_count_Blosum50', 'sp_score_gap_e_norm_Blosum50',
                                                                               'sp_missmatch_ratio_Blosum50','sp_match_ratio_Blosum50',
                                                                               'number_of_mismatches_Blosum50'] #TODO - dropping all Blosum 50 statistics
