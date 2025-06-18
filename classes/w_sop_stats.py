@@ -7,25 +7,25 @@ from enums import WeightMethods, RootingMethods
 
 class WSopStats(BasicStats):
 
-    henikoff_with_gaps: float
-    henikoff_without_gaps: float
-    clustal_mid_root: float
-    clustal_differential_sum: float
+    sp_HENIKOFF_with_gaps: float
+    sp_HENIKOFF_without_gaps: float
+    sp_CLUSTAL_WEIGHTS_mid_root: float
+    sp_CLUSTAL_WEIGHTS_diff_sum: float
 
     rooted_trees: dict[str, RootedTree]
     weight_names: list[str]
     seq_weights_options: list[list[float]]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
             'code',
-            'henikoff_with_gaps', 'henikoff_without_gaps', 'clustal_mid_root', 'clustal_differential_sum',
+            'sp_HENIKOFF_with_gaps', 'sp_HENIKOFF_without_gaps', 'sp_CLUSTAL_WEIGHTS_mid_root', 'sp_CLUSTAL_WEIGHTS_diff_sum',
                          ])
-        self.henikoff_with_gaps = -1
-        self.henikoff_without_gaps = -1
-        self.clustal_mid_root = -1
-        self.clustal_differential_sum = -1
+        self.sp_HENIKOFF_with_gaps = -1
+        self.sp_HENIKOFF_without_gaps = -1
+        self.sp_CLUSTAL_WEIGHTS_mid_root = -1
+        self.sp_CLUSTAL_WEIGHTS_differential_sum = -1
         self.weight_names = []
         self.seq_weights_options = []
         self.rooted_trees = {}
@@ -33,7 +33,7 @@ class WSopStats(BasicStats):
     def compute_seq_w_henikoff_vars(self, sequences: list[str]) -> tuple[list[float], list[float]]:
         seq_weights_with_gap: list[float] = [0] * self.taxa_num
         seq_weights_no_gap: list[float] = [0] * self.taxa_num
-        for k in range(self.msa_len):
+        for k in range(self.msa_length):
             seq_dict: dict[str, list[int]] = {}
             for i in range(self.taxa_num):
                 char = sequences[i][k]
@@ -81,11 +81,11 @@ class WSopStats(BasicStats):
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
 
     def set_my_w_sop(self, sop_w_options_dict: dict[str, float]):
-        self.henikoff_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
-        self.henikoff_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
-        self.clustal_mid_root = sop_w_options_dict[
+        self.sp_HENIKOFF_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
+        self.sp_HENIKOFF_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
+        self.sp_CLUSTAL_WEIGHTS_mid_root = sop_w_options_dict[
             WeightMethods.CLUSTAL_MID_ROOT.value] if WeightMethods.CLUSTAL_MID_ROOT.value in sop_w_options_dict else 0
-        self.clustal_differential_sum = sop_w_options_dict[
+        self.sp_CLUSTAL_WEIGHTS_diff_sum = sop_w_options_dict[
             WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value] if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value in sop_w_options_dict else 0
 
     def calc_w_sp(self, sequences: list[str], sp: SPScore):
@@ -96,7 +96,7 @@ class WSopStats(BasicStats):
         for index, weight_name in enumerate(self.weight_names):
             sop_w_options_dict[weight_name] = sop_w_options[index]
         self.set_my_w_sop(sop_w_options_dict)
-        print(sop_w_options_dict)
+        # print(sop_w_options_dict)
 
-    def get_ordered_col_names_with_model(self, model_name: str) -> list[str]:
-        return [f'{col_name}_{model_name}' for col_name in self.ordered_col_names]
+    def get_ordered_col_names_with_model(self, model_name: str, go_val: float, ge_val: float) -> list[str]:
+        return [f'{col_name}_{model_name}_GO_{go_val}_GE_{ge_val}' for col_name in self.ordered_col_names]

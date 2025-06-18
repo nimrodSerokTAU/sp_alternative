@@ -182,7 +182,7 @@ class MSA:
         stats_list = [] #TODO - KSENIA
 
         basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
-                                 ['code', 'taxa_num', 'msa_len'])
+                                 ['code', 'taxa_num', 'msa_length'])
         stats_list.append(basic_stats)  # TODO - KSENIA
         self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
                               is_init_file, basic_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
@@ -209,11 +209,12 @@ class MSA:
                                   is_init_file, gaps_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
 
         if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
-            k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
-            k_mer_stats.set_k_mer_features(self.sequences)
-            stats_list.append(k_mer_stats)  # TODO - KSENIA
-            self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
-                                  is_init_file, k_mer_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
+            for k_value in list(config.k_values):
+                k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
+                k_mer_stats.set_k_mer_features(self.sequences)
+                stats_list.append(k_mer_stats)  # TODO - KSENIA
+                self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
+                                      is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value)) # TODO - KSENIA uncomment
 
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
             self.build_nj_tree()
@@ -236,8 +237,8 @@ class MSA:
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)
                 sop_stats_list.append((sop_stats, sp.model_name)) #TODO KSENIA
                 self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
-                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name),
-                                      sp.model_name) # TODO - KSENIA uncomment
+                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
+                                      sp.model_name, sp.go_cost, sp.ge_cost)  # TODO - KSENIA uncomment
 
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
@@ -248,17 +249,18 @@ class MSA:
                 w_sop_stats.calc_w_sp(self.sequences, sp)
                 stats_list.append(w_sop_stats)  # TODO - KSENIA
                 self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
-                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name),
-                                      sp.model_name) # TODO - KSENIA uncomment
+                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
+                                      sp.model_name, sp.go_cost, sp.ge_cost) # TODO - KSENIA uncomment
 
             # #combine features #TODO - KSENIA ADDED THIS PART
             self.combine_stats(stats_list, sop_stats_list, true_msa.dataset_name, self.dataset_name) #TODO - KSENIA
 
     @staticmethod
     def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
-                         col_names: list[str], model_name: str = None):
-        model_str = f'_{model_name}' if model_name is not None else ''
-        output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}.csv')
+                         col_names: list[str], model_name: str = None, go_val: float = None, ge_val: float = None, k_value: str = None):
+        model_str = f'_{model_name}_GO_{go_val}_GE_{ge_val}' if model_name is not None else ''
+        k_value_str = f'_K{k_value}' if k_value is not None else ''
+        output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}{k_value_str}.csv')
         if is_init_file:
             with (open(output_file_path, 'w') as outfile):
                 print(','.join(col_names), file=outfile)

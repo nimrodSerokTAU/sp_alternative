@@ -24,6 +24,8 @@ from multi_msa_service import multiple_msa_calc_features_and_labels
 from distance_calc import translate_profile_naming, get_column, get_place_h, compute_distance
 from ete3 import Tree, TreeNode
 
+from utils import calc_percentile
+
 newick_of_AATF = (
     '((((Macropus:0.051803,Monodelphis:0.066021):0.016682,Sarcophilus:0.068964):0.114355,((Echinops:0.104144,'
     '(Loxodonta:0.076474,Procavia:0.076193):0.011550):0.013015,((Choloepus:0.056091,Dasypus:0.040600):0.013681,'
@@ -140,9 +142,9 @@ def test_compute_sp_s_and_sp_ge():  # our function
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
     sp_score_subs: int
     sp_score_gap_e: int
-    sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(profile)
+    sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(profile)
     naive_score = sp.compute_naive_sp_score(profile)
-    res = {'sp_score_subs': sp_score_subs, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_score_subs + sp_score_gap_e}
+    res = {'sp_score_subs': sp_match_score + sp_mismatch_score, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_match_score + sp_mismatch_score + sp_score_gap_e}
     assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -50, 'total':naive_score[0]}  # this is correct without gs cost
 
 
@@ -646,11 +648,13 @@ def test_dpos_for_diff_length_case_e():
 
 
 def test_multi():
-    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
-                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
+                                                 [10, 20]
+                                                 )
     multiple_msa_calc_features_and_labels(configuration)
 
 
@@ -700,7 +704,7 @@ def test_rf_for_nj_using_ours():
     unrooted_tree = UnrootedTree.create_from_newick_str(newick_of_AATF)
     msa = MSA('AATF')
     msa.read_me_from_fasta(Path('./comparison_files/AATF/MSA.MAFFT.aln.With_Names'))
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files')
     sp_score: SPScore = SPScore(config.models[0])
     msa.build_nj_tree()
@@ -778,17 +782,18 @@ def test_msa_stats():
         'AT-CGA-GGA',
         'TTATGCTGGA'
     ]
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
-                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
+                                          [5, 10, 20])
     true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp: SPScore = SPScore(config.models[0])
     basic_stats = BasicStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),
-                             ['code', 'taxa_num', 'msa_len'])
+                             ['code', 'taxa_num', 'msa_length'])
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
     dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     dist_labels_stats.set_my_distance_from_true(true_msa.sequences, inferred_msa.sequences)
@@ -796,20 +801,20 @@ def test_msa_stats():
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     entropy_stats.calc_entropy(inferred_msa.sequences)
-    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0.5, 0.092, 0.0, 0.637, 0.0, 0.693]
+    assert entropy_stats.get_my_features_as_list() == ['inferred', 0.4, 9, 0.364, 0.0, 0.637, 3.64, 0.693]
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
-    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.125, 8, 7, 1, 0, 0, 1.25, 4, 3, 2, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5]
-    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.6, 1.125, 1.4, 0.2, 0.0, 0.0, 4, 0.8, 1.25, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),5)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
-    assert k_mer_stats.get_my_features_as_list() == ['inferred', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    assert k_mer_stats.get_my_features_as_list() == ['inferred', 2, 1.034, 1, 1, 11]
 
     inferred_msa.build_nj_tree()
     true_msa.build_nj_tree()
     tree_stats = TreeStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     tree_stats.set_tree_stats(inferred_msa.tree.get_branches_lengths_list(), inferred_msa.tree, inferred_msa.sequences, inferred_msa.seq_names)
-    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.183, 0.093, 0.396, 0.03, 0.304, -1.523, 0.174, 0.491, 0.026, 12, 0.872]
+    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.239, 0.093, 0.396, 0.491, 0.026, 1.2, 12.0, 3, 0, 1.0, 1.75]
     dist_labels_stats.set_rf_from_true(inferred_msa.tree, true_msa.tree)
     data_to_print, col_names = dist_labels_stats.get_print_rf()
     assert data_to_print == ['inferred', 0]
@@ -817,8 +822,7 @@ def test_msa_stats():
 
     sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
-    assert sop_stats.get_my_features_as_list() == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 251.0, 0.47, 0.22, 26, 25, 22]
-
+    assert sop_stats.get_my_features_as_list() == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 259.0, 2.59, -8, -0.08, -12.0, -0.12]
     w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
     w_sop_stats.calc_w_sp(inferred_msa.sequences, sp)
@@ -835,8 +839,8 @@ def test_msa_stats_two_models():
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
     config: Configuration = Configuration([
-            EvoModel(-10, -0.5, 'Blosum62'),
-            EvoModel(-3, -1, 'Blosum50')
+            EvoModel(-10, -0.5, 'BLOSUM62'),
+            EvoModel(-3, -1, 'BLOSUM50')
         ], SopCalcTypes.EFFICIENT, 'comparison_files',
         {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT, WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
@@ -847,8 +851,8 @@ def test_msa_stats_two_models():
         sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
         sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
         res.append(sop_stats.get_my_features_as_list())
-    assert res[0] == ['inferred', -12.0, -0.12, 2.51, -2.5, -0.13, 251.0, 0.47, 0.22, 26, 25, 22]
-    assert res[1] == ['inferred', 216.0, 2.16, 3.17, -0.75, -0.26, 317.0, 0.47, 0.22, 26, 25, 22]
+    assert res[0] == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 259.0, 2.59, -8, -0.08, -12.0, -0.12]
+    assert res[1] == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 329.0, 3.29, -12, -0.12, 216.0, 2.16]
 
 
 def build_e_tree_from_ours(tree: UnrootedTree) -> Tree:
@@ -949,7 +953,7 @@ def test_mid_point_rooting():
         'TTATGCTGGA'
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files')
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
@@ -1051,7 +1055,7 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
 
 
 def test_single_msas():
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                                  SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                                  {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                                   WeightMethods.CLUSTAL_MID_ROOT,
@@ -1064,8 +1068,8 @@ def test_single_msas():
         ['PRANK_b1#0003_hhT_tree_3_OP_0.38975399874169636_Split_3.fasta', 400.989, 402.289, 2314.664, 1444.722],
         ['PRANK_b1#0024_hhT_tree_21_OP_0.2963379796789501_Split_24.fasta', 403.128, 405.134, 2286.363, 1451.505]]
 
-def test_global_alignment_blosum_affine_gap_case_a():
-    config: Configuration = Configuration([EvoModel(-4, -0.5, 'Blosum62')],
+def test_global_alignment_BLOSUM_affine_gap_case_a():
+    config: Configuration = Configuration([EvoModel(-4, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'tests/comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -1101,7 +1105,7 @@ def test_create_alternative_msas_by_realign():
         'AT-CGA-GG-AT',
         'TTATGCTGG-A-'
     ]
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                           SopCalcTypes.EFFICIENT, 'comparison_files',
                                           {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
                                            WeightMethods.CLUSTAL_MID_ROOT,
@@ -1191,7 +1195,7 @@ def test_henikoff_with_gaps_value():
     msa.sequences = aln
     msa.seq_names = names
     
-    config: Configuration = Configuration([EvoModel(-10, -0.5, 'Blosum62')],
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
                                         SopCalcTypes.EFFICIENT, 'comparison_files',
                                         {WeightMethods.HENIKOFF_WG})
     
@@ -1205,7 +1209,7 @@ def test_henikoff_with_gaps_value():
     sop_w_options = w_sop_stats.calc_w_sp(msa.sequences, sp)
     
     # Set the weights in stats
-    henikoff_with_gaps = w_sop_stats.henikoff_with_gaps
+    henikoff_with_gaps = w_sop_stats.sp_HENIKOFF_with_gaps
     
     # The expected value is the actual calculated SP score with Henikoff weights
     expected_value = -1.682110969387752
@@ -1214,6 +1218,176 @@ def test_henikoff_with_gaps_value():
     assert abs(henikoff_with_gaps - expected_value) < 1e-10, \
         f"Expected henikoff_with_gaps to be {expected_value}, but got {henikoff_with_gaps}"
 
-    def test_comp_3():
-        res = msa_comp_main()
-        assert res is None
+def test_percentile():
+    values: list[int] = [23, 5, 3, 6, 9, 14, 1, 43]
+    res_25: float = calc_percentile(values, 25)
+    res_75: float = calc_percentile(values, 75)
+    assert res_25 == 3
+    assert res_75 == 23
+
+
+############## Doc tests:
+
+def test_features_doc_sp_go():
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
+    aln: list[str] = [
+        'AKTTAC',
+        '-A--C-',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_go == 3
+    assert sop_stats.sp_go_norm == 0.5
+    aln = [
+        'A--C',
+        'A--G',
+    ]
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_go == 0
+    assert sop_stats.sp_go_norm == 0
+
+
+def test_features_doc_sp_ge():
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
+    aln: list[str] = [
+        'AKTTAC',
+        '-A--C-',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_ge == 4
+    assert round(sop_stats.sp_ge_norm, 3) == 0.667
+    aln = [
+        'A-LC',
+        'A--G',
+    ]
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_ge == 1
+    assert sop_stats.sp_ge_norm == 0.25
+
+
+def test_features_doc_sp_match():
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
+    aln: list[str] = [
+        'CAM-G',
+        'CMELG',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_match == 15
+    assert sop_stats.sp_match_count == 2
+    assert sop_stats.sp_match_norm == 3
+    assert sop_stats.sp_match_count_norm == 0.4
+
+
+def test_features_doc_sp_mismatch():
+    sp = SPScore(EvoModel(-10, -0.5, 'BLOSUM62'))
+    aln: list[str] = [
+        'CAM-G',
+        'CMELG',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
+    assert sop_stats.sp_mismatch == -3
+    assert sop_stats.sp_mismatch_count == 2
+    assert sop_stats.sp_mismatch_norm == -0.6
+    assert sop_stats.sp_mismatch_count_norm == 0.4
+
+
+def test_features_doc_num_gap_segments_norm():
+    aln: list[str] = [
+        'L--C-T-----MMM',
+        'CMELGTTTTMMMMM',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.num_gap_segments_norm == 1.5
+    assert round(gap_stats.av_gap_segment_length,3) == 2.667
+
+
+def test_features_doc_gaps_len_one():
+    aln: list[str] = [
+        'C-M-G',
+        'C-MEL',
+        'CDM--',
+        'CDMQQ',
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.gaps_len_one == 0.75
+    assert gap_stats.gaps_len_two == 0.25
+
+
+def test_features_doc_num_cols_1_gap():
+    aln: list[str] = [
+        'C-M-G',
+        'C-MEL',
+        'CDM--',
+        'CDMQQ',
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.num_cols_1_gap == 1
+    assert gap_stats.num_cols_2_gaps == 2
+
+
+def test_features_doc_single_char_count():
+    aln: list[str] = [
+        'C-M-G',
+        'C-MEL',
+        'CDM--',
+        'CDM-Q',
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.single_char_count == 5
+
+
+def test_features_doc_double_char_count():
+    aln: list[str] = [
+        'AA-CTT---MM--QQQ-LL',
+        'C-MELLLLLTTTTQQQQLL',
+    ]
+    names: list[str] = ['a', 'b']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    gap_stats.calc_gaps_values(inferred_msa.sequences)
+    assert gap_stats.double_char_count == 3
+
+
+def test_features_doc_k_mer_average():
+    aln: list[str] = [
+        'C-M-G',
+        '-CMEL',
+        'CC-M-',
+    ]
+    names: list[str] = ['a', 'b', 'c']
+    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(), 4)
+    k_mer_stats.set_k_mer_features(inferred_msa.sequences)
+    assert k_mer_stats.k_mer_average == 1.2
+
+
+def comp_3():  # use when needed # TODO: remove later
+    res = msa_comp_main()
+    assert res is None

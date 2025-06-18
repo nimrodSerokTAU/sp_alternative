@@ -1,13 +1,13 @@
 
 class EvoModel:
-    gs_cost: int
+    go_cost: int
     ge_cost: float
     matrix_file_name: str
     name: str
 
 
-    def __init__(self, gs_cost: int, ge_cost: float, matrix_file_name: str, name: str = None):
-        self.gs_cost = gs_cost
+    def __init__(self, go_cost: int, ge_cost: float, matrix_file_name: str, name: str = None):
+        self.go_cost = go_cost
         self.ge_cost = ge_cost
         self.matrix_file_name = matrix_file_name
         self.name = name if name is not None else matrix_file_name

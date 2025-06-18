@@ -8,9 +8,9 @@ from utils import read_matching_matrix, translate_to_matrix_index
 class SPScore:
     w_matrix: list[list[int]]
     code_to_index_dict: dict[str, int]
-    gs_cost: int
+    go_cost: int
     ge_cost: float
-    gs_cost_extremities: int
+    go_cost_extremities: int
     model_name: str
 
     def __init__(self, evo_model: EvoModel):
@@ -21,7 +21,7 @@ class SPScore:
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
-        self.gs_cost = evo_model.gs_cost
+        self.go_cost = evo_model.go_cost
         self.ge_cost = evo_model.ge_cost
         self.model_name = evo_model.name
 
@@ -50,7 +50,7 @@ class SPScore:
                             sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * seq_weights_multiplication[w_option_index]
                 for gap_interval in (self.compute_gap_intervals(clean_seq_i) + self.compute_gap_intervals(clean_seq_j)):
                     for w_option_index in range(weight_options_count):
-                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.gs_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
+                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.go_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
         return [sp_score_subs[w_op] + sp_score_gaps[w_op] for w_op in range(weight_options_count)]
 
 
@@ -74,11 +74,11 @@ class SPScore:
                     elif seq_i[k] == '-' and seq_j[k] != '-':
                         sp_score_gap_e[k] += self.ge_cost
                         if k == 0 or (clean_seq_i[-2] != '-'):
-                            sp_score_gap_o[k] += self.gs_cost
+                            sp_score_gap_o[k] += self.go_cost
                     elif seq_j[k] == '-' and seq_i[k] != '-':
                         sp_score_gap_e[k] += self.ge_cost
                         if k == 0 or (clean_seq_j[-2] != '-'):
-                            sp_score_gap_o[k] += self.gs_cost
+                            sp_score_gap_o[k] += self.go_cost
         return sp_score_subs, sp_score_gap_o, sp_score_gap_e
 
 
@@ -99,13 +99,14 @@ class SPScore:
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
         return gap_intervals_list
 
-    def compute_sp_s_and_sp_ge(self, profile: list[str], seq_w: list[float] = None) -> tuple[float, float, int, int, int]:
+    def compute_sp_s_and_sp_ge(self, profile: list[str], seq_w: list[float] = None) -> tuple[float, float, float, int, int, int]:
         options_count = len(self.w_matrix[0])
         seq_len: int = len(profile[0])
-        sp_score_subs: int = 0
+        sp_match_score: float = 0
+        sp_mismatch_score: float = 0
         ge_count: int = 0
         sp_match_count: int = 0
-        sp_missmatch_count: int = 0
+        sp_mismatch_count: int = 0
         if seq_w is None:
             seq_w = [1] * len(profile)
         for k in range(seq_len):
@@ -123,19 +124,19 @@ class SPScore:
                     histo[char_index]['sq_w_sum'] += seq_w[i] * seq_w[i]
             for i in range(options_count):
                 if histo[i] != 0:
-                    sp_score_subs += float(self.w_matrix[i][i] *
+                    sp_match_score += float(self.w_matrix[i][i] *
                                            # histo[i]['count'] * (histo[i]['count'] - 1) / 2 * \
                                            (histo[i]['w_sum'] * histo[i]['w_sum'] - histo[i]['sq_w_sum']) / 2)
                     sp_match_count += histo[i]['count'] * (histo[i]['count'] - 1) / 2
                     for j in range(i + 1, options_count):
                         if histo[j] != 0:
-                            sp_score_subs += (self.w_matrix[i][j] *
+                            sp_mismatch_score += (self.w_matrix[i][j] *
                                             # histo[i]['count'] * histo[j]['count'] * \
                                              histo[i]['w_sum'] * histo[j]['w_sum'])
-                            sp_missmatch_count += histo[i]['count'] * histo[j]['count']
+                            sp_mismatch_count += histo[i]['count'] * histo[j]['count']
             if histo[-1]['count'] > 0:
                 ge_count += (len(profile) - histo[-1]['count']) * histo[-1]['count']
-        return sp_score_subs, ge_count * self.ge_cost, sp_match_count, sp_missmatch_count, ge_count
+        return sp_match_score, sp_mismatch_score, ge_count * self.ge_cost, sp_match_count, sp_mismatch_count, ge_count
 
     def subst(self, a: str, b: str) -> int:
         return self.w_matrix[
@@ -161,7 +162,7 @@ class SPScore:
         for i in range(seq_len):
             for gap_interval in gap_closing[i]:
                 gpo_count = n - nb_open_gap[gap_interval.start]
-                sp_gp_open += gpo_count * self.gs_cost
+                sp_gp_open += gpo_count * self.go_cost
                 sp_gpo_count += gpo_count
             for gap_interval in gap_closing[i]:
                 for k in range(gap_interval.start, gap_interval.end + 1):
@@ -169,11 +170,11 @@ class SPScore:
         return sp_gp_open, sp_gpo_count
 
     def compute_efficient_sp(self, profile: list[str]) -> float:
-        sp_score_subs, sp_score_gap_e, a, b, ge_count = self.compute_sp_s_and_sp_ge(profile)
+        sp_match_score, sp_mismatch_score, sp_score_gap_e, a, b, ge_count = self.compute_sp_s_and_sp_ge(profile)
         go_score, sp_gpo_count = self.compute_sp_gap_open(profile)
-        return sp_score_subs + sp_score_gap_e + go_score
+        return sp_match_score + sp_mismatch_score + sp_score_gap_e + go_score
 
-    def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, int, int, int, int]:
-        sp_score_subs, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = self.compute_sp_s_and_sp_ge(profile)
+    def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, float, int, int, int, int]:
+        sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, ge_count = self.compute_sp_s_and_sp_ge(profile)
         go_score, go_count = self.compute_sp_gap_open(profile)
-        return sp_score_subs, go_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, go_count, ge_count
+        return sp_match_score, sp_mismatch_score, go_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, go_count, ge_count

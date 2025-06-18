@@ -1,6 +1,4 @@
 import numpy as np
-from scipy.stats import skew, kurtosis
-
 from classes.msa_basic_stats import BasicStats
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
@@ -9,55 +7,58 @@ from utils import calc_percentile
 
 class TreeStats(BasicStats):
     code: str
-    median_bl: float
-    bl_25_pct: float
-    bl_75_pct: float
-    var_bl: float
-    skew_bl: float
-    kurtosis_bl: float
-    bl_std: float
+
+    bl_mean: float
+    bl_sum: float
     bl_max: float
     bl_min: float
-    bl_sum: float
-    nj_parsimony_score: int
-    nj_parsimony_sd: float
+    bl_25_pct: float
+    bl_75_pct: float
+
+    parsimony_mean: float
+    parsimony_sum: float
+    parsimony_max: float
+    parsimony_min: float
+    parsimony_25_pct: float
+    parsimony_75_pct: float
 
     ordered_col_names: list[str]
 
-    def __init__(self, code: str, taxa_num: int, msa_len: int):
-        super().__init__(code, taxa_num, msa_len,
+    def __init__(self, code: str, taxa_num: int, msa_length: int):
+        super().__init__(code, taxa_num, msa_length,
                          [
             'code',
-            'bl_sum', 'median_bl', 'bl_25_pct', 'bl_75_pct', 'var_bl', 'skew_bl', 'kurtosis_bl', 'bl_std',
-            'bl_max', 'bl_min', 'nj_parsimony_score', 'nj_parsimony_sd'
+            'bl_sum', 'bl_mean', 'bl_25_pct', 'bl_75_pct', 'bl_max', 'bl_min',
+            'parsimony_mean', 'parsimony_sum', 'parsimony_max', 'parsimony_min', 'parsimony_25_pct', 'parsimony_75_pct'
                          ])
-        self.median_bl = -1
+        self.bl_mean = -1
         self.bl_25_pct = -1
         self.bl_75_pct = -1
-        self.var_bl = -1
-        self.skew_bl = -1
-        self.kurtosis_bl = -1
-        self.bl_std = -1
         self.bl_max = -1
         self.bl_min = -1
         self.bl_sum = -1
-        self.nj_parsimony_score = -1
-        self.nj_parsimony_sd = -1
+        self.parsimony_mean = -1
+        self.parsimony_sum = -1
+        self.parsimony_max = -1
+        self.parsimony_min = -1
+        self.parsimony_25_pct = -1
+        self.parsimony_75_pct = -1
 
     def set_tree_stats(self, bl_list: list[float], tree: UnrootedTree, aln: list[str], names: list[str]):
-        self.median_bl = float(np.median(bl_list))
-        self.bl_25_pct = calc_percentile(bl_list, 25)
-        self.bl_75_pct = calc_percentile(bl_list, 75)
-        self.var_bl = float(np.var(bl_list))
-        self.skew_bl = float(skew(bl_list))
-        self.kurtosis_bl = float(kurtosis(bl_list))
-        self.bl_std = float(np.std(bl_list))
+        self.bl_mean = float(np.mean(bl_list))
+        self.bl_sum = sum(bl_list)
         self.bl_max = max(bl_list)
         self.bl_min = min(bl_list)
-        self.bl_sum = sum(bl_list)
+        self.bl_25_pct = calc_percentile(bl_list, 25)
+        self.bl_75_pct = calc_percentile(bl_list, 75)
+
         parsimony_score_list: list[int] = calc_parsimony(tree, aln, names)
-        self.nj_parsimony_score = sum(parsimony_score_list)
-        self.nj_parsimony_sd = float(np.std(parsimony_score_list))
+        self.parsimony_mean = float(np.mean(parsimony_score_list))
+        self.parsimony_sum = float(sum(parsimony_score_list))
+        self.parsimony_max = max(parsimony_score_list)
+        self.parsimony_min = min(parsimony_score_list)
+        self.parsimony_25_pct = calc_percentile(parsimony_score_list, 25)
+        self.parsimony_75_pct = calc_percentile(parsimony_score_list, 75)
 
 
 def calc_parsimony(unrooted_tree: UnrootedTree, aln: list[str], names: list[str]) -> list[int]:
