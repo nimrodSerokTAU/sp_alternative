@@ -15,7 +15,12 @@ folder = f'/Users/kpolonsky/Documents/sp_alternative/comparison_files/AATF/'
 #folder = f'/groups/pupko/kseniap/HOMSTRAD/Homstrad/ALL_MSAs/{code}'
 #folder = f'/groups/pupko/kseniap/OXBENCH/ALL_MSAs_fixed/{code}'
 # folder = f'/groups/pupko/kseniap/OrthoMaM/OrthoMaM_final_MSAs/{code}/'
-configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62'), EvoModel(-10, -0.5, 'BLOSUM50')],
+configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62'), EvoModel(-6, -0.5, 'BLOSUM62'),
+                                              EvoModel(-10, -1, 'BLOSUM62'), EvoModel(-6, -1, 'BLOSUM62'),
+                                              EvoModel(-10, -0.2, 'BLOSUM62'), EvoModel(-6, -0.2, 'BLOSUM62'),
+                                              EvoModel(-10, -0.5, 'PAM250'), EvoModel(-6, -0.5, 'PAM250'),
+                                              EvoModel(-10, -1, 'PAM250'), EvoModel(-6, -1, 'PAM250'),
+                                              EvoModel(-10, -0.2, 'PAM250'), EvoModel(-6, -0.2, 'PAM250')],
                                              SopCalcTypes.EFFICIENT, folder,
                                              {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT,
                                               WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
