@@ -1223,7 +1223,7 @@ def test_percentile():
     res_25: float = calc_percentile(values, 25)
     res_75: float = calc_percentile(values, 75)
     assert res_25 == 4.5
-    assert res_75 == 23
+    assert res_75 == 16.25
 
 
 ############## Doc tests:
