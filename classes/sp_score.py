@@ -119,12 +119,12 @@ class SPScore:
                     char_index = translate_to_matrix_index(char, self.code_to_index_dict)
                     histo[char_index]['count'] += 1
             for i in range(options_count):
-                if histo[i] != 0:
+                if histo[i]['count'] != 0:
                     sp_match_score += float(self.w_matrix[i][i] *
                                            histo[i]['count'] * (histo[i]['count'] - 1) / 2)
                     sp_match_count += histo[i]['count'] * (histo[i]['count'] - 1) / 2
                     for j in range(i + 1, options_count):
-                        if histo[j] != 0:
+                        if histo[j]['count'] != 0:
                             sp_mismatch_score += (self.w_matrix[i][j] *
                                             histo[i]['count'] * histo[j]['count'])
                             sp_mismatch_count += histo[i]['count'] * histo[j]['count']
