@@ -10,6 +10,7 @@ from classes.gaps_stats import GapStats
 from classes.global_alignment import GlobalAlign
 from classes.kmer_stats import KMerStats
 from classes.msa import MSA
+from classes.msa_align_by_pattern import MsaAlignByPattern
 from classes.msa_basic_stats import BasicStats
 from classes.neighbor_joining import NeighborJoining
 from classes.node import Node
@@ -1391,3 +1392,10 @@ def test_features_doc_k_mer_average():
 def comp_3():  # use when needed # TODO: remove later
     res = msa_comp_main()
     assert res is None
+
+
+def test_align_from_pattern():
+    MsaAlignByPattern(dataset_name='a',
+                      original_file_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/input_for_align/AATF_orig.fas',
+                      pattern_file_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/input_for_align/AATF_pattern.fas',
+                      output_dir_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/output/from_pattern')
