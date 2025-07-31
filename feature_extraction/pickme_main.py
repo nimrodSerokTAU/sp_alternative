@@ -16,55 +16,17 @@ if __name__ == '__main__':
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
-        # i = 2
-        # pickme = PickMeGameProgram(features_file='./out/balibase_RV10-50_features_080125_w_foldmason_scores.csv',
-        #                            prediction_file=f'./out/BaliBase_ALL_10-50/DL8_w_foldmason_features/prediction_DL_{i}_mode1_msa_distance.csv',
-        #                            error=0)
-        # pickme = PickMeGameProgram(features_file='./out/orthomam_features_251224.csv',
-        #                     prediction_file=f'./out/orthomam_all_w_balify_no_ancestors/DL7_new_features_w_SoP/prediction_DL_{i}_mode1_msa_distance.csv',
-        #                     error=0)
-
-        # pickme = PickMeGameTrio(features_file='./out/old_features_files/balibase_ALL_features_260125_w_foldmason.csv',
-        #                            prediction_file=f'./out/prediction_DL_{i}_mode3_msa_distance.csv',
-        #                            error=0)
-        #
-
-
-
-        # pickme = PickMeGameTrio(features_file='./out/orthomam_features_new_dpos_280425.csv',
-        #                         prediction_file=f'./out/new_dpos_new_scaler/6_scaled_y_chosen_manually_26feat_ranked_only/5_runs/prediction_DL_{i}_mode3_msa_distance.csv',
-        #                         error=0, subset = None)
-
-
-        pickme = PickMeGameTrio(features_file='./out/orthomam_features_NEW_060625_f.csv',
-                                prediction_file=f'./out/OrthoMaM_NEW/DSEQ/all_custom_mode3/prediction_DL_{i}_mode3_msa_distance.csv',
-                                error=0, subset = None)
-
-        # pickme = PickMeGameTrio(features_file='./out/oxbench_features_new_dpos_with_foldmason_210525.csv',
-        #                         prediction_file=f'./out/prediction_DL_{i}_mode3_msa_distance.csv',
-        #                         error=0, subset = None)
-
-
-        # pickme = PickMeGameTrio(features_file='./out/old_features_files/balibase_ALL_features_260125_w_foldmason.csv',
-        #                         prediction_file=f'./out/prediction_DL_{i}_mode3_msa_distance.csv',
-        #                         error=0, subset=None)
+        true_score_name = 'dseq_from_true'
+        mode = 1
+        # pickme = PickMeGameTrio(features_file='./out/ortho12_features_250725.csv',
+        #                         prediction_file=f'./out/ORTHOMAM12/DSEQ/2_standard/prediction_DL_{i}_mode{mode}_{true_score_name}.csv',
+        #                         true_score_name=true_score_name, error=0, subset=None)
 
         #
-        # pickme = PickMeGameTrio(features_file='./out/balibase_features_ALL_new_dpos_with_foldmason_200525.parquet',
-        #                         prediction_file=f'./out/prediction_DL_{i}_mode3_msa_distance.csv',
-        #                         error=0, subset=None)
+        pickme = PickMeGameTrio(features_file='./out/balibase_features_with_foldmason_220625.csv',
+                                prediction_file=f'./out/BALIBASE/DSEQ/rank_scaler/mode1/1/prediction_DL_{i}_mode1_msa_distance.csv',
+                                true_score_name=true_score_name, error=0, subset = None)
 
-        # pickme = PickMeGameClassification(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-        #                         prediction_file=f'./out/prediction_DL_0_mode1_class_label.csv',
-        #                         error=0, subset = None)
-
-        # pickme = PickMeGameClassification(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-        #                         prediction_file=f'./out/orthomam_NEW/RF_classifier_all_features_threshold_0.5_NS300+KP_alt/rf_prediction_0_mode1_class_label.csv',
-        #                         error=0, subset=None)
-
-        # pickme = PickMeGameMixed(features_file='./out/orthomam_features_260225_with_NS_300Alt.csv',
-        #                                                           prediction_file1=f'./out/part2/prediction_DL_0_mode1_msa_distance.csv', prediction_file2=f'./out/part1/prediction_DL_0_mode1_class_label.csv',
-        #                                                           error=0, subset=None)
 
         pickme.run(i)
 

@@ -7,20 +7,20 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-from classes.msa import MSA, MSAStats
+from classes.msa import MSA
+from distance_calc import compute_distance
 from classes.config import Configuration
 from classes.sp_score import SPScore
 from classes.unrooted_tree import UnrootedTree
-from dpos import compute_dpos_distance, compute_dpos_no_g_distance
-from enums import SopCalcTypes, RootingMethods
+from enums import SopCalcTypes, RootingMethods, DistanceType
 
 folder = '/groups/pupko/kseniap/'
 # output_dir = f'{folder}/OrthoMaM/dpos_res_v2/'
-output_dir = f"{folder}/OrthoMaM/Guidance_Filtering_Paper/pairwise_dpos_res2/"
+output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/pairwise_dpos_res/"
 
 if __name__ == '__main__':
     code = sys.argv[1]
-    dir_path = f'{folder}/OrthoMaM/OrthoMaM_final_MSAs/{code}/{code}/'
+    dir_path = f'{folder}/DataSets/OrthoMaM_v12a_new/ALL_MSAs/{code}/{code}/'
     # dir_path = '/Users/kpolonsky/Downloads/TEST_541_OrthoMaM/MSAs_ALL_500K/ACVR1/'
     dpos_dict = {}
     dpos_array = []
@@ -67,14 +67,16 @@ if __name__ == '__main__':
                         inferred_msa2.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name2)))
 
                         inferred_msa2.order_sequences(inferred_msa1.seq_names)
-                        dpos: float = compute_dpos_distance(inferred_msa1.sequences, inferred_msa2.sequences)
-                        dpos_no_gp: float = compute_dpos_no_g_distance(inferred_msa1.sequences, inferred_msa2.sequences)
+                        # dpos: float = compute_dpos_distance(inferred_msa1.sequences, inferred_msa2.sequences)
+                        dpos_from_true: float = compute_distance(inferred_msa1.sequences, inferred_msa2.sequences, DistanceType.D_POS)
+                        dseq_from_true: float = compute_distance(inferred_msa1.sequences, inferred_msa2.sequences, DistanceType.D_SEQ)
+                        ssp_from_true: float = compute_distance(inferred_msa1.sequences, inferred_msa2.sequences, DistanceType.D_SSP)
 
-                        if isinstance(dpos, float):
+                        if isinstance(dpos_from_true, float):
                             # dpos_dict[(inferred_file_name1, inferred_file_name2)] = dpos
                             # dpos_array.append(float(dpos))
-                            dpos_dict[(inferred_file_name1, inferred_file_name2)] = dpos_no_gp
-                            dpos_array.append(float(dpos_no_gp))
+                            dpos_dict[(inferred_file_name1, inferred_file_name2)] = dpos_from_true
+                            dpos_array.append(float(dpos_from_true))
                         else:
                             print(f"dpos for {inferred_file_name1}, {inferred_file_name2} is not float\n")
 

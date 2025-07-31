@@ -12,6 +12,7 @@ from sklearn.metrics import mean_squared_error, accuracy_score, precision_score,
 from sklearn.base import BaseEstimator, TransformerMixin
 from typing import Literal, List, Any, Iterator, Tuple, Optional
 from scipy.stats import pearsonr, gaussian_kde, norm, rankdata
+# import torch.nn as nn
 import visualkeras
 import joblib
 import xgboost as xgb
@@ -22,7 +23,7 @@ import pickle
 import pydot
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape, Embedding, Concatenate, Flatten
+from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, PReLU, Activation, BatchNormalization, Input, ELU, Attention, Reshape, Embedding, Concatenate, Flatten
 from tensorflow.keras.optimizers import Adam, Nadam, RMSprop
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.initializers import GlorotUniform
@@ -34,8 +35,106 @@ from tensorflow.keras import backend as K
 from tensorflow.keras import metrics
 from feature_extraction.classes.group_aware_scaler import GroupAwareScaler
 from feature_extraction.classes.batch_generator import BatchGenerator
+import random
 
-def _assign_aligner(row: pd.Series) -> str:
+# def _choose_codes_with_full_data(df):
+#     taxa_values = [20, 30, 40, 50, 60]
+#     filtered = df[(df['Count'] >= 1600) & (df['taxa'].isin(taxa_values))]
+#
+#     result = (
+#         filtered.groupby('taxa', group_keys=False)
+#         .apply(lambda x: x.sample(n=55, random_state=42) if len(x) >= 55 else x)
+#     )
+#     code_list = result['Code'].tolist()
+#     print(code_list)
+#     return code_list
+
+import pandas as pd
+
+# seed = 42
+# np.random.seed(seed)
+# random.seed(seed)
+# tf.random.set_seed(seed)
+
+def _summarize_data(df):
+    from collections import defaultdict
+
+    summary = {}
+
+    for taxa_num in df['taxa_num'].unique():
+        taxa_df = df[df['taxa_num'] == taxa_num]
+
+        code1_dict = defaultdict(dict)
+
+        for code1 in taxa_df['code1'].unique():
+            sub_df = taxa_df[taxa_df['code1'] == code1]
+
+            aligner_counts = sub_df.groupby('aligner')['code'].nunique().to_dict()
+
+            code1_dict[code1] = aligner_counts
+
+        summary[taxa_num] = {
+            'unique_code1_count': taxa_df['code1'].nunique(),
+            # 'code1_details': code1_dict #TODO
+        }
+    print(summary, "\n")
+    return summary
+
+def _get_balanced_dpos_distribution(df):
+    threshold = 0.01
+    keep_fraction = 0.2
+    low_group = df[df['dpos_from_true'] < threshold]
+    high_group = df[df['dpos_from_true'] >= threshold]
+    downsampled_low = low_group.sample(frac=keep_fraction, random_state=42)
+    balanced_df = pd.concat([downsampled_low, high_group]).reset_index(drop=True)
+
+    plt.hist(df['dpos_from_true'], bins=100, alpha=0.5, label='Original')
+    plt.hist(balanced_df['dpos_from_true'], bins=100, alpha=0.5, label='Balanced')
+    plt.legend()
+    plt.title("Distribution of 'dpos_from_true'")
+    plt.show()
+
+    return balanced_df
+
+def _get_balanced_frequent_codes(df, min_code1_count, frequent_codes):
+    frequent_codes_set = set(frequent_codes)
+    frequent_codes_balanced_per_taxa = []
+
+    for taxa, group in df.groupby('taxa_num'):
+        valid_codes = group[group['code1'].isin(frequent_codes_set)]['code1'].unique()
+
+        if len(valid_codes) >= min_code1_count:
+            sampled_codes = pd.Series(valid_codes).sample(n=min_code1_count, random_state=42).tolist() #TODO: random seed is fixed
+            frequent_codes_balanced_per_taxa.extend(sampled_codes)
+        else:
+            print(f"Skipping taxa_num={taxa} — only {len(valid_codes)} valid codes (need {min_code1_count})")
+
+    return frequent_codes_balanced_per_taxa
+
+def _balanced_sample_by_code1_and_taxa(df):
+    code_counts = df['code1'].value_counts()
+    # frequent_codes = code_counts[code_counts >= 1600].index #TODO
+    frequent_codes = code_counts[code_counts >= 1400].index #TODO
+
+    filtered_df = df[df['code1'].isin(frequent_codes)]
+
+    code1_taxa_counts = (
+        filtered_df[['code1', 'taxa_num']]
+        .drop_duplicates()
+        .groupby('taxa_num')
+        .size()
+    )
+
+    min_code1_count = code1_taxa_counts.min()
+
+    frequent_codes_balanced_per_taxa = _get_balanced_frequent_codes(filtered_df, min_code1_count, frequent_codes)
+    selected_codes_set = set(frequent_codes_balanced_per_taxa) #TODO the set has names of the MSAs but not per code the correct way would be choosing by a pair of code and code1
+    final_df = df[df['code1'].isin(selected_codes_set)]
+
+    return final_df
+
+
+def   _assign_aligner(row: pd.Series) -> str:
     code = row['code'].lower()
     not_mafft = ['muscle', 'prank', '_true.fas', 'true_tree.txt', 'bali_phy', 'baliphy', 'original']
 
@@ -91,22 +190,22 @@ def _check_missing_values(df: pd.DataFrame, verbose) -> pd.DataFrame:
     return df
 
 def _print_correlations(df: pd.DataFrame, true_score_name: str) -> None:
-    corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score_Blosum50'], df[true_score_name])
-    print(f"Pearson Correlation of Normalized SOP Blosum50 and {true_score_name}: {corr_coefficient1:.4f}\n",
-          f"P-value of non-correlation: {p_value1:.6f}\n")
-    corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score_Blosum62'], df[true_score_name])
+    # corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score_Blosum50'], df[true_score_name])
+    # print(f"Pearson Correlation of Normalized SOP Blosum50 and {true_score_name}: {corr_coefficient1:.4f}\n",
+    #       f"P-value of non-correlation: {p_value1:.6f}\n")
+    corr_coefficient1, p_value1 = pearsonr(df['sp_norm_BLOSUM62_GO_-10_GE_-0.5'], df[true_score_name])
     print(f"Pearson Correlation of Normalized SOP Blosum62 and {true_score_name}: {corr_coefficient1:.4f}\n",
           f"P-value of non-correlation: {p_value1:.6f}\n")
-    corr_coefficient1, p_value1 = pearsonr(df['sop_score_Blosum50'], df[true_score_name])
-    print(f"Pearson Correlation of SOP Blosum 50 and {true_score_name}: {corr_coefficient1:.4f}\n",
-          f"P-value of non-correlation: {p_value1:.6f}\n")
-    corr_coefficient1, p_value1 = pearsonr(df['sop_score_Blosum62'], df[true_score_name])
+    # corr_coefficient1, p_value1 = pearsonr(df['sop_score_Blosum50'], df[true_score_name])
+    # print(f"Pearson Correlation of SOP Blosum 50 and {true_score_name}: {corr_coefficient1:.4f}\n",
+    #       f"P-value of non-correlation: {p_value1:.6f}\n")
+    corr_coefficient1, p_value1 = pearsonr(df['sp_BLOSUM62_GO_-10_GE_-0.5'], df[true_score_name])
     print(f"Pearson Correlation of SOP Blosum 62 and {true_score_name}: {corr_coefficient1:.4f}\n",
           f"P-value of non-correlation: {p_value1:.6f}\n")
 def _assign_true_score_name(predicted_measure: str) -> str:
     if predicted_measure == 'msa_distance':
-        true_score_name = "dpos_from_true"
-        # true_score_name = "dseq_from_true"
+        # true_score_name = "dpos_from_true"
+        true_score_name = "dseq_from_true"
         # true_score_name = "ssp_from_true"
     elif predicted_measure == 'tree_distance':
         true_score_name = 'normalized_rf'
@@ -134,18 +233,15 @@ class Regressor:
     test_size: portion of the codes to be separated into a test set; all MSAs for that specific code would be on the same side of the train-test split
     mode: 1 is all features (default), 2 is all except SoP features, 3 is chosen list of features
     remove_correlated_features: if the highly correlated features should be removed (boolean, default value: False)
-    predicted_measure: 'msa_distance' is a default measure
     scale_labels: y-labels by default are also rank-percentile scaled
     '''
     def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False,
-                 predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0,
-                 verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard',
+                 i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard',
                  true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dpos_from_true') -> None:
         self.empirical = empirical
         self.verbose = verbose
         self.features_file: str = features_file
         self.test_size: float = test_size
-        self.predicted_measure: Literal['msa_distance', 'class_label'] = predicted_measure
         self.mode: int = mode
         # self.num_estimators = n_estimators
         self.X_train, self.X_test, self.y_train, self.y_test = None, None, None, None
@@ -158,17 +254,40 @@ class Regressor:
         self.final_features_names = None
         self.remove_correlated_features: bool = remove_correlated_features
         self.scaler_type = scaler_type
+        if scaler_type not in {'standard', 'rank'}:
+            raise ValueError(f"Invalid scaler_type: {scaler_type}, the allowed options are 'standard' or 'rank'\n")
         self.true_score_name = true_score_name
+        if true_score_name not in {'ssp_from_true', 'dseq_from_true', 'dpos_from_true'}:
+            raise ValueError(f"Invalid true_score_name: {true_score_name}, the allowed options are 'ssp_from_true', 'dseq_from_true', 'dpos_from_true'\n")
 
         df = _read_features_into_df(self.features_file)
-        # self.true_score_name = _assign_true_score_name(self.predicted_measure) #TODO - instead of assigning it testing assigning it a parameter above
 
-
-        # df["conserved_col_pct"] = df['num_cols_no_gaps'] / df['msa_len']
         df['aligner'] = df.apply(_assign_aligner, axis=1)
-        df = df[df['aligner'] != 'true'] #TODO - removed all True MSAs
+        df = df[df['aligner'] != 'true']  # TODO - removed all True MSAs
 
-        df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_aligner.csv', index=False)
+        # df = df[df['dpos_from_true'] != 0] #TODO - comment
+        # summary = _summarize_data(df)  # TODO
+        # df = df[df['taxa_num'] >= 40]  #TODO - comment
+        # df = df[(df['taxa_num'] >= 20) & (df['taxa_num'] <= 40)]
+        # df = df[df['taxa_num'] == 40]  #TODO - comment
+        # summary = _summarize_data(df)  # TODO
+        # df = _get_balanced_dpos_distribution(df)
+        # summary = _summarize_data(df)  # TODO
+
+        # df = df.drop_duplicates(subset=[col for col in df.columns if col != 'code']) #TODO - comment
+        # summary = _summarize_data(df)  # TODO
+        #
+        # df = _balanced_sample_by_code1_and_taxa(
+        #     df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
+        # summary = _summarize_data(df)  # TODO
+
+
+        plt.hist(df[self.true_score_name], bins=100, alpha=0.5, label='Final')
+        plt.legend()
+        plt.title(f"Distribution of {self.true_score_name}")
+        plt.show()
+
+        df.to_csv('./out/features_w_aligner.csv', index=False)
 
         df = _check_missing_values(df, self.verbose)
         if self.verbose == 1:
@@ -177,6 +296,7 @@ class Regressor:
         self._split_into_training_test(df, test_size)
 
         self._finalize_features(df)
+        summary = _summarize_data(df)  # TODO
         self._scale(i=i)
 
         if self.verbose == 1:
@@ -189,7 +309,7 @@ class Regressor:
             self.scaler = StandardScaler()
             self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit)
             self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling
-            joblib.dump(self.scaler, f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+            joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
         elif self.scaler_type == 'rank':
             self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
@@ -197,7 +317,7 @@ class Regressor:
             self.X_test_scaled = self.scaler.transform(self.test_df)
             self.final_features_names = self.scaler.get_feature_names_out()
             self.scaler.save(
-                f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/scaler_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+                f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
             """ SCALED y-labels """
             self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
@@ -235,8 +355,8 @@ class Regressor:
         x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True) #TODO uncomment this line
         x_train_scaled_to_save.to_csv(
-            f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_scaled_{i}.csv', index=False)
-        self.train_df.to_csv(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/train_unscaled_{i}.csv',
+            f'./out/train_scaled_{i}.csv', index=False)
+        self.train_df.to_csv(f'./out/train_unscaled_{i}.csv',
                              index=False)
 
         # writing test set into csv
@@ -245,17 +365,17 @@ class Regressor:
         x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True) #TODO uncomment this line
-        x_test_scaled_to_save.to_csv(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_scaled_{i}.csv',
+        x_test_scaled_to_save.to_csv(f'./out/test_scaled_{i}.csv',
                                      index=False)
-        self.test_df.to_csv(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/test_unscaled_{i}.csv',
+        self.test_df.to_csv(f'./out/test_unscaled_{i}.csv',
                             index=False)
 
 
     def _split_into_training_test(self, df, test_size):
         self.unique_code1 = df['code1'].unique()
-        self.train_code1, self.test_code1 = train_test_split(self.unique_code1,
-                                                   test_size=test_size)
-        # self.train_code1, self.test_code1 = train_test_split(self.unique_code1, test_size=test_size, random_state=42) # TODO add random state for reproducability
+        # self.train_code1, self.test_code1 = train_test_split(self.unique_code1,
+        #                                            test_size=test_size)
+        self.train_code1, self.test_code1 = train_test_split(self.unique_code1, test_size=test_size, random_state=42) # TODO add random state for reproducability
 
         if self.verbose == 1:
             print(f"the training set is: {self.train_code1} \n")
@@ -263,6 +383,10 @@ class Regressor:
 
         # Create training and test DataFrames by filtering based on 'code1'
         self.train_df = df[df['code1'].isin(self.train_code1)]
+
+        # train only on PRANK and BALIPHY
+        # self.train_df = self.train_df[self.train_df['aligner'].isin(['prank', 'baliphy'])]  #TODO - trying to train with PRANK and BALIPHY only
+
         self.test_df = df[df['code1'].isin(self.test_code1)]
         # self.train_codes = train_code1
         # self.test_codes = test_code1
@@ -279,14 +403,16 @@ class Regressor:
     def _finalize_features(self, df):
         # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
         #                  'normalised_sop_score_Blosum50', 'normalised_sop_score_Blosum62', 'aligner']
-        columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
-                               'aligner'] + ['normalised_sop_score_Blosum62', 'normalised_sop_score_Blosum50', 'sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
-                                                                              'sp_ge_count_Blosum50', 'sp_score_gap_e_norm_Blosum50',
-                                                                              'sp_missmatch_ratio_Blosum50','sp_match_ratio_Blosum50',
-                                                                              'number_of_mismatches_Blosum50'] #TODO - dropping all Blosum 50 statistics
+        # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
+        #                        'aligner'] + ['normalised_sop_score_Blosum62', 'normalised_sop_score_Blosum50', 'sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
+        #                                                                       'sp_ge_count_Blosum50', 'sp_score_gap_e_norm_Blosum50',
+        #                                                                       'sp_missmatch_ratio_Blosum50','sp_match_ratio_Blosum50',
+        #                                                                       'number_of_mismatches_Blosum50'] #TODO - dropping all Blosum 50 statistics
         # columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
         #                        'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner'] #TODO: this is  version for old dpos file
-        columns_to_drop_extended = columns_to_drop_dft + ['sop_score_Blosum62', 'sop_score_Blosum50', 'normalised_sop_score_Blosum62']
+        columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
+                               'aligner']
+        # columns_to_drop_extended = columns_to_drop_dft + ['sop_score_Blosum62', 'sop_score_Blosum50', 'normalised_sop_score_Blosum62']
         if self.empirical == True:
             # columns_to_choose = ['constant_sites_pct', 'sop_score', 'normalised_sop_score_Blosum62', 'entropy_mean',
             #                      'sp_score_subs_norm', 'sp_ge_count', 'number_of_gap_segments', 'nj_parsimony_score',
@@ -297,18 +423,32 @@ class Regressor:
             #                      'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'gaps_len_three_plus', 'number_of_mismatches',
             #                      'sp_missmatch_ratio', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one','gaps_len_three',
             #                      'sp_match_ratio', 'taxa_num']
-            columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean',
-                                 'sp_score_subs_norm_Blosum62',
-                                 'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62',
-                                 'k_mer_10_mean',
-                                 'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-                                 'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-                                 'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus',
-                                 'sp_missmatch_ratio_Blosum62',
-                                 'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one',
-                                 'gaps_len_three',
-                                 'number_of_mismatches_Blosum62', 'taxa_num', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE']
+            # columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean',
+            #                      'sp_score_subs_norm_Blosum62',
+            #                      'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62',
+            #                      'k_mer_10_mean',
+            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+            #                      'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus',
+            #                      'sp_missmatch_ratio_Blosum62',
+            #                      'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one',
+            #                      'gaps_len_three',
+            #                      'number_of_mismatches_Blosum62', 'taxa_num', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE']
+            columns_to_choose = ['MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'sp_ge_norm', 'bl_75_pct', 'msa_length',
+                                 'k_mer_average_K5', 'bl_25_pct', 'sp_mismatch_count_norm', 'sp_match_count_norm',
+                                 'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
+                                 'avg_unique_gap_length', 'k_mer_90_pct_K5', 'k_mer_95_pct_K5', 'bl_min', 'num_cols_no_gaps',
+                                 'parsimony_max', 'sp_go_norm', 'num_cols_2_gaps', 'gaps_all_except_1_len2', 'taxa_num',
+                                 'parsimony_min', 'k_mer_95_pct_K10', 'entropy_max', 'num_cols_1_gap',
+                                 'num_cols_all_gaps_except1', 'k_mer_90_pct_K20', 'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
+                                 'gaps_len_four_plus', 'gaps_2seq_len4plus', 'sp_mismatch_norm_BLOSUM62', 'gaps_1seq_len1',
+                                 'double_char_count', 'k_mer_95_pct_K20', 'bl_sum', 'n_unique_sites',
+                                 'sp_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
+                                 'seq_max_len', 'parsimony_25_pct', 'num_unique_gaps_norm', 'bl_mean',
+                                 'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
+                                 'gaps_all_except_1_len4plus']
+
             # columns_to_choose = ['MEAN_RES_PAIR_SCORE']
         else:
             # columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
@@ -319,14 +459,90 @@ class Regressor:
             #                      'num_cols_1_gap', 'single_char_count',
             #                      'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
             #                      'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
-            columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean', 'sp_score_subs_norm_Blosum62',
-                                 'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62', 'k_mer_10_mean',
-                                 'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-                                 'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-                                 'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus', 'sp_missmatch_ratio_Blosum62',
-                                 'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one', 'gaps_len_three',
-                                 'number_of_mismatches_Blosum62', 'taxa_num']
+            # columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean', 'sp_score_subs_norm_Blosum62',
+            #                      'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62', 'k_mer_10_mean',
+            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+            #                      'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus', 'sp_missmatch_ratio_Blosum62',
+            #                      'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one', 'gaps_len_three',
+            #                      'number_of_mismatches_Blosum62', 'taxa_num']
+            # columns_to_choose = ['sp_ge_norm', 'bl_75_pct', 'msa_length',
+            #                      'k_mer_average_K5', 'bl_25_pct', 'sp_missmatch_count_norm', 'sp_match_count_norm',
+            #                      'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
+            #                      'avg_unique_gap_length', 'k_mer_90_pct_K5', 'k_mer_95_pct_K5', 'bl_min',
+            #                      'num_cols_no_gaps',
+            #                      'parsimony_max', 'sp_go_norm', 'num_cols_2_gaps', 'gaps_all_except_1_len2', 'taxa_num',
+            #                      'parsimony_min', 'k_mer_95_pct_K10', 'entropy_max', 'num_cols_1_gap',
+            #                      'num_cols_all_gaps_except_1', 'k_mer_90_pct_K20',
+            #                      'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
+            #                      'gaps_len_four_plus', 'gaps_2seq_len4plus', 'sp_mismatch_norm_BLOSUM62',
+            #                      'gaps_1seq_len1',
+            #                      'double_char_count', 'k_mer_95_pct_K20', 'bl_sum', 'n_unique_sites',
+            #                      'SP_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
+            #                      'k_mer_average_K5', 'seq_max_len', 'parsimony_25_pct', 'num_unique_gaps_norm',
+            #                      'bl_mean',
+            #                      'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
+            #                      'gaps_all_except_1_len4plus']
+
+            # columns_to_choose = ['msa_length', 'taxa_num', 'constant_sites_pct', 'n_unique_sites',
+            #                      'entropy_mean', 'entropy_75_pct',
+            #                      # 'entropy_sum', 'entropy_max',
+            #
+            #                      'num_gap_segments_norm', 'av_gap_segment_length', 'num_unique_gaps', 'num_unique_gaps_norm',
+            #                      'avg_unique_gap_length', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps',
+            #                      'gaps_len_one', 'gaps_len_four_plus', 'gaps_1seq_len1',
+            #                      'gaps_2seq_len4plus', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_1seq_len4plus',
+            #                      'num_cols_all_gaps_except1',  'gaps_all_except_1_len4plus',
+            #                      'gaps_all_except_1_len2', 'gaps_all_except_1_len3', 'gaps_all_except_1_len1',
+            #
+            #                      'double_char_count', 'single_char_count', 'seq_min_len', 'seq_max_len',
+            #
+            #                      'bl_75_pct', 'bl_25_pct', 'bl_mean', 'bl_min', 'bl_max', 'bl_sum',
+            #
+            #                      'sp_match_count', 'sp_mismatch_count', 'sp_match_count_norm', 'sp_mismatch_count_norm',
+            #                      'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm',
+            #                      'sp_match_BLOSUM62', 'sp_mismatch_BLOSUM62',
+            #                      # 'sp_match_norm_BLOSUM62', 'sp_mismatch_norm_BLOSUM62',
+            #                      'sp_mismatch_norm_PAM250',
+            #
+            #                      'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
+            #                      'sp_PAM250_GO_-6_GE_-1', 'sp_norm_PAM250_GO_-6_GE_-1',
+            #                      # 'sp_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5',
+            #                      # 'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
+            #
+            #                      'parsimony_25_pct', 'parsimony_75_pct', 'parsimony_mean', 'parsimony_min',
+            #                      'parsimony_max', 'parsimony_sum',
+            #
+            #                      'k_mer_max_K10', 'k_mer_average_K10', 'k_mer_95_pct_K10', 'k_mer_90_pct_K10',
+            #                      'k_mer_average_K10', 'k_mer_95_pct_K20', 'k_mer_average_K5'
+            #
+            #                      ]
+
+            columns_to_choose = ['sp_mismatch_norm_PAM250','sp_mismatch_norm_BLOSUM62', 'sp_norm_PAM250_GO_-6_GE_-0.2', 'sp_PAM250_GO_-6_GE_-0.2',
+                                 'constant_sites_pct', 'sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm',
+                                 'msa_length', 'taxa_num',
+                                 'entropy_sum', 'entropy_mean', 'entropy_75_pct',
+                                 'sp_go_norm', 'sp_ge_norm', 'parsimony_sum', 'parsimony_mean', 'parsimony_25_pct','parsimony_75_pct', 'parsimony_max',
+                                 'k_mer_average_K5', 'k_mer_90_pct_K5', 'single_char_count',
+                                 'num_cols_no_gaps', 'num_cols_2_gaps', 'gaps_len_four_plus', 'gaps_all_except_1_len4plus', 'gaps_2seq_len1',
+                                 'num_cols_all_gaps_except1', 'av_gap_segment_length', 'num_unique_gaps',
+                                 'bl_mean', 'bl_max', 'bl_25_pct', 'n_unique_sites'
+                                 ]
+
+            # columns_to_choose = ['sp_ge_norm', 'bl_75_pct', 'msa_length',
+            #                      'k_mer_average_K5', 'bl_25_pct', 'sp_mismatch_count_norm', 'sp_match_count_norm',
+            #                      'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
+            #                      'avg_unique_gap_length', 'k_mer_90_pct_K5', 'k_mer_95_pct_K5', 'bl_min', 'num_cols_no_gaps',
+            #                      'parsimony_max', 'sp_go_norm', 'num_cols_2_gaps', 'gaps_all_except_1_len2', 'taxa_num',
+            #                      'parsimony_min', 'k_mer_95_pct_K10', 'entropy_max', 'num_cols_1_gap',
+            #                      'num_cols_all_gaps_except1', 'k_mer_90_pct_K20', 'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
+            #                      'gaps_len_four_plus', 'gaps_2seq_len4plus', 'sp_mismatch_norm_BLOSUM62', 'gaps_1seq_len1',
+            #                      'double_char_count', 'k_mer_95_pct_K20', 'bl_sum', 'n_unique_sites',
+            #                      'sp_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
+            #                      'k_mer_average_K5', 'seq_max_len', 'parsimony_25_pct', 'num_unique_gaps_norm', 'bl_mean',
+            #                      'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
+            #                      'gaps_all_except_1_len4plus']
 
         self.y = df[self.true_score_name]
 
@@ -338,13 +554,13 @@ class Regressor:
             self.X_test = self.test_df.drop(
                 columns=columns_to_drop_dft)
 
-        if self.mode == 2:
-            self.X = df.drop(
-                columns=columns_to_drop_extended)
-            self.X_train = self.train_df.drop(
-                columns=columns_to_drop_extended)
-            self.X_test = self.test_df.drop(
-                columns=columns_to_drop_extended)
+        # if self.mode == 2:
+        #     self.X = df.drop(
+        #         columns=columns_to_drop_extended)
+        #     self.X_train = self.train_df.drop(
+        #         columns=columns_to_drop_extended)
+        #     self.X_test = self.test_df.drop(
+        #         columns=columns_to_drop_extended)
 
         if self.mode == 3:
             self.X = df[columns_to_choose]
@@ -368,13 +584,13 @@ class Regressor:
         self.y_train = self.train_df[self.true_score_name]
         self.y_test = self.test_df[self.true_score_name]
 
-    def deep_learning(self, epochs: int = 50, batch_size: int = 16, validation_split: float = 0.2, verbose: int = 1,
+    def deep_learning(self, epochs: int = 50, batch_size: int = 32, validation_split: float = 0.2, verbose: int = 1,
                       learning_rate: float = 0.01, neurons: list[int] = [128, 64, 16], dropout_rate: float = 0.2,
                       l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1,
-                      mixed_portion: float = 0.3, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 50,
+                      mixed_portion: float = 0, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 1,
                       per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse"] = 'mse',
                       regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2',
-                      batch_generation: Literal['standard', 'custom'] = 'custom') -> float:
+                      batch_generation: Literal['standard', 'custom'] = 'standard') -> float:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
@@ -411,96 +627,113 @@ class Regressor:
 
             return total_loss
 
-        if self.predicted_measure == 'msa_distance':
-            model = Sequential()
-            model.add(Input(shape=(self.X_train_scaled.shape[1],)))
+        # MODEL PART
+        model = Sequential()
+        model.add(Input(shape=(self.X_train_scaled.shape[1],)))
 
-            if regularizer_name == "l1":
-                ker_regularizer = regularizers.l1(l1=l1)
+        if regularizer_name == "l1":
+            ker_regularizer = regularizers.l1(l1=l1)
 
-            if regularizer_name == "l2":
-                ker_regularizer = regularizers.l2(l2=l2)
+        if regularizer_name == "l2":
+            ker_regularizer = regularizers.l2(l2=l2)
 
-            if regularizer_name == "l1_l2":
-                ker_regularizer = regularizers.l1_l2(l1=l1, l2=l2)
+        if regularizer_name == "l1_l2":
+            ker_regularizer = regularizers.l1_l2(l1=l1, l2=l2)
 
-            #first hidden
+        if not neurons[0] == 0:
+            # first hidden
             model.add(
                 Dense(neurons[0], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
             model.add(BatchNormalization())
-            model.add(LeakyReLU(negative_slope=0.01))
+            # model.add(LeakyReLU(negative_slope=0.01))
+            model.add(PReLU())
             model.add(Dropout(dropout_rate))
 
-            #first hidden #TODO remove
-            model.add(
-                Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
-            model.add(BatchNormalization())
-            model.add(LeakyReLU(negative_slope=0.01))
-            model.add(Dropout(dropout_rate))
-
+        if not neurons[1] == 0:
             # second hidden
             model.add(
                 Dense(neurons[1], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
             model.add(BatchNormalization())
-            model.add(LeakyReLU(negative_slope=0.01))
+            # model.add(LeakyReLU(negative_slope=0.01))
+            model.add(PReLU())
             model.add(Dropout(dropout_rate))
 
+
+        # # #first hidden #TODO remove
+        # model.add(
+        #     Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
+        # model.add(BatchNormalization())
+        # model.add(LeakyReLU(negative_slope=0.01))
+        # model.add(Dropout(dropout_rate))
+
+        if not neurons[2] == 0:
             # third hidden
-            model.add(Dense(neurons[2], kernel_initializer=GlorotUniform(),kernel_regularizer=ker_regularizer))
+            model.add(
+                Dense(neurons[2], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
             model.add(BatchNormalization())
-            model.add(LeakyReLU(negative_slope=0.01))
+            # model.add(LeakyReLU(negative_slope=0.01))
+            model.add(PReLU())
             model.add(Dropout(dropout_rate))
 
-            model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
+        if not neurons[3] == 0:
+            # fourth hidden
+            model.add(Dense(neurons[3], kernel_initializer=GlorotUniform(),kernel_regularizer=ker_regularizer))
+            model.add(BatchNormalization())
+            # model.add(LeakyReLU(negative_slope=0.01))
+            model.add(PReLU())
+            model.add(Dropout(dropout_rate))
 
-            optimizer = Adam(learning_rate=learning_rate)
-            # optimizer = RMSprop(learning_rate=learning_rate)
+        model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
 
-            if loss_fn == 'mse':
-                model.compile(optimizer=optimizer, loss='mean_squared_error')
+        optimizer = Adam(learning_rate=learning_rate)
+        # optimizer = RMSprop(learning_rate=learning_rate)
 
-            elif loss_fn == "custom_mse":
-                model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
-                                                            ranking_weight=ranking_weight))
+        if loss_fn == 'mse':
+            model.compile(optimizer=optimizer, loss='mean_squared_error')
 
-            unique_train_codes = self.main_codes_train.unique()
-            train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2)
-            if self.verbose == 1:
-                print(f"the training set is: {train_msa_ids} \n")
-                print(f"the validation set is: {val_msa_ids} \n")
-            # x_train_scaled_with_names = pd.DataFrame(self.X_train_scaled)
-            # x_train_scaled_with_names.columns = self.X_train.columns
-            batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                             true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
-                                             validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+        elif loss_fn == "custom_mse":
+            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
+                                                        ranking_weight=ranking_weight))
 
-            val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                           true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
-                                           batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+        unique_train_codes = self.main_codes_train.unique()
+        train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2, random_state=42)  # TODO add random state for reproducability
+        if self.verbose == 1:
+            print(f"the training set is: {train_msa_ids} \n")
+            print(f"the validation set is: {val_msa_ids} \n")
+        # x_train_scaled_with_names = pd.DataFrame(self.X_train_scaled)
+        # x_train_scaled_with_names.columns = self.X_train.columns
+        batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
+                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
+                                         validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
 
-            # Callback 1: early stopping
-            early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
-            # Callback 2: learning rate scheduler
-            lr_scheduler = ReduceLROnPlateau(
-                monitor='val_loss',  # to monitor
-                patience=3,  # number of epochs with no improvement before reducing the learning rate
-                verbose=1,
-                factor=0.5,  # factor by which the learning rate will be reduced
-                min_lr=1e-6,  # lower bound on the learning rate
-                min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
-            )
-            callbacks = [
-                early_stopping,
-                lr_scheduler
-            ]
+        val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
+                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
+                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
 
-            if batch_generation == 'custom':
-                history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
-                                        callbacks=callbacks)
-            elif batch_generation == 'standard':
-                history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
-                                    validation_split=validation_split, verbose=verbose,
+        # Callback 1: early stopping
+        # early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+        # Callback 2: learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(
+            monitor='val_loss',  # to monitor
+            patience=3,  # number of epochs with no improvement before reducing the learning rate
+            verbose=1,
+            factor=0.5,  # factor by which the learning rate will be reduced
+            min_lr=1e-6  # lower bound on the learning rate
+            # min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
+        )
+        callbacks = [
+            early_stopping,
+            lr_scheduler
+        ]
+
+        if batch_generation == 'custom':
+            history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
                                     callbacks=callbacks)
+        elif batch_generation == 'standard':
+            history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
+                                validation_split=validation_split, verbose=verbose,
+                                callbacks=callbacks)
 
         plt.plot(history.history['loss'], label='Training Loss')
         plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -511,14 +744,14 @@ class Regressor:
         plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
 
         plt.legend()
-        plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
+        plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.true_score_name}.png', format='png')
         plt.show()
         plt.close()
 
         # visualize model architecture
-        plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.predicted_measure}.png', show_shapes=True, show_layer_names=True,
+        plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.true_score_name}.png', show_shapes=True, show_layer_names=True,
                    show_layer_activations=True)
-        model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.predicted_measure}.keras')
+        model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.true_score_name}.keras')
         plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
 
         # substrings = ['original', 'concat']
@@ -539,7 +772,7 @@ class Regressor:
             'predicted_score': self.y_pred
         })
 
-        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.predicted_measure}.csv', index=False)
+        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.true_score_name}.csv', index=False)
 
         mse = mean_squared_error(self.y_test, self.y_pred)
         if self.verbose == 1:
@@ -559,9 +792,9 @@ class Regressor:
             # explainer = shap.Explainer(model, X_test_scaled_with_names)
             # shap_values = explainer(X_test_scaled_with_names)
             joblib.dump(explainer,
-                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/explainer_{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+                        f'./out/explainer_{i}_mode{self.mode}_{self.true_score_name}.pkl')
             joblib.dump(shap_values,
-                        f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/shap_values__{i}_mode{self.mode}_{self.predicted_measure}.pkl')
+                        f'./out/shap_values__{i}_mode{self.mode}_{self.true_score_name}.pkl')
             matplotlib.use('Agg')
 
             feature_names = [
@@ -570,24 +803,24 @@ class Regressor:
 
             shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
             # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/summary_plot_{i}.png', dpi=300,
+            plt.savefig(f'./out/summary_plot_{i}.png', dpi=300,
                         bbox_inches='tight')
             # plt.show()
             plt.close()
 
             shap.plots.waterfall(shap_values[0], max_display=40)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/waterfall_plot_{i}.png', dpi=300,
+            plt.savefig(f'./out/waterfall_plot_{i}.png', dpi=300,
                         bbox_inches='tight')
             # plt.show()
             plt.close()
 
             shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/force_plot_{i}.png')
+            plt.savefig(f'./out/force_plot_{i}.png')
             # plt.show()
             plt.close()
 
             shap.plots.bar(shap_values, max_display=40)
-            plt.savefig(f'/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/bar_plot_{i}.png', dpi=300,
+            plt.savefig(f'./out/bar_plot_{i}.png', dpi=300,
                         bbox_inches='tight')
             # plt.show()
             plt.close()
@@ -623,7 +856,7 @@ class Regressor:
             title = "Deep learning"
         plt.title(f'{title}: Predicted vs. True Values')
         plt.grid(True)
-        plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
+        plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.true_score_name}.png', format='png')
         plt.show()
         plt.close()
 
@@ -645,7 +878,7 @@ class Regressor:
         plt.xlabel('Predicted distance', fontsize=16, weight='bold', labelpad=10)
         plt.ylabel('dpos distance ("true distance")', fontsize=16, weight='bold', labelpad=10)
         plt.tight_layout()
-        plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.predicted_measure}2.png', format='png')
+        plt.savefig(fname=f'./out/regression_results_{i}_mode{self.mode}_{self.true_score_name}2.png', format='png')
         plt.show()
         plt.close()
 
@@ -671,6 +904,6 @@ class Regressor:
             plt.xticks(fontsize=18)
             plt.yticks(fontsize=18)
             plt.tight_layout()
-            plt.savefig(fname=f'./out/features_importances_{i}_mode{self.mode}_{self.predicted_measure}.png', format='png')
+            plt.savefig(fname=f'./out/features_importances_{i}_mode{self.mode}_{self.true_score_name}.png', format='png')
             plt.show()
             plt.close()

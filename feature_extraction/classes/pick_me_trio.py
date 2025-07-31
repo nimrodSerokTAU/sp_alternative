@@ -7,7 +7,9 @@ from matplotlib import pyplot as plt
 from feature_extraction.classes.regressor import _read_features_into_df
 
 class PickMeGameTrio:
-    def __init__(self, features_file: str, prediction_file: str, predicted_measure: Literal['msa_distance', 'tree_distance'] = 'msa_distance', error: float = 0.0, subset = None) -> None:
+    def __init__(self, features_file: str, prediction_file: str,
+                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dpos_from_true',
+                 error: float = 0.0, subset = None) -> None:
         self.features_file: str = features_file
         self.prediction_file: str = prediction_file
         self.error: float = error
@@ -16,7 +18,7 @@ class PickMeGameTrio:
         self.predicted_class: str = 'predicted_class_prob'
         # self.predicted_score = 'predicted_score2'
         # self.sum_of_pairs_score = 'normalised_sop_score'
-        self.sum_of_pairs_score: str = 'sop_score_Blosum50'
+        self.sum_of_pairs_score: str = 'sp_BLOSUM62_GO_-10_GE_-0.5'
         self.pickme_df: Optional[pd.DataFrame] = None
         self.pickme_sop_df: Optional[pd.DataFrame] = None
         self.accumulated_data: Dict[str, float] = {}
@@ -25,8 +27,7 @@ class PickMeGameTrio:
         self.winners: List[Any] = []
         self.overall_win: List[Any] = []
         self.subset: Optional[float] = subset
-        if predicted_measure == "msa_distance":
-            self.true_score = 'dseq_from_true'
+        self.true_score = true_score_name
 
     # def set_scores(self, df):
     #     scores = []
@@ -94,16 +95,20 @@ class PickMeGameTrio:
             #     scores = np.array(scores, dtype=np.float64)
             #     scores[np.isnan(scores)] = np.inf
 
+            scores[1] = 100  # sop is always 100
+
             if scores[1] < scores[0] and scores[1] <= scores[2]:  # sop < predicted and sop <= default
-                winner = "sop"
+                winner = "SoP"
             elif scores[2] < scores[0] and scores[2] < scores[1]:  # default < predicted and default < sop
-                winner = "default"
-            elif scores[0] < scores[1] and scores[0] <= scores[2]:  #  predicted < sop and predicted <= default
-                winner = "predicted"
+                winner = "Default"
+            elif scores[0] < scores[1] and scores[0] < scores[2]:  #  predicted < sop and predicted <= default
+                winner = "Predicted"
             elif scores[0] == scores[1] == scores[2]:  # default = predicted = sop
-                winner = "tie(all three)"
+                winner = "Tie(all three)"
             elif scores[0] < scores[2] and scores[0] == scores[1]:  # predicted = sop < default
-                winner = "tie(predicted and sop)"
+                winner = "Tie(predicted and SoP)"
+            elif scores[0] < scores[1] and scores[0] == scores[2]:  #  predicted < sop and predicted <= default
+                winner = "Tie(predicted and default)"
             else:
                 print(f"who are you winner? {scores}\n")
                 winner = np.nan
@@ -118,13 +123,13 @@ class PickMeGameTrio:
         min_indices = [i for i, score in enumerate(scores) if score == min_score]
         min_results = [result_map[i] for i in min_indices]
         if 'min predicted' in min_results and 'max sop' in min_results:
-            winner = "tie(predicted and sop)"
+            winner = "Tie(predicted and SoP)"
         elif 'min predicted' in min_results:
-            winner = "predicted"
+            winner = "Predicted"
         elif 'max sop' in min_results:
-            winner = "sop"
+            winner = "SoP"
         else:
-            winner = "default"
+            winner = "Default"
         return winner
     def run(self,i=0):
 
@@ -181,18 +186,22 @@ class PickMeGameTrio:
             mafft_df = code_df[~mask]
             mafft_scores = self.set_scores(mafft_df)
             mafft_scores.append(default_mafft_true_score)
+            # mafft_scores.append(100) #TODO
 
             prank_df = code_df[code_df['code'].str.contains('prank', case=False, na=False, regex=True)]
             prank_scores = self.set_scores(prank_df)
             prank_scores.append(default_prank_true_score)
+            # prank_scores.append(100) #TODO
 
             muscle_df = code_df[code_df['code'].str.contains('muscle', case=False, na=False, regex=True)]
             muscle_scores = self.set_scores(muscle_df)
             muscle_scores.append(default_muscle_true_score)
+            # muscle_scores.append(100) #TODO
 
             baliphy_df = code_df[code_df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
             baliphy_scores = self.set_scores(baliphy_df)
             baliphy_scores.append(default_baliphy_true_score)
+            # baliphy_scores.append(100) #TODO
 
             overall_scores = self.set_scores(code_df)
             # overall_scores.extend([default_mafft_true_score, default_prank_true_score, default_muscle_true_score, default_baliphy_true_score])
@@ -209,10 +218,10 @@ class PickMeGameTrio:
             if code not in self.winners:
                 self.winners.append({
                     'code': code,
-                    'mafft_winner': mafft_winner,
-                    'prank_winner': prank_winner,
-                    'muscle_winner': muscle_winner,
-                    'baliphy_winner': baliphy_winner
+                    'MAFFT': mafft_winner,
+                    'PRANK': prank_winner,
+                    'Muscle': muscle_winner,
+                    'BAli-Phy': baliphy_winner
                 })
 
             if code not in self.overall_win:
@@ -256,6 +265,8 @@ class PickMeGameTrio:
                         (p.get_x() + p.get_width() / 2., p.get_y() + p.get_height() / 2.),
                         ha='center', va='center', color='black', fontsize=10)
 
+        ax.legend(title=None, loc='upper left', fontsize=12)  # <- Remove title, move to upper left
+
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(fname=plotname, format='png')
@@ -265,11 +276,12 @@ class PickMeGameTrio:
         plotname = f'./out/pick_me_trio_overall_plot_v{i}.png'
         df = self.overall_winners_df
         # counts = df.apply(lambda x: x.value_counts()).fillna(0)
-        legend = ["predicted", "sop", "default", 'tie(predicted and sop)']
+        legend = ["SoP", "Predicted", 'Tie(predicted and SoP)']
         counts = df.apply(lambda x: x.value_counts()).fillna(0)
         counts = counts.reindex(legend, fill_value=0)
 
         percentages = counts / len(df) * 100
+
         fig, ax = plt.subplots(figsize=(10, 6))
         percentages.T.plot(kind='bar', stacked=True, ax=ax)
 
@@ -280,6 +292,8 @@ class PickMeGameTrio:
             ax.annotate(f'{p.get_height():.1f}%',
                         (p.get_x() + p.get_width() / 2., p.get_y() + p.get_height() / 2.),
                         ha='center', va='center', color='black', fontsize=10)
+
+        ax.legend(title=None, loc='upper left', fontsize=12)  # <- Remove title, move to upper left
 
         plt.xticks(rotation=45)
         plt.tight_layout()

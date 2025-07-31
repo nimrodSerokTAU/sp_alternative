@@ -1,16 +1,14 @@
 import pandas as pd
 import glob
 
-# folder = '/groups/pupko/kseniap/'
-# output_dir = f'{folder}/OrthoMaM/dpos_res/'
-# output_file = f'{folder}/OrthoMaM/mean_dpos.csv'
-output_dir = '/Users/kpolonsky/Downloads/dpos_among_MSAs/dpos_res2/'
-output_file = '/Users/kpolonsky/Downloads/mean_dpos_v2.csv'
+folder = '/groups/pupko/kseniap/'
+output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/pairwise_dpos_res/"
+output_file = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/mean_pairwise_dpos_v1.csv"
 
 aligners = {
     'MUSCLE': ['muscle', 'MUSCLE'],
     'PRANK': ['prank', 'PRANK'],
-    'MAFFT': ['mafft'],
+    'MAFFT': ['mafft', 'MAFFT'],
     'BALIPHY': ['baliphy','bali_phy', 'BALIPHY']
 }
 
