@@ -16,11 +16,12 @@ from enums import SopCalcTypes, RootingMethods, DistanceType
 
 folder = '/groups/pupko/kseniap/'
 # output_dir = f'{folder}/OrthoMaM/dpos_res_v2/'
-output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/pairwise_dpos_res/"
+# output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/pairwise_dpos_res/"
+output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/SIM_DISTANT/pairwise_dpos_res/"
 
 if __name__ == '__main__':
     code = sys.argv[1]
-    dir_path = f'{folder}/DataSets/OrthoMaM_v12a_new/ALL_MSAs/{code}/{code}/'
+    dir_path = f'{folder}/DataSets/OrthoMaM_v12a_new/SIM_DISTANT/ALL_MSAs/{code}/{code}/'
     # dir_path = '/Users/kpolonsky/Downloads/TEST_541_OrthoMaM/MSAs_ALL_500K/ACVR1/'
     dpos_dict = {}
     dpos_array = []

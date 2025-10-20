@@ -6,8 +6,9 @@ from classes.evo_model import EvoModel
 from enums import SopCalcTypes, WeightMethods, StatsOutput
 from multi_msa_service import multiple_msa_calc_features_and_labels
 
-# code = sys.argv[1]
-folder = f'/Users/kpolonsky/Documents/sp_alternative/comparison_files/GLRA3/'
+code = sys.argv[1]
+print("Code:", code)
+folder = f'/Users/kpolonsky/Documents/sp_alternative/comparison_files/{code}/'
 # folder = f'/groups/pupko/kseniap/BaliBase4/RV11-50/ALL_MSAs_BaliBase11-50/{code}/'
 #folder = f'/groups/pupko/kseniap/BaliBase4/ALL_MSAs_BaliBase/{code}/'
 #folder = f'/groups/pupko/kseniap/ENSEMBLsim_dataset/ALL_MSAs_Ensemble/{code}'

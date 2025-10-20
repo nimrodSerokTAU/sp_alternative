@@ -23,8 +23,8 @@ if __name__ == '__main__':
         #                         true_score_name=true_score_name, error=0, subset=None)
 
         #
-        pickme = PickMeGameTrio(features_file='./out/balibase_features_with_foldmason_220625.csv',
-                                prediction_file=f'./out/BALIBASE/DSEQ/rank_scaler/mode1/1/prediction_DL_{i}_mode1_msa_distance.csv',
+        pickme = PickMeGameTrio(features_file='./out/ortho12_distant_features_260825.csv',
+                                prediction_file=f'./out/prediction_DL_{i}_mode1_dseq_from_true.csv',
                                 true_score_name=true_score_name, error=0, subset = None)
 
 

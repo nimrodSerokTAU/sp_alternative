@@ -21,33 +21,38 @@ def log_function_run(func, *args, **kwargs):
 if __name__ == '__main__':
 
     mse_values = []
-    for i in range(3):
+    for i in range(1):
         #configuration
         mode: int = 1
         # true_score_name: str = 'ssp_from_true'
         true_score_name: str = 'dseq_from_true'
         # true_score_name: str = 'dpos_from_true'
-        # features_file: str = './out/ortho12_features_250725.csv'
-        features_file: str = "./out/balibase_features_with_foldmason_220625.csv"
+
+        # features_file: str = './out/ortho12_distant_features_260825.csv'
+        # empirical = False
+
+        features_file: str = "./out/balibase_features_with_foldmason_161025.csv"
+        empirical = True
 
         #run regressor
         regressor = log_function_run(Regressor, features_file=features_file,
                                      test_size=0.2,
                                      mode=mode, i=i, remove_correlated_features=False,
-                                     empirical=True, scaler_type="standard", true_score_name=true_score_name)
+                                     empirical=empirical, scaler_type="standard", true_score_name=true_score_name)
         # regressor = log_function_run(Regressor, features_file=features_file,
         #                              test_size=0.2,
         #                              mode=mode,
         #                              i=i, remove_correlated_features=False,
-        #                              empirical=True, scaler_type="rank", true_score_name=true_score_name)
+        #                              empirical=False, scaler_type="rank", true_score_name=true_score_name)
 
-        # mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=32, learning_rate=0.0003,
-        #                        neurons=[0, 128, 32, 16], dropout_rate=0.2, l1=0.0001, l2=0.0001, top_k=4, mse_weight=1,
-        #                        ranking_weight=5, loss_fn="custom_mse", regularizer_name='l1_l2', batch_generation='custom')
-        mse = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=32, learning_rate=0.0003,
-                               neurons=[0, 128, 32, 16], dropout_rate=0.2, l1=0.0001, l2=0.0001, top_k=4, mse_weight=1,
-                               ranking_weight=5, loss_fn="mse", regularizer_name='l1_l2',
-                               batch_generation='standard')
+        mse, val_loss, corr_coefficient = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.000723329657102124,
+                               neurons=[296, 54, 16, 256], dropout_rate=0.13, l1=0.0000490968737768127, l2=3.60883702944022E-07, top_k=0, mse_weight=1,
+                               ranking_weight=5, loss_fn="mse", regularizer_name='l1_l2', batch_generation='standard')
+        # mse, val_loss, corr_coefficient = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=256, learning_rate=0.0016335820259578,
+        #                        neurons=[256, 256, 0, 0], dropout_rate=0.384234357031144, l1=5.80738985049704e-07, l2=4.13448309436843e-07, top_k=7, mse_weight=1,
+        #                        ranking_weight=0.5, loss_fn="custom_mse", regularizer_name='l1_l2',
+        #                        batch_generation='custom')
+        print(f"Trial {i}: MSE={mse}, Val_MSE={val_loss}, Corr={corr_coefficient}")
         mse_values.append(mse)
         regressor.plot_results("dl", mse, i)
 

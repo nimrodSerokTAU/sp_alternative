@@ -114,7 +114,8 @@ def _get_balanced_frequent_codes(df, min_code1_count, frequent_codes):
 def _balanced_sample_by_code1_and_taxa(df):
     code_counts = df['code1'].value_counts()
     # frequent_codes = code_counts[code_counts >= 1600].index #TODO
-    frequent_codes = code_counts[code_counts >= 1400].index #TODO
+    frequent_codes = code_counts[code_counts >= 1235].index #TODO
+    # frequent_codes = code_counts[code_counts >= 1400].index  # TODO
 
     filtered_df = df[df['code1'].isin(frequent_codes)]
 
@@ -131,7 +132,25 @@ def _balanced_sample_by_code1_and_taxa(df):
     selected_codes_set = set(frequent_codes_balanced_per_taxa) #TODO the set has names of the MSAs but not per code the correct way would be choosing by a pair of code and code1
     final_df = df[df['code1'].isin(selected_codes_set)]
 
+    code_counts_final = final_df['code1'].value_counts()
+    print(code_counts_final)
+
+    num_unique = final_df['code1'].nunique()
+    print(f"Number of unique codes: {num_unique}")
+
     return final_df
+
+def _balanced_sample_1600(df):
+    code_counts = df['code1'].value_counts()
+    # frequent_codes = code_counts[code_counts >= 1600].index #TODO
+    frequent_codes = code_counts[code_counts >= 1450].index #TODO
+
+    final_df = df[df['code1'].isin(frequent_codes)]
+    num_unique = final_df['code1'].nunique()
+    print(f"Number of unique codes: {num_unique}")
+
+    return final_df
+
 
 
 def   _assign_aligner(row: pd.Series) -> str:
@@ -263,7 +282,7 @@ class Regressor:
         df = _read_features_into_df(self.features_file)
 
         df['aligner'] = df.apply(_assign_aligner, axis=1)
-        df = df[df['aligner'] != 'true']  # TODO - removed all True MSAs
+        # df = df[df['aligner'] != 'true']  # TODO - removed all True MSAs
 
         # df = df[df['dpos_from_true'] != 0] #TODO - comment
         # summary = _summarize_data(df)  # TODO
@@ -281,13 +300,22 @@ class Regressor:
         #     df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
         # summary = _summarize_data(df)  # TODO
 
+        if self.empirical:
+            df = _balanced_sample_1600(df)
+        else:
+            df = _balanced_sample_by_code1_and_taxa(
+            df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
 
-        plt.hist(df[self.true_score_name], bins=100, alpha=0.5, label='Final')
-        plt.legend()
-        plt.title(f"Distribution of {self.true_score_name}")
-        plt.show()
+        summary = _summarize_data(df)
 
-        df.to_csv('./out/features_w_aligner.csv', index=False)
+        if self.verbose == 1:
+            plt.hist(df[self.true_score_name], bins=100, alpha=0.5, label='Final')
+            plt.legend()
+            plt.title(f"Distribution of {self.true_score_name}")
+            plt.show()
+
+        if self.verbose == 1:
+            df.to_csv('./out/features_w_aligner.csv', index=False)
 
         df = _check_missing_values(df, self.verbose)
         if self.verbose == 1:
@@ -309,15 +337,17 @@ class Regressor:
             self.scaler = StandardScaler()
             self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit)
             self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling
-            joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
+            if self.verbose == 1:
+                joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
         elif self.scaler_type == 'rank':
             self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
             self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1", feature_cols=self.X_train.columns)
             self.X_test_scaled = self.scaler.transform(self.test_df)
             self.final_features_names = self.scaler.get_feature_names_out()
-            self.scaler.save(
-                f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
+            if self.verbose == 1:
+                self.scaler.save(
+                    f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
             """ SCALED y-labels """
             self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
@@ -354,10 +384,11 @@ class Regressor:
         x_train_scaled_to_save['code'] = self.file_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['code1'] = self.main_codes_train.reset_index(drop=True)
         x_train_scaled_to_save['class_label'] = self.y_train.reset_index(drop=True) #TODO uncomment this line
-        x_train_scaled_to_save.to_csv(
-            f'./out/train_scaled_{i}.csv', index=False)
-        self.train_df.to_csv(f'./out/train_unscaled_{i}.csv',
-                             index=False)
+        if self.verbose == 1:
+            x_train_scaled_to_save.to_csv(
+                f'./out/train_scaled_{i}.csv', index=False)
+            self.train_df.to_csv(f'./out/train_unscaled_{i}.csv',
+                                 index=False)
 
         # writing test set into csv
         x_test_scaled_to_save = pd.DataFrame(self.X_test_scaled)
@@ -365,10 +396,11 @@ class Regressor:
         x_test_scaled_to_save['code'] = self.file_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['code1'] = self.main_codes_test.reset_index(drop=True)
         x_test_scaled_to_save['class_label'] = self.y_test.reset_index(drop=True) #TODO uncomment this line
-        x_test_scaled_to_save.to_csv(f'./out/test_scaled_{i}.csv',
-                                     index=False)
-        self.test_df.to_csv(f'./out/test_unscaled_{i}.csv',
-                            index=False)
+        if self.verbose == 1:
+            x_test_scaled_to_save.to_csv(f'./out/test_scaled_{i}.csv',
+                                         index=False)
+            self.test_df.to_csv(f'./out/test_unscaled_{i}.csv',
+                                index=False)
 
 
     def _split_into_training_test(self, df, test_size):
@@ -590,7 +622,7 @@ class Regressor:
                       mixed_portion: float = 0, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 1,
                       per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse"] = 'mse',
                       regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2',
-                      batch_generation: Literal['standard', 'custom'] = 'standard') -> float:
+                      batch_generation: Literal['standard', 'custom'] = 'standard') -> tuple[float, float, float]:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
@@ -634,11 +666,14 @@ class Regressor:
         if regularizer_name == "l1":
             ker_regularizer = regularizers.l1(l1=l1)
 
-        if regularizer_name == "l2":
+        elif regularizer_name == "l2":
             ker_regularizer = regularizers.l2(l2=l2)
 
-        if regularizer_name == "l1_l2":
+        elif regularizer_name == "l1_l2":
             ker_regularizer = regularizers.l1_l2(l1=l1, l2=l2)
+
+        else:
+            raise ValueError(f"Invalid regularizer_name: {regularizer_name}, the allowed options are 'l1', 'l2' or 'l1_l2'\n")
 
         if not neurons[0] == 0:
             # first hidden
@@ -744,15 +779,17 @@ class Regressor:
         plt.xticks(ticks=epochs)  # Set the ticks to integer epoch numbers
 
         plt.legend()
-        plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.true_score_name}.png', format='png')
+        if self.verbose == 1:
+            plt.savefig(fname=f'./out/loss_graph_{i}_mode{self.mode}_{self.true_score_name}.png', format='png')
         plt.show()
         plt.close()
 
         # visualize model architecture
-        plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.true_score_name}.png', show_shapes=True, show_layer_names=True,
-                   show_layer_activations=True)
-        model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.true_score_name}.keras')
-        plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+        if self.verbose == 1:
+            plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.true_score_name}.png', show_shapes=True, show_layer_names=True,
+                       show_layer_activations=True)
+            model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.true_score_name}.keras')
+            plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
 
         # substrings = ['original', 'concat']
         # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
@@ -772,7 +809,8 @@ class Regressor:
             'predicted_score': self.y_pred
         })
 
-        df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.true_score_name}.csv', index=False)
+        if self.verbose == 1:
+            df_res.to_csv(f'./out/prediction_DL_{i}_mode{self.mode}_{self.true_score_name}.csv', index=False)
 
         mse = mean_squared_error(self.y_test, self.y_pred)
         if self.verbose == 1:
@@ -791,10 +829,12 @@ class Regressor:
             shap_values = explainer(X_test_subset)
             # explainer = shap.Explainer(model, X_test_scaled_with_names)
             # shap_values = explainer(X_test_scaled_with_names)
-            joblib.dump(explainer,
-                        f'./out/explainer_{i}_mode{self.mode}_{self.true_score_name}.pkl')
-            joblib.dump(shap_values,
-                        f'./out/shap_values__{i}_mode{self.mode}_{self.true_score_name}.pkl')
+            if self.verbose == 1:
+                joblib.dump(explainer,
+                            f'./out/explainer_{i}_mode{self.mode}_{self.true_score_name}.pkl')
+                joblib.dump(shap_values,
+                            f'./out/shap_values__{i}_mode{self.mode}_{self.true_score_name}.pkl')
+            # matplotlib.use('TkAgg')
             matplotlib.use('Agg')
 
             feature_names = [
@@ -803,32 +843,37 @@ class Regressor:
 
             shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
             # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
-            plt.savefig(f'./out/summary_plot_{i}.png', dpi=300,
-                        bbox_inches='tight')
+            if self.verbose == 1:
+                plt.savefig(f'./out/summary_plot_{i}.png', dpi=300,
+                            bbox_inches='tight')
             # plt.show()
             plt.close()
 
             shap.plots.waterfall(shap_values[0], max_display=40)
-            plt.savefig(f'./out/waterfall_plot_{i}.png', dpi=300,
-                        bbox_inches='tight')
+            if self.verbose == 1:
+                plt.savefig(f'./out/waterfall_plot_{i}.png', dpi=300,
+                            bbox_inches='tight')
             # plt.show()
             plt.close()
 
             shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
-            plt.savefig(f'./out/force_plot_{i}.png')
+            if self.verbose == 1:
+                plt.savefig(f'./out/force_plot_{i}.png')
             # plt.show()
             plt.close()
 
             shap.plots.bar(shap_values, max_display=40)
-            plt.savefig(f'./out/bar_plot_{i}.png', dpi=300,
-                        bbox_inches='tight')
+            if self.verbose == 1:
+                plt.savefig(f'./out/bar_plot_{i}.png', dpi=300,
+                            bbox_inches='tight')
             # plt.show()
             plt.close()
         except Exception as e:
-            print(f"Did not manage to get features importance\n")
+            print(f"Did not manage to get features importance: {e}\n")
 
-        return mse
-
+        # return mse
+        val_loss = history.history["val_loss"][-1]
+        return mse, val_loss, corr_coefficient
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
         plt.figure(figsize=(12, 8))

@@ -36,13 +36,29 @@ import shap
 from feature_extraction.classes.group_aware_scaler import GroupAwareScaler
 
 
-def _assign_aligner(row: pd.Series) -> str:
+# def _assign_aligner(row: pd.Series) -> str:
+#     code = row['code'].lower()
+#     not_mafft = ['muscle', 'prank', '_true.fas', 'true_tree.txt', 'bali_phy', 'baliphy', 'original']
+#
+#     if not any(sub in code for sub in not_mafft):
+#         return 'mafft'
+#     if 'muscle' in code:
+#         return 'muscle'
+#     elif 'prank' in code:
+#         return 'prank'
+#     elif 'bali_phy' in code or 'baliphy' in code:
+#         return 'baliphy'
+#
+#     return 'true'
+def   _assign_aligner(row: pd.Series) -> str:
     code = row['code'].lower()
     not_mafft = ['muscle', 'prank', '_true.fas', 'true_tree.txt', 'bali_phy', 'baliphy', 'original']
 
-    if not any(sub in code for sub in not_mafft):
+    if row['code'] == row['code1']: #TODO - added, check that works properly
+        return 'true'
+    elif not any(sub in code for sub in not_mafft):
         return 'mafft'
-    if 'muscle' in code:
+    elif 'muscle' in code:
         return 'muscle'
     elif 'prank' in code:
         return 'prank'
@@ -59,6 +75,28 @@ def _check_file_type(file_path: str) -> str:
         return 'csv'
     else:
         return 'unknown'
+
+# def _rank_percentile_scale_targets(y_true: pd.Series, group_codes: pd.Series) -> pd.Series:
+#     if not y_true.index.equals(group_codes.index):
+#         raise ValueError("y_true and group_codes must have the same index")
+#
+#     df = pd.DataFrame({
+#         "y": y_true,
+#         "group": group_codes
+#     })
+#
+#     scaled_series = pd.Series(index=y_true.index, dtype=np.float32)
+#
+#     for group_val, group_df in df.groupby("group"):
+#         vals = group_df["y"].values
+#         if len(vals) == 1:
+#             scaled = np.array([0.0])
+#         else:
+#             ranks = rankdata(vals, method="average")
+#             scaled = (ranks - 1) / (len(vals) - 1)
+#         scaled_series.loc[group_df.index] = scaled.astype('float32')
+#
+#     return scaled_series
 
 def _rank_percentile_scale_targets(y_true: pd.Series, group_codes: pd.Series) -> pd.Series:
     if not y_true.index.equals(group_codes.index):
@@ -89,17 +127,43 @@ def _check_missing_values(df: pd.DataFrame, verbose) -> pd.DataFrame:
 
     return df
 
+# def _print_correlations(df: pd.DataFrame, true_score_name: str) -> None:
+#     corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df[true_score_name])
+#     print(f"Pearson Correlation of Normalized SOP and {true_score_name}: {corr_coefficient1:.4f}\n",
+#           f"P-value of non-correlation: {p_value1:.6f}\n")
+#     corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df[true_score_name])
+#     print(f"Pearson Correlation of SOP and {true_score_name}: {corr_coefficient1:.4f}\n",
+#           f"P-value of non-correlation: {p_value1:.6f}\n")
+
 def _print_correlations(df: pd.DataFrame, true_score_name: str) -> None:
-    corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score'], df[true_score_name])
-    print(f"Pearson Correlation of Normalized SOP and {true_score_name}: {corr_coefficient1:.4f}\n",
+    # corr_coefficient1, p_value1 = pearsonr(df['normalised_sop_score_Blosum50'], df[true_score_name])
+    # print(f"Pearson Correlation of Normalized SOP Blosum50 and {true_score_name}: {corr_coefficient1:.4f}\n",
+    #       f"P-value of non-correlation: {p_value1:.6f}\n")
+    corr_coefficient1, p_value1 = pearsonr(df['sp_norm_BLOSUM62_GO_-10_GE_-0.5'], df[true_score_name])
+    print(f"Pearson Correlation of Normalized SOP Blosum62 and {true_score_name}: {corr_coefficient1:.4f}\n",
           f"P-value of non-correlation: {p_value1:.6f}\n")
-    corr_coefficient1, p_value1 = pearsonr(df['sop_score'], df[true_score_name])
-    print(f"Pearson Correlation of SOP and {true_score_name}: {corr_coefficient1:.4f}\n",
+    # corr_coefficient1, p_value1 = pearsonr(df['sop_score_Blosum50'], df[true_score_name])
+    # print(f"Pearson Correlation of SOP Blosum 50 and {true_score_name}: {corr_coefficient1:.4f}\n",
+    #       f"P-value of non-correlation: {p_value1:.6f}\n")
+    corr_coefficient1, p_value1 = pearsonr(df['sp_BLOSUM62_GO_-10_GE_-0.5'], df[true_score_name])
+    print(f"Pearson Correlation of SOP Blosum 62 and {true_score_name}: {corr_coefficient1:.4f}\n",
           f"P-value of non-correlation: {p_value1:.6f}\n")
+
+# def _assign_true_score_name(predicted_measure: str) -> str:
+#     if predicted_measure == 'msa_distance':
+#         # true_score_name = "dpos_dist_from_true"
+#         true_score_name = "dpos_ng_dist_from_true"
+#     elif predicted_measure == 'tree_distance':
+#         true_score_name = 'normalized_rf'
+#     elif predicted_measure == 'class_label':
+#         true_score_name = 'class_label'
+#     return true_score_name
+
 def _assign_true_score_name(predicted_measure: str) -> str:
     if predicted_measure == 'msa_distance':
-        # true_score_name = "dpos_dist_from_true"
-        true_score_name = "dpos_ng_dist_from_true"
+        # true_score_name = "dpos_from_true"
+        true_score_name = "dseq_from_true"
+        # true_score_name = "ssp_from_true"
     elif predicted_measure == 'tree_distance':
         true_score_name = 'normalized_rf'
     elif predicted_measure == 'class_label':
@@ -207,28 +271,91 @@ class RegPretrained:
         self.file_codes_test = self.test_df['code']
         self.aligners_test = self.test_df['aligner']
 
-    def _finalize_features(self, df: pd.DataFrame) -> None:
-        columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
-                         'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
-        columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
+    # def _finalize_features(self, df: pd.DataFrame) -> None:
+    #     columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
+    #                      'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
+    #     columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
+    #     if self.empirical == True:
+    #         columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
+    #                              'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+    #                              'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+    #                              'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+    #                              'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+    #                              'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
+    #                              'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
+    #                              'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio']
+    #     else:
+    #         columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
+    #                              'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
+    #                              'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
+    #                              'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
+    #                              'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
+    #                              'num_cols_1_gap', 'single_char_count',
+    #                              'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
+    #                              'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio']
+    #
+    #     self.y = df[self.true_score_name]
+    #
+    #     if self.mode == 1:
+    #         self.X = df.drop(
+    #             columns=columns_to_drop_dft)
+    #         self.X_test = self.test_df.drop(
+    #             columns=columns_to_drop_dft)
+    #
+    #     if self.mode == 2:
+    #         self.X = df.drop(
+    #             columns=columns_to_drop_extended)
+    #         self.X_test = self.test_df.drop(
+    #             columns=columns_to_drop_extended)
+    #     if self.mode == 3:
+    #         self.X = df[columns_to_choose]
+    #         self.X_test = self.test_df[
+    #             columns_to_choose]
+    #
+    #     if self.remove_correlated_features:
+    #         correlation_matrix = self.X.corr().abs()
+    #         upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
+    #         to_drop = [column for column in upper_triangle.columns if
+    #                    any(upper_triangle[column] > 0.9)]
+    #         if self.verbose == 1:
+    #             print("Correlated features to drop:", to_drop)
+    #         self.X = self.X.drop(columns=to_drop)
+    #         self.X_test = self.X_test.drop(columns=to_drop)
+    #
+    #     # Set train and test Labels
+    #     self.y_test = self.test_df[self.true_score_name]
+
+    def _finalize_features(self, df):
+        columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
+                               'aligner']
+
         if self.empirical == True:
-            columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
-                                 'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-                                 'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-                                 'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
-                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-                                 'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio']
+            columns_to_choose = ['MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'sp_ge_norm', 'bl_75_pct', 'msa_length',
+                                 'k_mer_average_K5', 'bl_25_pct', 'sp_mismatch_count_norm', 'sp_match_count_norm',
+                                 'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
+                                 'avg_unique_gap_length', 'k_mer_90_pct_K5', 'k_mer_95_pct_K5', 'bl_min', 'num_cols_no_gaps',
+                                 'parsimony_max', 'sp_go_norm', 'num_cols_2_gaps', 'gaps_all_except_1_len2', 'taxa_num',
+                                 'parsimony_min', 'k_mer_95_pct_K10', 'entropy_max', 'num_cols_1_gap',
+                                 'num_cols_all_gaps_except1', 'k_mer_90_pct_K20', 'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
+                                 'gaps_len_four_plus', 'gaps_2seq_len4plus', 'sp_mismatch_norm_BLOSUM62', 'gaps_1seq_len1',
+                                 'double_char_count', 'k_mer_95_pct_K20', 'bl_sum', 'n_unique_sites',
+                                 'sp_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
+                                 'seq_max_len', 'parsimony_25_pct', 'num_unique_gaps_norm', 'bl_mean',
+                                 'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
+                                 'gaps_all_except_1_len4plus']
+
         else:
-            columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-                                 'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-                                 'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
-                                 'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-                                 'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-                                 'num_cols_1_gap', 'single_char_count',
-                                 'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-                                 'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio']
+            columns_to_choose = ['sp_mismatch_norm_PAM250','sp_mismatch_norm_BLOSUM62', 'sp_norm_PAM250_GO_-6_GE_-0.2', 'sp_PAM250_GO_-6_GE_-0.2',
+                                 'constant_sites_pct', 'sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm',
+                                 'msa_length', 'taxa_num',
+                                 'entropy_sum', 'entropy_mean', 'entropy_75_pct',
+                                 'sp_go_norm', 'sp_ge_norm', 'parsimony_sum', 'parsimony_mean', 'parsimony_25_pct','parsimony_75_pct', 'parsimony_max',
+                                 'k_mer_average_K5', 'k_mer_90_pct_K5', 'single_char_count',
+                                 'num_cols_no_gaps', 'num_cols_2_gaps', 'gaps_len_four_plus', 'gaps_all_except_1_len4plus', 'gaps_2seq_len1',
+                                 'num_cols_all_gaps_except1', 'av_gap_segment_length', 'num_unique_gaps',
+                                 'bl_mean', 'bl_max', 'bl_25_pct', 'n_unique_sites'
+                                 ]
+
 
         self.y = df[self.true_score_name]
 
@@ -238,11 +365,6 @@ class RegPretrained:
             self.X_test = self.test_df.drop(
                 columns=columns_to_drop_dft)
 
-        if self.mode == 2:
-            self.X = df.drop(
-                columns=columns_to_drop_extended)
-            self.X_test = self.test_df.drop(
-                columns=columns_to_drop_extended)
         if self.mode == 3:
             self.X = df[columns_to_choose]
             self.X_test = self.test_df[
@@ -402,10 +524,10 @@ if __name__ == '__main__':
     mse_values = []
     n = 1
     for i in range(n):
-        regressor = log_function_run(RegPretrained, features_file="./out/balibase_features_ALL_new_dpos_with_foldmason_200525.parquet",
-                                     mode=3,
+        regressor = log_function_run(RegPretrained, features_file="./out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/test_unscaled_0.csv",
+                                     mode=1,
                                      predicted_measure='msa_distance', i=i, remove_correlated_features=False,
-                                     empirical=False, scaler_type="pretrained_rank", scaler_path = './out/OXBENCH_new_dpos_new_scaler/scaler_2_mode3_msa_distance.pkl', pretrained_model='./out/OXBENCH_new_dpos_new_scaler/regressor_model_2_mode3_msa_distance.keras')
+                                     empirical=False, scaler_type="pretrained_rank", scaler_path = './out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/scaler_0_mode1_dseq_from_true.pkl', pretrained_model='./out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/regressor_model_0_mode1_dseq_from_true.keras')
 
         mse = regressor._load_model()
         regressor._features_importance()

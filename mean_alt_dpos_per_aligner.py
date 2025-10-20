@@ -2,8 +2,10 @@ import pandas as pd
 import glob
 
 folder = '/groups/pupko/kseniap/'
-output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/pairwise_dpos_res/"
-output_file = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/mean_pairwise_dpos_v1.csv"
+# output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/pairwise_dpos_res/"
+# output_file = f"{folder}/DataSets/OrthoMaM_v12a_new/Guidance_Filtering_Paper/mean_pairwise_dpos_v2.csv"
+output_dir = f"{folder}/DataSets/OrthoMaM_v12a_new/SIM_DISTANT/pairwise_dpos_res/"
+output_file = f"{folder}/DataSets/OrthoMaM_v12a_new/SIM_DISTANT/mean_pairwise_dpos.csv"
 
 aligners = {
     'MUSCLE': ['muscle', 'MUSCLE'],

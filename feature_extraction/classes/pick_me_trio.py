@@ -142,7 +142,7 @@ class PickMeGameTrio:
         df2['code1'] = df2['code1'].astype(str)
 
         df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
-        df = df[~df['code'].str.contains('test_original', na=False)]
+        df = df[~df['code'].str.contains('test_original', na=False)] #TODO-excluded TRUE MSA, might want to include them
         df = df[df['code'] != 'code1']
         df = df[df['taxa_num'] > 3]
         # df = df[~df['code'].str.contains('muscle', case=False, na=False, regex=True)] #TODO remove
