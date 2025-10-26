@@ -34,7 +34,9 @@ from tensorflow.keras.utils import Sequence
 from tensorflow.keras import backend as K
 from tensorflow.keras import metrics
 from feature_extraction.classes.group_aware_scaler import GroupAwareScaler
+from feature_extraction.classes.group_aware_zscore_scaler import GroupAwareScalerZ
 from feature_extraction.classes.batch_generator import BatchGenerator
+from feature_extraction.classes.ranking_metrics import PerBatchRankingMetrics
 import random
 
 # def _choose_codes_with_full_data(df):
@@ -245,6 +247,60 @@ def _read_features_into_df(features_file: str) -> pd.DataFrame:
 
     return df
 
+# def _zscore_targets_per_group(y_true, group_codes):
+#     df = pd.DataFrame({"y": y_true, "group": group_codes}).reset_index(drop=True)
+#     y_scaled = np.zeros(len(df))
+#
+#     for g, gdf in df.groupby("group"):
+#         vals = gdf["y"].values
+#         mean, std = np.mean(vals), np.std(vals)
+#         if std == 0:
+#             scaled_vals = np.zeros_like(vals)
+#         else:
+#             scaled_vals = (vals - mean) / std
+#         # y_scaled[gdf.index.values] = scaled_vals
+#
+#     # return y_scaled
+#     return np.asarray(y_scaled)
+import numpy as np
+import pandas as pd
+
+def _zscore_targets_per_group(y_true: pd.Series, group_codes: pd.Series) -> pd.Series:
+    """Per-group z-score scaling that preserves index and returns a Series."""
+    if not y_true.index.equals(group_codes.index):
+        raise ValueError("y_true and group_codes must have the same index")
+
+    df = pd.DataFrame({"y": y_true, "group": group_codes})
+    scaled_series = pd.Series(index=y_true.index, dtype=np.float32)
+
+    for group_val, group_df in df.groupby("group"):
+        vals = group_df["y"].values
+        mean, std = np.mean(vals), np.std(vals)
+
+        if std == 0:
+            scaled_vals = np.zeros_like(vals, dtype=np.float32)
+        else:
+            scaled_vals = ((vals - mean) / std).astype(np.float32)
+
+        # assign scaled values to same indices
+        scaled_series.loc[group_df.index] = scaled_vals
+
+    return scaled_series
+
+def _zscore_targets_global(y_true: pd.Series) -> pd.Series:
+    df = pd.DataFrame({"y": y_true})
+    vals = df["y"].values
+    mean, std = np.mean(vals), np.std(vals)
+
+    if std == 0:
+        scaled_vals = np.zeros_like(vals, dtype=np.float32)
+    else:
+        scaled_vals = ((vals - mean) / std).astype(np.float32)
+
+    scaled_series = pd.Series(scaled_vals, index=y_true.index, name=y_true.name)
+
+    return scaled_series
+
 
 class Regressor:
     '''
@@ -255,8 +311,9 @@ class Regressor:
     scale_labels: y-labels by default are also rank-percentile scaled
     '''
     def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False,
-                 i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank'] = 'standard',
-                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dpos_from_true') -> None:
+                 i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank', 'zscore'] = 'standard',
+                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dseq_from_true', explain_features_importance: bool = False) -> None:
+        self.explain_features_importance = explain_features_importance
         self.empirical = empirical
         self.verbose = verbose
         self.features_file: str = features_file
@@ -273,8 +330,8 @@ class Regressor:
         self.final_features_names = None
         self.remove_correlated_features: bool = remove_correlated_features
         self.scaler_type = scaler_type
-        if scaler_type not in {'standard', 'rank'}:
-            raise ValueError(f"Invalid scaler_type: {scaler_type}, the allowed options are 'standard' or 'rank'\n")
+        if scaler_type not in {'standard', 'rank', 'zscore'}:
+            raise ValueError(f"Invalid scaler_type: {scaler_type}, the allowed options are 'standard' , 'rank' or 'zscore'\n")
         self.true_score_name = true_score_name
         if true_score_name not in {'ssp_from_true', 'dseq_from_true', 'dpos_from_true'}:
             raise ValueError(f"Invalid true_score_name: {true_score_name}, the allowed options are 'ssp_from_true', 'dseq_from_true', 'dpos_from_true'\n")
@@ -341,7 +398,8 @@ class Regressor:
                 joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
         elif self.scaler_type == 'rank':
-            self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
+            # self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
+            self.scaler = GroupAwareScalerZ(mode="rank", use_global=False, global_scaler=RobustScaler())
             self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1", feature_cols=self.X_train.columns)
             self.X_test_scaled = self.scaler.transform(self.test_df)
             self.final_features_names = self.scaler.get_feature_names_out()
@@ -357,6 +415,25 @@ class Regressor:
             self.y_train = self.y_train_scaled
             self.y_test = self.y_test_scaled
             """ SCALED y-labels """
+
+        elif self.scaler_type == 'zscore':
+            self.scaler = GroupAwareScalerZ(mode="zscore", use_global=False, global_scaler=RobustScaler())
+            self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1",
+                                                            feature_cols=self.X_train.columns)
+            self.X_test_scaled = self.scaler.transform(self.test_df)
+            self.final_features_names = [f"{c}_zscore" for c in self.X_train.columns]
+
+            if self.verbose == 1:
+                self.scaler.save(f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
+
+            # Scale labels (targets) within each MSA-batch using z-score
+            self.y_train_scaled = _zscore_targets_per_group(self.y_train, self.main_codes_train)
+            self.y_test_scaled = _zscore_targets_per_group(self.y_test, self.main_codes_test)
+            # self.y_train_scaled = _zscore_targets_global(self.y_train)
+            # self.y_test_scaled = _zscore_targets_global(self.y_test)
+
+            self.y_train = self.y_train_scaled
+            self.y_test = self.y_test_scaled
 
         # Check the size of each set
         if self.verbose == 1:
@@ -620,9 +697,9 @@ class Regressor:
                       learning_rate: float = 0.01, neurons: list[int] = [128, 64, 16], dropout_rate: float = 0.2,
                       l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1,
                       mixed_portion: float = 0, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 1,
-                      per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse"] = 'mse',
+                      per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse","hybrid_mse_ranknet_loss"] = 'mse',
                       regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2',
-                      batch_generation: Literal['standard', 'custom'] = 'standard') -> tuple[float, float, float]:
+                      batch_generation: Literal['standard', 'custom'] = 'standard', alpha: float = 0.5, eps: float = 1e-5) -> tuple[float, float, float, float, float, float, float]:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
@@ -658,6 +735,199 @@ class Regressor:
             total_loss = mse_weight * mse_loss + ranking_weight * top_k_rank_loss
 
             return total_loss
+
+
+        def kendall_loss(y_true, y_pred):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+            sign_true = tf.sign(diff_true)
+            # smooth sign for differentiability
+            sign_pred = tf.tanh(diff_pred)
+            tau = tf.reduce_mean(sign_true * sign_pred)
+            return 1 - tau  # maximize Kendall's τ
+
+        def soft_kendall_loss(y_true, y_pred, tau=1.0): #TAU 1.0-5.0
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            sign_true = tf.nn.tanh(tau * diff_true)
+            sign_pred = tf.nn.tanh(tau * diff_pred)
+
+            corr = tf.reduce_mean(sign_true * sign_pred)
+            return 1 - corr
+
+
+        def ranknet_loss(y_true, y_pred, margin=0.0, eps=1e-4):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            S = tf.cast(diff_true < 0, tf.float32)
+            P = tf.nn.sigmoid(diff_pred - margin)
+
+            # tf.print("P min:", tf.reduce_min(P), "P max:", tf.reduce_max(P), "S unique:",
+            #          tf.unique(tf.reshape(S, [-1]))[0])
+
+            loss = - (S * tf.math.log(P + eps) + (1 - S) * tf.math.log(1 - P + eps))
+            # loss = - (S * tf.math.log(P + 1e-8) + (1 - S) * tf.math.log(1 - P + 1e-8))
+            return tf.reduce_mean(loss)
+
+        def hybrid_mse_ranknet_loss(y_true, y_pred, alpha=0.5, eps=1e-4):
+            mse = tf.reduce_mean(tf.square(y_true - y_pred))
+            rank_loss = ranknet_loss(y_true, y_pred, eps=eps)
+            total_loss = alpha * mse + (1 - alpha) * rank_loss
+
+            # tf.print("MSE:", mse, "Rank loss:", rank_loss, "Total loss:", total_loss, "Ratio rank/mse:", rank_loss/mse)
+
+            return total_loss
+
+        def hybrid_mse_ranknet_dynamic(y_true, y_pred, alpha_base=0.98, eps=1e-6):
+            mse = tf.reduce_mean(tf.square(y_true - y_pred))
+            rank_loss = ranknet_loss(y_true, y_pred, eps=eps)
+            ratio = tf.stop_gradient(rank_loss / (mse + eps))
+            alpha = tf.clip_by_value(alpha_base / (1 + ratio), 0.9, 0.995)
+            return alpha * mse + (1 - alpha) * rank_loss
+
+        # def hybrid_mse_ranknet_tail_loss(
+        #         y_true, y_pred, alpha=0.98, margin=0.2, tail_focus=5.0, eps=1e-6
+        # ):
+        #     """
+        #     Hybrid loss for ranking alternative MSAs.
+        #     - alpha: balance between MSE and rank loss (0.95–0.99 typical)
+        #     - margin: required difference between better/worse samples
+        #     - tail_focus: strength of weighting for lowest (best) true values
+        #     """
+        #     y_true = tf.cast(y_true, tf.float32)
+        #     y_pred = tf.cast(y_pred, tf.float32)
+        #
+        #     # 1. Normalize per batch to make loss scale-invariant (important for per-MSA zscoring)
+        #     batch_std = tf.math.reduce_std(y_true) + eps
+        #
+        #     # 2. Weighted MSE: focus on low (good) y_true values
+        #     weights = tf.nn.sigmoid(-tail_focus * y_true)
+        #     mse_loss = tf.reduce_mean(weights * tf.square((y_true - y_pred) / batch_std))
+        #
+        #     # 3. Pairwise margin-based ranking loss (RankNet-like but with enforced separation)
+        #     diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+        #     diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+        #     S = tf.cast(diff_true < 0, tf.float32)  # i better than j
+        #     P = tf.nn.sigmoid(diff_pred - margin)
+        #     rank_loss = -tf.reduce_mean(S * tf.math.log(P + eps) + (1 - S) * tf.math.log(1 - P + eps))
+        #
+        #     # 4. Combine
+        #     total_loss = alpha * mse_loss + (1 - alpha) * rank_loss
+        #
+        #     # Optional monitoring
+        #     tf.print("MSE:", mse_loss, "Rank:", rank_loss, "Ratio Rank/MSE:", rank_loss / (mse_loss + eps))
+        #
+        #     return total_loss
+
+
+        #
+        # def ranknet_loss(y_true, y_pred, margin=0.0): #CAN BE USED WITH MY CUSTOM BATCHING and with STANDARD SCALER
+        #     """
+        #     Pairwise RankNet loss that works with batch-wise MSA sets.
+        #     Assumes each batch corresponds to one MSA-batch (set of alternatives).
+        #     """
+        #     y_true = tf.cast(y_true, tf.float32)
+        #     y_pred = tf.cast(y_pred, tf.float32)
+        #
+        #     # Compute all pairwise differences
+        #     diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+        #     diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+        #
+        #     # Target S_ij = 1 if y_true_i < y_true_j (i is better), else 0
+        #     S = tf.cast(diff_true < 0, tf.float32)
+        #
+        #     # Predicted probability that i < j
+        #     P = tf.nn.sigmoid(diff_pred - margin)
+        #
+        #     # Binary cross-entropy loss
+        #     loss = - (S * tf.math.log(P + 1e-8) + (1 - S) * tf.math.log(1 - P + 1e-8))
+        #
+        #     # Average over all pairs
+        #     return tf.reduce_mean(loss)
+        #
+        # def topk_weighted_mse(y_true, y_pred, topk=10, alpha=5.0):
+        #     y_true = tf.cast(y_true, tf.float32)
+        #     y_pred = tf.cast(y_pred, tf.float32)
+        #     # Get ranks of true values
+        #     ranks = tf.argsort(tf.argsort(y_true))  # 0=lowest (best)
+        #     weights = tf.where(ranks < topk, alpha, 1.0)
+        #     return tf.reduce_mean(weights * tf.square(y_true - y_pred))
+        #
+        def listnet_loss(y_true, y_pred):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            true_prob = tf.nn.softmax(y_true, axis=-1)
+            pred_prob = tf.nn.softmax(y_pred, axis=-1)
+
+            loss = -tf.reduce_sum(true_prob * tf.math.log(pred_prob + 1e-10))
+            return loss
+
+
+        def approx_ndcg_loss(y_true, y_pred, eps=1e-10):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            # Pairwise differences
+            pred_diffs = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            # Soft ranks (expected ranks from sigmoid pairwise comparisons)
+            soft_rank = tf.reduce_sum(tf.nn.sigmoid(-pred_diffs), axis=-1) + 1.0
+
+            # Compute gains and discounts
+            gains = tf.pow(2.0, y_true) - 1.0
+            discounts = 1.0 / tf.math.log(1.0 + soft_rank) / tf.math.log(2.0)
+
+            dcg = tf.reduce_sum(gains * discounts)
+            # Ideal DCG (with perfect ranking)
+            sorted_true = tf.sort(y_true, direction='DESCENDING')
+            ideal_gains = tf.pow(2.0, sorted_true) - 1.0
+            ideal_discounts = 1.0 / tf.math.log(1.0 + tf.range(1, tf.size(y_true) + 1, dtype=tf.float32)) / tf.math.log(
+                2.0)
+            idcg = tf.reduce_sum(ideal_gains * ideal_discounts)
+
+            ndcg = dcg / (idcg + eps)
+            return 1.0 - ndcg  # Loss to minimize
+
+        def lambda_rank_loss(y_true, y_pred, eps=1e-10):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            # Pairwise differences
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+
+            # Mask for relevant pairs
+            S = tf.cast(diff_true > 0, tf.float32)
+
+            # Sigmoid probabilities
+            P = tf.nn.sigmoid(diff_pred)
+            rank_loss = - (S * tf.math.log(P + eps) + (1 - S) * tf.math.log(1 - P + eps))
+
+            # Compute delta NDCG (LambdaRank weighting)
+            gains = tf.pow(2.0, y_true) - 1.0
+            discounts = 1.0 / tf.math.log(2.0 + tf.range(tf.shape(y_true)[0], dtype=tf.float32))
+            idcg = tf.reduce_sum(tf.sort(gains, direction='DESCENDING') * discounts)
+
+            delta_ndcg = tf.abs(tf.expand_dims(gains, 1) - tf.expand_dims(gains, 0)) / (idcg + eps)
+            weighted_loss = delta_ndcg * rank_loss
+
+            return tf.reduce_mean(weighted_loss)
+
+        def hybrid_mse_lambda_loss(y_true, y_pred, alpha=0.7):
+            mse = tf.reduce_mean(tf.square(y_true - y_pred))
+            rank_loss = lambda_rank_loss(y_true, y_pred)
+            return alpha * mse + (1 - alpha) * rank_loss
 
         # MODEL PART
         model = Sequential()
@@ -705,7 +975,7 @@ class Regressor:
             # third hidden
             model.add(
                 Dense(neurons[2], kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
-            model.add(BatchNormalization())
+            model.add(BatchNormalization()) #normalizing before the activation function
             # model.add(LeakyReLU(negative_slope=0.01))
             model.add(PReLU())
             model.add(Dropout(dropout_rate))
@@ -718,7 +988,8 @@ class Regressor:
             model.add(PReLU())
             model.add(Dropout(dropout_rate))
 
-        model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
+        # model.add(Dense(1, activation='sigmoid'))  #limits output to 0 to 1 range
+        model.add(Dense(1, activation='linear'))  #TODO - not sure if linear is better
 
         optimizer = Adam(learning_rate=learning_rate)
         # optimizer = RMSprop(learning_rate=learning_rate)
@@ -727,8 +998,56 @@ class Regressor:
             model.compile(optimizer=optimizer, loss='mean_squared_error')
 
         elif loss_fn == "custom_mse":
-            model.compile(optimizer=optimizer, loss = lambda y_true, y_pred: mse_with_rank_loss(y_true, y_pred, top_k=top_k, mse_weight=mse_weight,
-                                                        ranking_weight=ranking_weight))
+            model.compile(optimizer=optimizer,
+                          loss = lambda y_true, y_pred:
+                          mse_with_rank_loss(
+                              y_true, y_pred,
+                              top_k=top_k,
+                              mse_weight=mse_weight,
+                              ranking_weight=ranking_weight))
+
+        elif loss_fn == "hybrid_mse_ranknet_loss":
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          hybrid_mse_ranknet_loss(
+                              y_true,
+                              y_pred,
+                              alpha=alpha,
+                              eps=eps))
+
+        # elif loss_fn == 'hybrid_mse_ranknet_tail_loss':
+        #     model.compile(optimizer=optimizer,
+        #                   loss=lambda y_true, y_pred: hybrid_mse_ranknet_tail_loss(
+        #                     y_true, y_pred,
+        #                     alpha=alpha,
+        #                     margin=0.2,
+        #                     tail_focus=5.0,
+        #                     eps=eps))
+
+
+        elif loss_fn == "kendall_loss":
+            model.compile(optimizer=optimizer,
+                            loss=lambda y_true, y_pred:
+                            kendall_loss(y_true, y_pred))
+
+        elif loss_fn == "listnet_loss":
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          listnet_loss(y_true, y_pred))
+
+        elif loss_fn == "hybrid_mse_ranknet_dynamic":
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          hybrid_mse_ranknet_dynamic(
+                              y_true,
+                              y_pred,
+                              alpha_base=alpha,
+                              eps=eps))
+
+        # elif loss_fn == "listnet_loss":
+        #     model.compile(optimizer=optimizer,
+        #                   loss=lambda y_true, y_pred: listnet_loss(y_true, y_pred))
+
 
         unique_train_codes = self.main_codes_train.unique()
         train_msa_ids, val_msa_ids = train_test_split(unique_train_codes, test_size=0.2, random_state=42)  # TODO add random state for reproducability
@@ -738,12 +1057,17 @@ class Regressor:
         # x_train_scaled_with_names = pd.DataFrame(self.X_train_scaled)
         # x_train_scaled_with_names.columns = self.X_train.columns
         batch_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
-                                         validation_split=validation_split, is_validation=False, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+                                         true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids,
+                                         val_msa_ids=val_msa_ids, aligners =self.aligners_train, batch_size=batch_size,
+                                         validation_split=validation_split, is_validation=False, repeats=repeats,
+                                         mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
 
         val_generator = BatchGenerator(features=self.X_train_scaled, true_labels=self.y_train,
-                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids, val_msa_ids=val_msa_ids, aligners = self.aligners_train,
-                                       batch_size=batch_size, validation_split=validation_split, is_validation=True, repeats=repeats, mixed_portion=mixed_portion, per_aligner=per_aligner, features_w_names=self.train_df)
+                                       true_msa_ids=self.main_codes_train, train_msa_ids=train_msa_ids,
+                                       val_msa_ids=val_msa_ids, aligners = self.aligners_train,
+                                       batch_size=batch_size, validation_split=validation_split,
+                                       is_validation=True, repeats=repeats, mixed_portion=mixed_portion,
+                                       per_aligner=per_aligner, features_w_names=self.train_df)
 
         # Callback 1: early stopping
         # early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True, min_delta=1e-5)
@@ -757,15 +1081,25 @@ class Regressor:
             min_lr=1e-6  # lower bound on the learning rate
             # min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
         )
-        callbacks = [
-            early_stopping,
-            lr_scheduler
-        ]
 
+        ranking_callback = PerBatchRankingMetrics(val_generator=val_generator, metric="kendall", verbose=1)
+
+        val_kendall = None
         if batch_generation == 'custom':
+            callbacks = [
+                early_stopping,
+                lr_scheduler,
+                ranking_callback
+            ]
             history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
                                     callbacks=callbacks)
+            val_kendall = model.history.history["val_kendall"][-1] # get last kendall correlation (can get max instead if I want
+
         elif batch_generation == 'standard':
+            callbacks = [
+                early_stopping,
+                lr_scheduler
+            ]
             history = model.fit(self.X_train_scaled, self.y_train, epochs=epochs, batch_size=batch_size,
                                 validation_split=validation_split, verbose=verbose,
                                 callbacks=callbacks)
@@ -818,62 +1152,123 @@ class Regressor:
         corr_coefficient, p_value = pearsonr(self.y_test, self.y_pred)
         print(f"Pearson Correlation: {corr_coefficient:.4f}\n", f"P-value of non-correlation: {p_value:.4f}\n")
 
-        try:
-            # # explain features importance
-            if self.final_features_names is not None: #TODO testing this option
-                X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.final_features_names)
+        ### Evaluate per MSA-batch correlation and average over all MSA-batches
+        # --- Compute per-MSA average correlation ---
+        df_corr = pd.DataFrame({
+            "msa_code": self.main_codes_test,
+            "y_true": self.y_test,
+            "y_pred": self.y_pred
+        })
+
+        per_msa_corrs = []
+        for msa_id, group in df_corr.groupby("msa_code"):
+            if group["y_true"].nunique() > 1 and group["y_pred"].nunique() > 1:
+                r, _ = pearsonr(group["y_true"], group["y_pred"])
+                per_msa_corrs.append(r)
+
+        if len(per_msa_corrs) > 0:
+            avg_per_msa_corr = np.mean(per_msa_corrs)
+            median_per_msa_corr = np.median(per_msa_corrs)
+        else:
+            avg_per_msa_corr = np.nan
+            median_per_msa_corr = np.nan
+
+        print(f"Average per-MSA Pearson correlation: {avg_per_msa_corr:.4f}")
+        print(f"Median per-MSA Pearson correlation: {median_per_msa_corr:.4f}")
+
+
+
+        ### START - TRY Evaluating per-MSA top-50 metric % ###
+        df_eval = pd.DataFrame({
+            "msa_code": self.main_codes_test,
+            "file_code": self.file_codes_test,
+            "true_score": self.y_test,
+            "predicted_score": self.y_pred
+        })
+
+        msa_stats = []
+
+        for msa_id, group in df_eval.groupby("msa_code"):
+            # Find index of best (lowest) predicted score
+            best_pred_idx = group["predicted_score"].idxmin()
+            best_true_score = group.loc[best_pred_idx, "true_score"]
+
+            # Rank true scores ascending (1 = best)
+            group = group.sort_values("true_score", ascending=True).reset_index(drop=True)
+            group["true_rank"] = np.arange(1, len(group) + 1)
+
+            # Find the true rank of the best-predicted sample
+            best_pred_true_rank = group.loc[group["true_score"] == best_true_score, "true_rank"].values[0]
+
+            # Check if within top 50 (or total count if group smaller)
+            if best_pred_true_rank <= min(50, len(group)):
+                msa_stats.append(1)
             else:
-                X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
-            X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
-            explainer = shap.Explainer(model, X_test_subset)
-            shap_values = explainer(X_test_subset)
-            # explainer = shap.Explainer(model, X_test_scaled_with_names)
-            # shap_values = explainer(X_test_scaled_with_names)
-            if self.verbose == 1:
-                joblib.dump(explainer,
-                            f'./out/explainer_{i}_mode{self.mode}_{self.true_score_name}.pkl')
-                joblib.dump(shap_values,
-                            f'./out/shap_values__{i}_mode{self.mode}_{self.true_score_name}.pkl')
-            # matplotlib.use('TkAgg')
-            matplotlib.use('Agg')
+                msa_stats.append(0)
 
-            feature_names = [
-                a + ": " + str(b) for a, b in zip(X_test_subset.columns, np.abs(shap_values.values).mean(0).round(3))
-            ]
+        top50_percentage = 100 * np.mean(msa_stats)
+        print(
+            f"✅ Percentage of MSA groups where best predicted score is in top 50 true labels: {top50_percentage:.2f}%")
 
-            shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
-            # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
-            if self.verbose == 1:
-                plt.savefig(f'./out/summary_plot_{i}.png', dpi=300,
-                            bbox_inches='tight')
-            # plt.show()
-            plt.close()
+        ### END - TRY ADDING AND OPTIMIZING % OF MSA-BATCHES WHERE PREDICTED IN TRUE TOP50 ####
 
-            shap.plots.waterfall(shap_values[0], max_display=40)
-            if self.verbose == 1:
-                plt.savefig(f'./out/waterfall_plot_{i}.png', dpi=300,
-                            bbox_inches='tight')
-            # plt.show()
-            plt.close()
+        if self.explain_features_importance:
+            try:
+                # # explain features importance
+                if self.final_features_names is not None: #TODO testing this option
+                    X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.final_features_names)
+                else:
+                    X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+                X_test_subset = X_test_scaled_with_names.sample(n=500, random_state=42)  # Take a sample of 500 rows
+                explainer = shap.Explainer(model, X_test_subset)
+                shap_values = explainer(X_test_subset)
+                # explainer = shap.Explainer(model, X_test_scaled_with_names)
+                # shap_values = explainer(X_test_scaled_with_names)
+                if self.verbose == 1:
+                    joblib.dump(explainer,
+                                f'./out/explainer_{i}_mode{self.mode}_{self.true_score_name}.pkl')
+                    joblib.dump(shap_values,
+                                f'./out/shap_values__{i}_mode{self.mode}_{self.true_score_name}.pkl')
+                # matplotlib.use('TkAgg')
+                matplotlib.use('Agg')
 
-            shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
-            if self.verbose == 1:
-                plt.savefig(f'./out/force_plot_{i}.png')
-            # plt.show()
-            plt.close()
+                feature_names = [
+                    a + ": " + str(b) for a, b in zip(X_test_subset.columns, np.abs(shap_values.values).mean(0).round(3))
+                ]
 
-            shap.plots.bar(shap_values, max_display=40)
-            if self.verbose == 1:
-                plt.savefig(f'./out/bar_plot_{i}.png', dpi=300,
-                            bbox_inches='tight')
-            # plt.show()
-            plt.close()
-        except Exception as e:
-            print(f"Did not manage to get features importance: {e}\n")
+                shap.summary_plot(shap_values, X_test_subset, max_display=40, feature_names=feature_names)
+                # shap.summary_plot(shap_values, X_test_scaled_with_names, max_display=30, feature_names=feature_names)
+                if self.verbose == 1:
+                    plt.savefig(f'./out/summary_plot_{i}.png', dpi=300,
+                                bbox_inches='tight')
+                # plt.show()
+                plt.close()
+
+                shap.plots.waterfall(shap_values[0], max_display=40)
+                if self.verbose == 1:
+                    plt.savefig(f'./out/waterfall_plot_{i}.png', dpi=300,
+                                bbox_inches='tight')
+                # plt.show()
+                plt.close()
+
+                shap.force_plot(shap_values[0], X_test_subset[0], matplotlib=True, show=False)
+                if self.verbose == 1:
+                    plt.savefig(f'./out/force_plot_{i}.png')
+                # plt.show()
+                plt.close()
+
+                shap.plots.bar(shap_values, max_display=40)
+                if self.verbose == 1:
+                    plt.savefig(f'./out/bar_plot_{i}.png', dpi=300,
+                                bbox_inches='tight')
+                # plt.show()
+                plt.close()
+            except Exception as e:
+                print(f"Did not manage to get features importance: {e}\n")
 
         # return mse
         val_loss = history.history["val_loss"][-1]
-        return mse, val_loss, corr_coefficient
+        return mse, loss, val_loss, corr_coefficient, avg_per_msa_corr, top50_percentage, val_kendall
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
         plt.figure(figsize=(12, 8))

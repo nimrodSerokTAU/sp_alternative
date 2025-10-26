@@ -68,7 +68,7 @@ class PickMeGameTrio:
             # min_predicted_score_row = group1.loc[group1['nj_parsimony_score'].idxmin()]
             # min_predicted_score_row = group1.loc[group1['number_of_gap_segments'].idxmin()]
             # min_predicted_score_row = df.loc[df[''].idxmin()]
-            min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
+            min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()] #TODO - min or max
             # min_value = df[self.predicted_score].min()
             # min_rows = df[df[self.predicted_score] == min_value]
             # min_predicted_score_row = min_rows.loc[min_rows[self.sum_of_pairs_score].idxmax()]
@@ -143,7 +143,10 @@ class PickMeGameTrio:
 
         df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
         df = df[~df['code'].str.contains('test_original', na=False)] #TODO-excluded TRUE MSA, might want to include them
-        df = df[df['code'] != 'code1']
+
+        df['code'] = df['code'].astype(str)
+        df['code1'] = df['code1'].astype(str)
+        df = df[df['code'] != df['code1']]
         df = df[df['taxa_num'] > 3]
         # df = df[~df['code'].str.contains('muscle', case=False, na=False, regex=True)] #TODO remove
         df.to_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_predictions.csv")
@@ -154,7 +157,7 @@ class PickMeGameTrio:
             #     continue
             code_df = df[df['code1'] == code]
             substrings = ['original', 'concat', '_alt_']
-            mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False)
+            mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False) #TODO so TRUE MSA is excluded
             code_df = code_df[~mask]
 
 

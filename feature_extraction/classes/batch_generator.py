@@ -4,7 +4,8 @@ import pandas as pd
 from typing import Literal, List, Any, Iterator, Tuple, Optional
 import math
 class BatchGenerator(Sequence):
-    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.3, per_aligner=False, classification_task = False, features_w_names=np.nan):
+    def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.0, per_aligner=False, classification_task = False, features_w_names=np.nan, only_intra_msa: bool = True):
+        self.only_intra_msa = only_intra_msa
         self.features = features
         self.true_labels = np.asarray(true_labels)
         self.msa_ids = true_msa_ids  # TRUE MSA IDs (categorical)
@@ -95,7 +96,12 @@ class BatchGenerator(Sequence):
             if len(batch_idx) == self.batch_size:
                 batches_mix.append((self.features[batch_idx], self.true_labels[batch_idx]))
 
-        final_batches = batches + batches_mix
+        if self.only_intra_msa:
+            final_batches = batches
+        else:
+            final_batches = batches + batches_mix
+
+        # final_batches = batches + batches_mix
         np.random.shuffle(final_batches)
 
         return final_batches

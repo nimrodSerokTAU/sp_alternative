@@ -20,7 +20,7 @@ from scipy.stats import pearsonr, gaussian_kde, norm, rankdata
 
 import pydot
 import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, LeakyReLU, Activation, BatchNormalization, Input, ELU
 from tensorflow.keras.optimizers import Adam
@@ -34,6 +34,7 @@ from classes.regressor import Regressor
 import shap
 
 from feature_extraction.classes.group_aware_scaler import GroupAwareScaler
+from feature_extraction.classes.group_aware_zscore_scaler import GroupAwareScalerZ
 
 
 # def _assign_aligner(row: pd.Series) -> str:
@@ -120,6 +121,28 @@ def _rank_percentile_scale_targets(y_true: pd.Series, group_codes: pd.Series) ->
 
     return scaled_series
 
+def _zscore_targets_per_group(y_true: pd.Series, group_codes: pd.Series) -> pd.Series:
+    """Per-group z-score scaling that preserves index and returns a Series."""
+    if not y_true.index.equals(group_codes.index):
+        raise ValueError("y_true and group_codes must have the same index")
+
+    df = pd.DataFrame({"y": y_true, "group": group_codes})
+    scaled_series = pd.Series(index=y_true.index, dtype=np.float32)
+
+    for group_val, group_df in df.groupby("group"):
+        vals = group_df["y"].values
+        mean, std = np.mean(vals), np.std(vals)
+
+        if std == 0:
+            scaled_vals = np.zeros_like(vals, dtype=np.float32)
+        else:
+            scaled_vals = ((vals - mean) / std).astype(np.float32)
+
+        # assign scaled values to same indices
+        scaled_series.loc[group_df.index] = scaled_vals
+
+    return scaled_series
+
 def _check_missing_values(df: pd.DataFrame, verbose) -> pd.DataFrame:
     if verbose == 1:
         print("Missing values in each column:\n", df.isnull().sum())
@@ -186,7 +209,7 @@ class RegPretrained:
     def __init__(self, features_file: str, mode: int = 1, remove_correlated_features: bool = False,
                  predicted_measure: Literal['msa_distance', 'class_label'] = 'msa_distance', i: int = 0,
                  verbose: int = 1, empirical: bool = False,
-                 scaler_type: Literal['pretrained_rank', 'pretrained_standard'] = 'pretrained_standard',
+                 scaler_type: Literal['pretrained_rank', 'pretrained_standard', "pretrained_zscore"] = 'pretrained_standard',
                  scaler_path: str = None, pretrained_model: str = None) -> None:
         self.empirical: bool = empirical
         self.verbose: int = verbose
@@ -201,7 +224,7 @@ class RegPretrained:
         self.file_codes_test = None
         self.final_features_names = None
         self.remove_correlated_features: bool = remove_correlated_features
-        self.scaler_type: Literal['pretrained_rank', 'pretrained_standard'] = scaler_type
+        self.scaler_type: Literal['pretrained_rank', 'pretrained_standard', "pretrained_zscore"] = scaler_type
         self.scaler_path: str = scaler_path
         self.pretrained_model: str = pretrained_model
 
@@ -227,7 +250,22 @@ class RegPretrained:
 
     def _scale(self, i: int = 0) -> None:
         if self.scaler_type == 'pretrained_rank':
-            self.scaler = GroupAwareScaler()
+            self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
+            # self.scaler = GroupAwareScalerZ(mode='rank', global_scaler=RobustScaler())
+            self.scaler.load(self.scaler_path)
+
+            self.X_test_scaled = self.scaler.transform(self.test_df)
+            self.final_features_names = self.scaler.get_feature_names_out()
+
+            """ SCALED y-labels """
+            self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test,
+                                                                group_codes=self.main_codes_test)
+            self.y_test = self.y_test_scaled
+            """ SCALED y-labels """
+
+        if self.scaler_type == 'pretrained_zscore':
+            # self.scaler = GroupAwareScaler()
+            self.scaler = GroupAwareScalerZ(mode='zscore', global_scaler=RobustScaler())
             self.scaler.load(self.scaler_path)
 
             self.X_test_scaled = self.scaler.transform(self.test_df)
@@ -243,6 +281,11 @@ class RegPretrained:
             scaler = joblib.load(self.scaler_path)
             self.X_test_scaled = scaler.transform(self.X_test)
             self.X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+
+
+            self.y_test_scaled = _zscore_targets_per_group(self.y_test, self.main_codes_test)
+
+            self.y_test = self.y_test_scaled
 
         # Check the size of each set
         if self.verbose == 1:
@@ -524,10 +567,25 @@ if __name__ == '__main__':
     mse_values = []
     n = 1
     for i in range(n):
-        regressor = log_function_run(RegPretrained, features_file="./out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/test_unscaled_0.csv",
+        # regressor = log_function_run(RegPretrained, features_file="./out/orthomam_monophyly_features2.csv",
+        #                              mode=1,
+        #                              predicted_measure='msa_distance', i=i, remove_correlated_features=False,
+        #                              empirical=False, scaler_type="pretrained_rank", scaler_path = './out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/scaler_0_mode1_dseq_from_true.pkl',
+        #                              pretrained_model='./out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/regressor_model_0_mode1_dseq_from_true.keras')
+
+        regressor = log_function_run(RegPretrained, features_file="./out/ortho_monophyly_v2_features_241025.csv",
                                      mode=1,
                                      predicted_measure='msa_distance', i=i, remove_correlated_features=False,
-                                     empirical=False, scaler_type="pretrained_rank", scaler_path = './out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/scaler_0_mode1_dseq_from_true.pkl', pretrained_model='./out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/regressor_model_0_mode1_dseq_from_true.keras')
+                                     empirical=False, scaler_type="pretrained_rank",
+                                     scaler_path='./out/OrthoMaM12/RANDOM_SET_INDELible/random_model2/scaler_0_mode1_dseq_from_true.pkl',
+                                     pretrained_model='./out/OrthoMaM12/RANDOM_SET_INDELible/random_model2/regressor_model_0_mode1_dseq_from_true.keras')
+
+        # regressor = log_function_run(RegPretrained, features_file="./out/ortho_monophyly_v2_features_241025.csv",
+        #                              mode=1,
+        #                              predicted_measure='msa_distance', i=i, remove_correlated_features=False,
+        #                              empirical=True, scaler_type="pretrained_zscore",
+        #                              scaler_path='./out/hybrid_ranknet/scaler_0_mode1_dseq_from_true.pkl',
+        #                              pretrained_model='./out/hybrid_ranknet/regressor_model_0_mode1_dseq_from_true.keras')
 
         mse = regressor._load_model()
         regressor._features_importance()

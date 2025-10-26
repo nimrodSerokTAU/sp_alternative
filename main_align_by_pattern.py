@@ -48,8 +48,8 @@ if __name__ == '__main__':
                     #     continue
                     # if ".DS_Store" in file:
                     #     continue
-                    if '.400.fasta' not in file:
-                        continue
+                    # if '.400.fasta' not in file:
+                    #     continue
                     pattern_file_path = f"{path}/{file}"
                     print(pattern_file_path)
                     output_dir_path = f"{folder}/{corrected_bali_msa_folder}/{code}/"

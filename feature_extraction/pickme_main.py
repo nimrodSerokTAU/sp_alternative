@@ -27,6 +27,17 @@ if __name__ == '__main__':
                                 prediction_file=f'./out/prediction_DL_{i}_mode1_dseq_from_true.csv',
                                 true_score_name=true_score_name, error=0, subset = None)
 
+        # pickme = PickMeGameTrio(features_file='./out/balibase_features_with_foldmason_161025.csv',
+        #                         prediction_file=f'./out/prediction_DL_0_mode1_dseq_from_true.csv',
+        #                         true_score_name=true_score_name, error=0, subset=None)
+
+        # pickme = PickMeGameTrio(features_file='./out/orthomam_monophyly_features.csv',
+        #                         prediction_file=f'./out/prediction_DL_0_mode1_msa_distance.csv',
+        #                         true_score_name=true_score_name, error=0, subset=None)
+
+        # pickme = PickMeGameTrio(features_file='./out/ortho_monophyly_v2_features_241025.csv',
+        #                         prediction_file=f'./out/pretrained-with-random_model2/prediction_DL_0_mode1_msa_distance.csv',
+        #                         true_score_name=true_score_name, error=0, subset=None)
 
         pickme.run(i)
 

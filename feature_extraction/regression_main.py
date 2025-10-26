@@ -33,26 +33,54 @@ if __name__ == '__main__':
 
         features_file: str = "./out/balibase_features_with_foldmason_161025.csv"
         empirical = True
+        # scaler_type = "standard"
+        # scaler_type = "rank"
+        scaler_type = "zscore"
+        # loss_fn = "hybrid_mse_ranknet_dynamic"
+        # loss_fn = 'custom_mse'
+        # loss_fn = "mse"
+        loss_fn = 'kendall_loss'
+        # alpha = 0.969027405119828
+        # eps = 0.000179583310662165
+        alpha = 0
+        eps = 0
+        # eps = 4e-5
+        # loss_fn = 'mse'
+        # loss_fn = 'hybrid_mse_ranknet_loss'
+        # loss_fn = "hybrid_mse_ranknet_tail_loss"
+        # alpha = 0.98
+        # eps = 4e-5
+        # eps = 0.00004
 
         #run regressor
-        regressor = log_function_run(Regressor, features_file=features_file,
-                                     test_size=0.2,
-                                     mode=mode, i=i, remove_correlated_features=False,
-                                     empirical=empirical, scaler_type="standard", true_score_name=true_score_name)
         # regressor = log_function_run(Regressor, features_file=features_file,
         #                              test_size=0.2,
-        #                              mode=mode,
-        #                              i=i, remove_correlated_features=False,
-        #                              empirical=False, scaler_type="rank", true_score_name=true_score_name)
+        #                              mode=mode, i=i, remove_correlated_features=False,
+        #                              empirical=empirical, scaler_type="standard", true_score_name=true_score_name)
+        regressor = log_function_run(Regressor, features_file=features_file,
+                                     test_size=0.2,
+                                     mode=mode,
+                                     i=i, remove_correlated_features=False,
+                                     empirical=empirical, scaler_type=scaler_type, true_score_name=true_score_name, explain_features_importance=True)
 
-        mse, val_loss, corr_coefficient = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.000723329657102124,
-                               neurons=[296, 54, 16, 256], dropout_rate=0.13, l1=0.0000490968737768127, l2=3.60883702944022E-07, top_k=0, mse_weight=1,
-                               ranking_weight=5, loss_fn="mse", regularizer_name='l1_l2', batch_generation='standard')
-        # mse, val_loss, corr_coefficient = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=256, learning_rate=0.0016335820259578,
-        #                        neurons=[256, 256, 0, 0], dropout_rate=0.384234357031144, l1=5.80738985049704e-07, l2=4.13448309436843e-07, top_k=7, mse_weight=1,
-        #                        ranking_weight=0.5, loss_fn="custom_mse", regularizer_name='l1_l2',
-        #                        batch_generation='custom')
-        print(f"Trial {i}: MSE={mse}, Val_MSE={val_loss}, Corr={corr_coefficient}")
+        # mse, val_loss, corr_coefficient = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.000723329657102124,
+        #                        neurons=[296, 54, 16, 256], dropout_rate=0.13, l1=0.0000490968737768127, l2=3.60883702944022E-07, top_k=0, mse_weight=1,
+        #                        ranking_weight=5, loss_fn="mse", regularizer_name='l1_l2', batch_generation='standard')
+        # mse, val_loss, corr_coefficient = log_function_run(regressor.deep_learning, i=i, epochs=50, batch_size=64, learning_rate=0.0004681566142970831,
+        #                        neurons=[189, 183, 0, 256], dropout_rate=0.3220020470218247, l1=2.834323388640975e-05, l2=4.160821186325675e-07, top_k=10, mse_weight=1,
+        #                        ranking_weight=0.27811940309490346, loss_fn=loss_fn, regularizer_name='l1_l2',
+        #                        batch_generation='custom', alpha=alpha, eps=eps)
+        mse, loss, val_loss, corr_coefficient, avg_per_msa_corr, top50_percentage, val_kendall = log_function_run(regressor.deep_learning,
+                                                            i=i, epochs=50, batch_size=32,
+                                                           learning_rate=0.0003,
+                                                           neurons=[0, 128, 32, 16],
+                                                            dropout_rate=0.2,
+                                                           l1=0.0001, l2=0.0001, top_k=0,
+                                                           mse_weight=0,
+                                                           ranking_weight=0, loss_fn=loss_fn,
+                                                           regularizer_name='l1_l2',
+                                                           batch_generation='custom', alpha=alpha, eps=eps)
+        print(f"Trial {i}: Loss={loss}, Val_MSE={val_loss}, Corr={corr_coefficient}, Avg_MSA_Corr={avg_per_msa_corr}, Top50%={top50_percentage}, Val_Kendall={val_kendall}")
         mse_values.append(mse)
         regressor.plot_results("dl", mse, i)
 
