@@ -21,7 +21,9 @@ features_file: str = '../out/balibase_features_with_foldmason_161025.csv'
 empirical: bool = True
 # scaler_type = "rank"
 # scaler_type="standard"
-scaler_type = "zscore"
+scaler_type_features = "zscore"
+scaler_type_labels = "rank"
+# scaler_type = "zscore"
 # study_mode = '' #TODO - introduce a proper configuration for this and not hardcode by scaler_type
 study_mode = 'minimize_val_loss'
 # loss_fn = "hybrid_mse_ranknet_dynamic"
@@ -34,7 +36,7 @@ loss_fn = "kendall_loss"
 ######################## SETTINGS ###############################
 
 
-log_file = f"../out/optuna_resultss_{study_mode}_{loss_fn}_{scaler_type}.csv"
+log_file = f"../out/optuna_resultss_{study_mode}_{loss_fn}_featSc_{scaler_type_features}_labSc_{scaler_type_labels}_empirical_{empirical}.csv"
 
 if not os.path.exists(log_file):
     with open(log_file, "w") as f:
@@ -42,7 +44,7 @@ if not os.path.exists(log_file):
             "trial_number", "loss", "val_loss", "corr_coefficient", "avg_per_msa_corr","top50_percentage",
             "neurons_1", "neurons_2", "neurons_3", "neurons_4",
             "dropout", "lr", "l1", "l2", "batch_size", "regularizer","top_k", "mse_weight", "ranking_weight",
-            "batch_generation", "loss_fn", "alpha", "epsilon", "scaler"
+            "batch_generation", "loss_fn", "alpha", "epsilon", "scaler_features", "scaler_labels", "val_kendall"
         ]
         f.write(",".join(headers) + "\n")
 
@@ -120,7 +122,9 @@ def objective(trial):
                                    verbose=0,  # turn off during tuning
                                    test_size=0.2,
                                    mode=mode, i=i, remove_correlated_features=False,
-                                   empirical=empirical, scaler_type=scaler_type,
+                                   empirical=empirical,
+                                   scaler_type_features=scaler_type_features,
+                                   scaler_type_labels=scaler_type_labels,
                                    true_score_name=true_score_name,
                                    explain_features_importance=False)
 
@@ -154,7 +158,7 @@ def objective(trial):
             f.write(f"{trial.number},{loss},{val_loss},{corr_coefficient},{avg_per_msa_corr},{top50_percentage},"
                     f"{neurons[0]},{neurons[1]},{neurons[2]},{neurons[3]},"
                     f"{dropout_rate},{learning_rate},{l1},{l2},{batch_size},{regularizer_name},"
-                    f"{top_k},{mse_weight},{ranking_weight},{batch_generation},{loss_fn},{alpha},{eps}, {scaler_type}\n")
+                    f"{top_k},{mse_weight},{ranking_weight},{batch_generation},{loss_fn},{alpha},{eps}, {scaler_type_features}, {scaler_type_labels}, {val_kendall}\n")
     # except Exception as e:
     #     print(f"Trial {trial.number} failed: {e}")
     #     return float('inf')  # or a very bad score to discard trial

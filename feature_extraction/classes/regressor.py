@@ -144,8 +144,8 @@ def _balanced_sample_by_code1_and_taxa(df):
 
 def _balanced_sample_1600(df):
     code_counts = df['code1'].value_counts()
-    # frequent_codes = code_counts[code_counts >= 1600].index #TODO
-    frequent_codes = code_counts[code_counts >= 1450].index #TODO
+    frequent_codes = code_counts[code_counts >= 1235].index #TODO
+    # frequent_codes = code_counts[code_counts >= 1450].index #TODO
 
     final_df = df[df['code1'].isin(frequent_codes)]
     num_unique = final_df['code1'].nunique()
@@ -276,6 +276,7 @@ def _zscore_targets_per_group(y_true: pd.Series, group_codes: pd.Series) -> pd.S
     for group_val, group_df in df.groupby("group"):
         vals = group_df["y"].values
         mean, std = np.mean(vals), np.std(vals)
+        print(f"Group: {group_val}, Mean: {mean}, Std: {std}")
 
         if std == 0:
             scaled_vals = np.zeros_like(vals, dtype=np.float32)
@@ -311,7 +312,7 @@ class Regressor:
     scale_labels: y-labels by default are also rank-percentile scaled
     '''
     def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False,
-                 i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type: Literal['standard', 'rank', 'zscore'] = 'standard',
+                 i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type_features: Literal['standard', 'rank', 'zscore'] = 'standard', scaler_type_labels: Literal['standard', 'rank', 'zscore'] = 'standard',
                  true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dseq_from_true', explain_features_importance: bool = False) -> None:
         self.explain_features_importance = explain_features_importance
         self.empirical = empirical
@@ -329,9 +330,12 @@ class Regressor:
         self.file_codes_test = None
         self.final_features_names = None
         self.remove_correlated_features: bool = remove_correlated_features
-        self.scaler_type = scaler_type
-        if scaler_type not in {'standard', 'rank', 'zscore'}:
-            raise ValueError(f"Invalid scaler_type: {scaler_type}, the allowed options are 'standard' , 'rank' or 'zscore'\n")
+        self.scaler_type_features = scaler_type_features
+        self.scaler_type_labels = scaler_type_labels
+        if scaler_type_features not in {'standard', 'rank', 'zscore'}:
+            raise ValueError(f"Invalid scaler_type_features: {scaler_type_features}, the allowed options are 'standard' , 'rank' or 'zscore'\n")
+        if scaler_type_labels not in {'standard', 'rank', 'zscore'}:
+            raise ValueError(f"Invalid scaler_type_labels: {scaler_type_labels}, the allowed options are 'standard' , 'rank' or 'zscore'\n")
         self.true_score_name = true_score_name
         if true_score_name not in {'ssp_from_true', 'dseq_from_true', 'dpos_from_true'}:
             raise ValueError(f"Invalid true_score_name: {true_score_name}, the allowed options are 'ssp_from_true', 'dseq_from_true', 'dpos_from_true'\n")
@@ -350,20 +354,21 @@ class Regressor:
         # df = _get_balanced_dpos_distribution(df)
         # summary = _summarize_data(df)  # TODO
 
-        # df = df.drop_duplicates(subset=[col for col in df.columns if col != 'code']) #TODO - comment
-        # summary = _summarize_data(df)  # TODO
         #
         # df = _balanced_sample_by_code1_and_taxa(
         #     df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
         # summary = _summarize_data(df)  # TODO
+
+        df = df.drop_duplicates(subset=[col for col in df.columns if col != 'code'])  # TODO - comment
+        summary = _summarize_data(df)  # TODO
 
         if self.empirical:
             df = _balanced_sample_1600(df)
         else:
             df = _balanced_sample_by_code1_and_taxa(
             df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
-
         summary = _summarize_data(df)
+
 
         if self.verbose == 1:
             plt.hist(df[self.true_score_name], bins=100, alpha=0.5, label='Final')
@@ -390,14 +395,14 @@ class Regressor:
 
 
     def _scale(self, i: int = 0):
-        if self.scaler_type == 'standard':
+        if self.scaler_type_features == 'standard':
             self.scaler = StandardScaler()
             self.X_train_scaled = self.scaler.fit_transform(self.X_train)  # calculate scaling parameters (fit)
             self.X_test_scaled = self.scaler.transform(self.X_test)  # use the same scaling parameters as in train scaling
             if self.verbose == 1:
                 joblib.dump(self.scaler, f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
-        elif self.scaler_type == 'rank':
+        elif self.scaler_type_features == 'rank':
             # self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
             self.scaler = GroupAwareScalerZ(mode="rank", use_global=False, global_scaler=RobustScaler())
             self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1", feature_cols=self.X_train.columns)
@@ -407,6 +412,40 @@ class Regressor:
                 self.scaler.save(
                     f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
 
+            # """ SCALED y-labels """
+            # self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
+            #                                                      group_codes=self.main_codes_train)
+            # self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test,
+            #                                                     group_codes=self.main_codes_test)
+            # self.y_train = self.y_train_scaled
+            # self.y_test = self.y_test_scaled
+            # """ SCALED y-labels """
+
+        elif self.scaler_type_features == 'zscore':
+            self.scaler = GroupAwareScalerZ(mode="zscore", use_global=False, global_scaler=RobustScaler())
+            self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1",
+                                                            feature_cols=self.X_train.columns)
+            self.X_test_scaled = self.scaler.transform(self.test_df)
+            # self.final_features_names = [f"{c}_zscore" for c in self.X_train.columns]
+            self.final_features_names = self.scaler.get_feature_names_out()
+
+            if self.verbose == 1:
+                self.scaler.save(f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
+
+            # Scale labels (targets) within each MSA-batch using z-score
+            # self.y_train_scaled = _zscore_targets_per_group(self.y_train, self.main_codes_train)
+            # self.y_test_scaled = _zscore_targets_per_group(self.y_test, self.main_codes_test)
+            # self.y_train_scaled = _zscore_targets_global(self.y_train)
+            # self.y_test_scaled = _zscore_targets_global(self.y_test)
+            # self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
+            #                                                      group_codes=self.main_codes_train)
+            # self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test,
+            #                                                     group_codes=self.main_codes_test)
+            #
+            # self.y_train = self.y_train_scaled
+            # self.y_test = self.y_test_scaled
+
+        if self.scaler_type_labels == 'rank':
             """ SCALED y-labels """
             self.y_train_scaled = _rank_percentile_scale_targets(y_true=self.y_train,
                                                                  group_codes=self.main_codes_train)
@@ -416,24 +455,15 @@ class Regressor:
             self.y_test = self.y_test_scaled
             """ SCALED y-labels """
 
-        elif self.scaler_type == 'zscore':
-            self.scaler = GroupAwareScalerZ(mode="zscore", use_global=False, global_scaler=RobustScaler())
-            self.X_train_scaled = self.scaler.fit_transform(self.train_df, group_col="code1",
-                                                            feature_cols=self.X_train.columns)
-            self.X_test_scaled = self.scaler.transform(self.test_df)
-            self.final_features_names = [f"{c}_zscore" for c in self.X_train.columns]
-
-            if self.verbose == 1:
-                self.scaler.save(f'./out/scaler_{i}_mode{self.mode}_{self.true_score_name}.pkl')
-
-            # Scale labels (targets) within each MSA-batch using z-score
+        elif self.scaler_type_labels == 'zscore':
+            """ SCALED y-labels """
             self.y_train_scaled = _zscore_targets_per_group(self.y_train, self.main_codes_train)
             self.y_test_scaled = _zscore_targets_per_group(self.y_test, self.main_codes_test)
-            # self.y_train_scaled = _zscore_targets_global(self.y_train)
-            # self.y_test_scaled = _zscore_targets_global(self.y_test)
-
             self.y_train = self.y_train_scaled
             self.y_test = self.y_test_scaled
+            """ SCALED y-labels """
+
+        ### if standard, do nothing to y-labels
 
         # Check the size of each set
         if self.verbose == 1:
@@ -510,40 +540,11 @@ class Regressor:
 
 
     def _finalize_features(self, df):
-        # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
-        #                  'normalised_sop_score_Blosum50', 'normalised_sop_score_Blosum62', 'aligner']
-        # columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
-        #                        'aligner'] + ['normalised_sop_score_Blosum62', 'normalised_sop_score_Blosum50', 'sop_score_Blosum50', 'sp_score_subs_norm_Blosum50',
-        #                                                                       'sp_ge_count_Blosum50', 'sp_score_gap_e_norm_Blosum50',
-        #                                                                       'sp_missmatch_ratio_Blosum50','sp_match_ratio_Blosum50',
-        #                                                                       'number_of_mismatches_Blosum50'] #TODO - dropping all Blosum 50 statistics
-        # columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
-        #                        'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner'] #TODO: this is  version for old dpos file
         columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
                                'aligner']
-        # columns_to_drop_extended = columns_to_drop_dft + ['sop_score_Blosum62', 'sop_score_Blosum50', 'normalised_sop_score_Blosum62']
+
         if self.empirical == True:
-            # columns_to_choose = ['constant_sites_pct', 'sop_score', 'normalised_sop_score_Blosum62', 'entropy_mean',
-            #                      'sp_score_subs_norm', 'sp_ge_count', 'number_of_gap_segments', 'nj_parsimony_score',
-            #                      'msa_len', 'num_cols_no_gaps', 'total_gaps', 'entropy_var', 'num_unique_gaps',
-            #                      'sp_score_gap_e_norm', 'k_mer_10_mean', 'av_gaps', 'n_unique_sites', 'skew_bl',
-            #                      'median_bl', 'bl_75_pct', 'avg_unique_gap', 'k_mer_20_var', 'k_mer_10_top_10_norm',
-            #                      'gaps_2seq_len3plus', 'gaps_1seq_len3plus', 'num_cols_1_gap', 'single_char_count',
-            #                      'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'gaps_len_three_plus', 'number_of_mismatches',
-            #                      'sp_missmatch_ratio', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one','gaps_len_three',
-            #                      'sp_match_ratio', 'taxa_num']
-            # columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean',
-            #                      'sp_score_subs_norm_Blosum62',
-            #                      'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62',
-            #                      'k_mer_10_mean',
-            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-            #                      'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus',
-            #                      'sp_missmatch_ratio_Blosum62',
-            #                      'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one',
-            #                      'gaps_len_three',
-            #                      'number_of_mismatches_Blosum62', 'taxa_num', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE']
+
             columns_to_choose = ['MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE', 'sp_ge_norm', 'bl_75_pct', 'msa_length',
                                  'k_mer_average_K5', 'bl_25_pct', 'sp_mismatch_count_norm', 'sp_match_count_norm',
                                  'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
@@ -558,75 +559,7 @@ class Regressor:
                                  'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
                                  'gaps_all_except_1_len4plus']
 
-            # columns_to_choose = ['MEAN_RES_PAIR_SCORE']
         else:
-            # columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-            #                      'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
-            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-            #                      'num_cols_1_gap', 'single_char_count',
-            #                      'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-            #                      'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio', 'taxa_num']
-            # columns_to_choose = ['constant_sites_pct', 'sop_score_Blosum62', 'entropy_mean', 'sp_score_subs_norm_Blosum62',
-            #                      'sp_ge_count_Blosum62', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-            #                      'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm_Blosum62', 'k_mer_10_mean',
-            #                      'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-            #                      'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-            #                      'num_cols_1_gap', 'single_char_count', 'gaps_len_three_plus', 'sp_missmatch_ratio_Blosum62',
-            #                      'sp_match_ratio_Blosum62', 'nj_parsimony_sd', 'var_bl', 'gaps_len_one', 'gaps_len_three',
-            #                      'number_of_mismatches_Blosum62', 'taxa_num']
-            # columns_to_choose = ['sp_ge_norm', 'bl_75_pct', 'msa_length',
-            #                      'k_mer_average_K5', 'bl_25_pct', 'sp_missmatch_count_norm', 'sp_match_count_norm',
-            #                      'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
-            #                      'avg_unique_gap_length', 'k_mer_90_pct_K5', 'k_mer_95_pct_K5', 'bl_min',
-            #                      'num_cols_no_gaps',
-            #                      'parsimony_max', 'sp_go_norm', 'num_cols_2_gaps', 'gaps_all_except_1_len2', 'taxa_num',
-            #                      'parsimony_min', 'k_mer_95_pct_K10', 'entropy_max', 'num_cols_1_gap',
-            #                      'num_cols_all_gaps_except_1', 'k_mer_90_pct_K20',
-            #                      'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
-            #                      'gaps_len_four_plus', 'gaps_2seq_len4plus', 'sp_mismatch_norm_BLOSUM62',
-            #                      'gaps_1seq_len1',
-            #                      'double_char_count', 'k_mer_95_pct_K20', 'bl_sum', 'n_unique_sites',
-            #                      'SP_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
-            #                      'k_mer_average_K5', 'seq_max_len', 'parsimony_25_pct', 'num_unique_gaps_norm',
-            #                      'bl_mean',
-            #                      'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
-            #                      'gaps_all_except_1_len4plus']
-
-            # columns_to_choose = ['msa_length', 'taxa_num', 'constant_sites_pct', 'n_unique_sites',
-            #                      'entropy_mean', 'entropy_75_pct',
-            #                      # 'entropy_sum', 'entropy_max',
-            #
-            #                      'num_gap_segments_norm', 'av_gap_segment_length', 'num_unique_gaps', 'num_unique_gaps_norm',
-            #                      'avg_unique_gap_length', 'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps',
-            #                      'gaps_len_one', 'gaps_len_four_plus', 'gaps_1seq_len1',
-            #                      'gaps_2seq_len4plus', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_1seq_len4plus',
-            #                      'num_cols_all_gaps_except1',  'gaps_all_except_1_len4plus',
-            #                      'gaps_all_except_1_len2', 'gaps_all_except_1_len3', 'gaps_all_except_1_len1',
-            #
-            #                      'double_char_count', 'single_char_count', 'seq_min_len', 'seq_max_len',
-            #
-            #                      'bl_75_pct', 'bl_25_pct', 'bl_mean', 'bl_min', 'bl_max', 'bl_sum',
-            #
-            #                      'sp_match_count', 'sp_mismatch_count', 'sp_match_count_norm', 'sp_mismatch_count_norm',
-            #                      'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm',
-            #                      'sp_match_BLOSUM62', 'sp_mismatch_BLOSUM62',
-            #                      # 'sp_match_norm_BLOSUM62', 'sp_mismatch_norm_BLOSUM62',
-            #                      'sp_mismatch_norm_PAM250',
-            #
-            #                      'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
-            #                      'sp_PAM250_GO_-6_GE_-1', 'sp_norm_PAM250_GO_-6_GE_-1',
-            #                      # 'sp_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5',
-            #                      # 'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
-            #
-            #                      'parsimony_25_pct', 'parsimony_75_pct', 'parsimony_mean', 'parsimony_min',
-            #                      'parsimony_max', 'parsimony_sum',
-            #
-            #                      'k_mer_max_K10', 'k_mer_average_K10', 'k_mer_95_pct_K10', 'k_mer_90_pct_K10',
-            #                      'k_mer_average_K10', 'k_mer_95_pct_K20', 'k_mer_average_K5'
-            #
-            #                      ]
 
             columns_to_choose = ['sp_mismatch_norm_PAM250','sp_mismatch_norm_BLOSUM62', 'sp_norm_PAM250_GO_-6_GE_-0.2', 'sp_PAM250_GO_-6_GE_-0.2',
                                  'constant_sites_pct', 'sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm',
@@ -639,19 +572,6 @@ class Regressor:
                                  'bl_mean', 'bl_max', 'bl_25_pct', 'n_unique_sites'
                                  ]
 
-            # columns_to_choose = ['sp_ge_norm', 'bl_75_pct', 'msa_length',
-            #                      'k_mer_average_K5', 'bl_25_pct', 'sp_mismatch_count_norm', 'sp_match_count_norm',
-            #                      'av_gap_segment_length', 'bl_max', 'entropy_mean', 'constant_sites_pct', 'seq_min_len',
-            #                      'avg_unique_gap_length', 'k_mer_90_pct_K5', 'k_mer_95_pct_K5', 'bl_min', 'num_cols_no_gaps',
-            #                      'parsimony_max', 'sp_go_norm', 'num_cols_2_gaps', 'gaps_all_except_1_len2', 'taxa_num',
-            #                      'parsimony_min', 'k_mer_95_pct_K10', 'entropy_max', 'num_cols_1_gap',
-            #                      'num_cols_all_gaps_except1', 'k_mer_90_pct_K20', 'sp_HENIKOFF_with_gaps_PAM250_GO_-6_GE_-1',
-            #                      'gaps_len_four_plus', 'gaps_2seq_len4plus', 'sp_mismatch_norm_BLOSUM62', 'gaps_1seq_len1',
-            #                      'double_char_count', 'k_mer_95_pct_K20', 'bl_sum', 'n_unique_sites',
-            #                      'sp_HENIKOFF_with_gaps_BLOSUM62_GO_-10_GE_-0.5', 'sp_norm_BLOSUM62_GO_-10_GE_-0.5',
-            #                      'k_mer_average_K5', 'seq_max_len', 'parsimony_25_pct', 'num_unique_gaps_norm', 'bl_mean',
-            #                      'sp_BLOSUM62_GO_-10_GE_-0.5', 'sp_mismatch_PAM250', 'sp_mismatch_norm_PAM250',
-            #                      'gaps_all_except_1_len4plus']
 
         self.y = df[self.true_score_name]
 
@@ -746,6 +666,10 @@ class Regressor:
             # smooth sign for differentiability
             sign_pred = tf.tanh(diff_pred)
             tau = tf.reduce_mean(sign_true * sign_pred)
+            # mask = 1.0 - tf.eye(tf.shape(y_true)[0])
+            # tau = tf.reduce_sum(sign_true * sign_pred * mask) * 2.0 / (
+            #             tf.cast(tf.shape(y_true)[0], tf.float32) * (tf.cast(tf.shape(y_true)[0], tf.float32) - 1.0))
+
             return 1 - tau  # maximize Kendall's τ
 
         def soft_kendall_loss(y_true, y_pred, tau=1.0): #TAU 1.0-5.0
@@ -795,74 +719,6 @@ class Regressor:
             alpha = tf.clip_by_value(alpha_base / (1 + ratio), 0.9, 0.995)
             return alpha * mse + (1 - alpha) * rank_loss
 
-        # def hybrid_mse_ranknet_tail_loss(
-        #         y_true, y_pred, alpha=0.98, margin=0.2, tail_focus=5.0, eps=1e-6
-        # ):
-        #     """
-        #     Hybrid loss for ranking alternative MSAs.
-        #     - alpha: balance between MSE and rank loss (0.95–0.99 typical)
-        #     - margin: required difference between better/worse samples
-        #     - tail_focus: strength of weighting for lowest (best) true values
-        #     """
-        #     y_true = tf.cast(y_true, tf.float32)
-        #     y_pred = tf.cast(y_pred, tf.float32)
-        #
-        #     # 1. Normalize per batch to make loss scale-invariant (important for per-MSA zscoring)
-        #     batch_std = tf.math.reduce_std(y_true) + eps
-        #
-        #     # 2. Weighted MSE: focus on low (good) y_true values
-        #     weights = tf.nn.sigmoid(-tail_focus * y_true)
-        #     mse_loss = tf.reduce_mean(weights * tf.square((y_true - y_pred) / batch_std))
-        #
-        #     # 3. Pairwise margin-based ranking loss (RankNet-like but with enforced separation)
-        #     diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
-        #     diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
-        #     S = tf.cast(diff_true < 0, tf.float32)  # i better than j
-        #     P = tf.nn.sigmoid(diff_pred - margin)
-        #     rank_loss = -tf.reduce_mean(S * tf.math.log(P + eps) + (1 - S) * tf.math.log(1 - P + eps))
-        #
-        #     # 4. Combine
-        #     total_loss = alpha * mse_loss + (1 - alpha) * rank_loss
-        #
-        #     # Optional monitoring
-        #     tf.print("MSE:", mse_loss, "Rank:", rank_loss, "Ratio Rank/MSE:", rank_loss / (mse_loss + eps))
-        #
-        #     return total_loss
-
-
-        #
-        # def ranknet_loss(y_true, y_pred, margin=0.0): #CAN BE USED WITH MY CUSTOM BATCHING and with STANDARD SCALER
-        #     """
-        #     Pairwise RankNet loss that works with batch-wise MSA sets.
-        #     Assumes each batch corresponds to one MSA-batch (set of alternatives).
-        #     """
-        #     y_true = tf.cast(y_true, tf.float32)
-        #     y_pred = tf.cast(y_pred, tf.float32)
-        #
-        #     # Compute all pairwise differences
-        #     diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
-        #     diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
-        #
-        #     # Target S_ij = 1 if y_true_i < y_true_j (i is better), else 0
-        #     S = tf.cast(diff_true < 0, tf.float32)
-        #
-        #     # Predicted probability that i < j
-        #     P = tf.nn.sigmoid(diff_pred - margin)
-        #
-        #     # Binary cross-entropy loss
-        #     loss = - (S * tf.math.log(P + 1e-8) + (1 - S) * tf.math.log(1 - P + 1e-8))
-        #
-        #     # Average over all pairs
-        #     return tf.reduce_mean(loss)
-        #
-        # def topk_weighted_mse(y_true, y_pred, topk=10, alpha=5.0):
-        #     y_true = tf.cast(y_true, tf.float32)
-        #     y_pred = tf.cast(y_pred, tf.float32)
-        #     # Get ranks of true values
-        #     ranks = tf.argsort(tf.argsort(y_true))  # 0=lowest (best)
-        #     weights = tf.where(ranks < topk, alpha, 1.0)
-        #     return tf.reduce_mean(weights * tf.square(y_true - y_pred))
-        #
         def listnet_loss(y_true, y_pred):
             y_true = tf.cast(y_true, tf.float32)
             y_pred = tf.cast(y_pred, tf.float32)
@@ -899,35 +755,6 @@ class Regressor:
             ndcg = dcg / (idcg + eps)
             return 1.0 - ndcg  # Loss to minimize
 
-        def lambda_rank_loss(y_true, y_pred, eps=1e-10):
-            y_true = tf.cast(y_true, tf.float32)
-            y_pred = tf.cast(y_pred, tf.float32)
-
-            # Pairwise differences
-            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
-            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
-
-            # Mask for relevant pairs
-            S = tf.cast(diff_true > 0, tf.float32)
-
-            # Sigmoid probabilities
-            P = tf.nn.sigmoid(diff_pred)
-            rank_loss = - (S * tf.math.log(P + eps) + (1 - S) * tf.math.log(1 - P + eps))
-
-            # Compute delta NDCG (LambdaRank weighting)
-            gains = tf.pow(2.0, y_true) - 1.0
-            discounts = 1.0 / tf.math.log(2.0 + tf.range(tf.shape(y_true)[0], dtype=tf.float32))
-            idcg = tf.reduce_sum(tf.sort(gains, direction='DESCENDING') * discounts)
-
-            delta_ndcg = tf.abs(tf.expand_dims(gains, 1) - tf.expand_dims(gains, 0)) / (idcg + eps)
-            weighted_loss = delta_ndcg * rank_loss
-
-            return tf.reduce_mean(weighted_loss)
-
-        def hybrid_mse_lambda_loss(y_true, y_pred, alpha=0.7):
-            mse = tf.reduce_mean(tf.square(y_true - y_pred))
-            rank_loss = lambda_rank_loss(y_true, y_pred)
-            return alpha * mse + (1 - alpha) * rank_loss
 
         # MODEL PART
         model = Sequential()
@@ -963,13 +790,6 @@ class Regressor:
             model.add(PReLU())
             model.add(Dropout(dropout_rate))
 
-
-        # # #first hidden #TODO remove
-        # model.add(
-        #     Dense(64, kernel_initializer=GlorotUniform(), kernel_regularizer=ker_regularizer))
-        # model.add(BatchNormalization())
-        # model.add(LeakyReLU(negative_slope=0.01))
-        # model.add(Dropout(dropout_rate))
 
         if not neurons[2] == 0:
             # third hidden
@@ -1015,15 +835,6 @@ class Regressor:
                               alpha=alpha,
                               eps=eps))
 
-        # elif loss_fn == 'hybrid_mse_ranknet_tail_loss':
-        #     model.compile(optimizer=optimizer,
-        #                   loss=lambda y_true, y_pred: hybrid_mse_ranknet_tail_loss(
-        #                     y_true, y_pred,
-        #                     alpha=alpha,
-        #                     margin=0.2,
-        #                     tail_focus=5.0,
-        #                     eps=eps))
-
 
         elif loss_fn == "kendall_loss":
             model.compile(optimizer=optimizer,
@@ -1044,9 +855,9 @@ class Regressor:
                               alpha_base=alpha,
                               eps=eps))
 
-        # elif loss_fn == "listnet_loss":
-        #     model.compile(optimizer=optimizer,
-        #                   loss=lambda y_true, y_pred: listnet_loss(y_true, y_pred))
+        elif loss_fn == "approx_ndcg_loss":
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred: approx_ndcg_loss(y_true, y_pred, eps=1e-10))
 
 
         unique_train_codes = self.main_codes_train.unique()
@@ -1083,13 +894,15 @@ class Regressor:
         )
 
         ranking_callback = PerBatchRankingMetrics(val_generator=val_generator, metric="kendall", verbose=1)
+        ranking_callback2 = PerBatchRankingMetrics(val_generator=val_generator, metric="spearman", verbose=1)
 
         val_kendall = None
         if batch_generation == 'custom':
             callbacks = [
                 early_stopping,
                 lr_scheduler,
-                ranking_callback
+                ranking_callback,
+                ranking_callback2
             ]
             history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
                                     callbacks=callbacks)
@@ -1208,7 +1021,7 @@ class Regressor:
 
         top50_percentage = 100 * np.mean(msa_stats)
         print(
-            f"✅ Percentage of MSA groups where best predicted score is in top 50 true labels: {top50_percentage:.2f}%")
+            f"Percentage of MSA groups where best predicted score is in top 50 true labels: {top50_percentage:.2f}%")
 
         ### END - TRY ADDING AND OPTIMIZING % OF MSA-BATCHES WHERE PREDICTED IN TRUE TOP50 ####
 
