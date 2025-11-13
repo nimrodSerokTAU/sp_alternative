@@ -83,17 +83,17 @@ class SPScore:
 
 
     @staticmethod
-    def compute_gap_intervals(seq_i: list[str]) -> list[GapInterval]:
+    def compute_gap_intervals(seq_i: list[str], seq_w: float = 1) -> list[GapInterval]:
         seq_len: int = len(seq_i)
         gap_intervals_list: list[GapInterval] = []
-        gap_interval = GapInterval()
+        gap_interval = GapInterval(seq_w)
         for k in range(seq_len):
             if seq_i[k] == '-' and gap_interval.is_empty():  # start a new gap interval
                 gap_interval.set_start(start=k)
             if seq_i[k] != '-' and not gap_interval.is_empty():  # the current gap interval finish at previous position
                 gap_interval.end = k - 1
                 gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
-                gap_interval = GapInterval()
+                gap_interval = GapInterval(seq_w)
         if not gap_interval.is_empty():  # handle terminal gap if any
             gap_interval.end = seq_len - 1
             gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
@@ -172,3 +172,73 @@ class SPScore:
         sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, ge_count = self.compute_sp_s_and_sp_ge(profile)
         go_score, go_count = self.compute_sp_gap_open(profile)
         return sp_match_score, sp_mismatch_score, go_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, go_count, ge_count
+
+
+    def get_pair_score(self, i: int, j: int):
+        min_i = min(i, j)
+        max_j = max(i, j)
+        if j < len(self.w_matrix):
+            return self.w_matrix[min_i][max_j]
+        return self.ge_cost
+
+    '''This is the improved function'''
+    def compute_w_sp_s_and_sp_ge(self, alignment: list[str], seq_w: list[float]) -> list[float]:
+        options_count = len(self.w_matrix[0]) + 1
+        seq_len: int = len(alignment[0])
+        sp_subs_and_ge_score: list[float] = []
+        for col in range(seq_len):
+            sp_subs_and_ge_score.append(0)
+            histo: list[dict] = []
+            for opt in range(options_count):
+                histo.append({'count': 0, 'sq_sum': 0, 'sum': 0})
+            for i in range(len(alignment)):
+                char = alignment[i][col]
+                char_index = -1 if char == '-' else translate_to_matrix_index(char, self.code_to_index_dict)
+                histo[char_index]['count'] += 1
+                histo[char_index]['sum'] += seq_w[i]
+                histo[char_index]['sq_sum'] += (seq_w[i] * seq_w[i])
+            for char_i in range(options_count - 1):  # limited number
+                if histo[char_i]['count'] != 0:
+                    sp_subs_and_ge_score[col] += float(self.get_pair_score(char_i, char_i) *
+                                            (histo[char_i]['sum'] * histo[char_i]['sum'] - histo[char_i]['sq_sum'] ) / 2)
+                    for j in range(char_i + 1, options_count):
+                        if histo[j]['count'] != 0:
+                            sp_subs_and_ge_score[col] += (self.get_pair_score(char_i, j) *
+                                             histo[char_i]['sum'] * histo[j]['sum'])
+        return sp_subs_and_ge_score
+
+    '''This is the improved function'''
+    def compute_w_sp_gap_open(self, alignment: list[str], w: list[float]) -> float:
+        if len(alignment) == 0:
+            return 0
+        seq_len: int = len(alignment[0])
+        n = len(alignment)
+        nb_open_gap = []
+        for col in range(seq_len):
+            nb_open_gap.append({'count': 0, 'sum': 0})
+        gap_closing = [[] for i in range(seq_len)]
+        sum_w = sum(w)
+        for index, seq_i in enumerate(alignment):
+            # construct gap_intervals_list in O(L) and update nb_open_gap and gap_closing arrays
+            gap_intervals_list = self.compute_gap_intervals(list(seq_i), w[index])
+            for gap_interval in gap_intervals_list:
+                for k in range(gap_interval.start, gap_interval.end + 1):
+                    nb_open_gap[k]['count'] += 1
+                    nb_open_gap[k]['sum'] += gap_interval.w
+                gap_closing[gap_interval.end].append(gap_interval)
+        sp_gp_open = 0  # part of the SP score related to gap opening costs
+        for col in range(seq_len):
+            for gap_interval in gap_closing[col]:
+                gpo_count = n - nb_open_gap[gap_interval.start]['count']
+                gpo_w = sum_w - nb_open_gap[gap_interval.start]['sum']
+                sp_gp_open += gpo_w * gap_interval.w * self.go_cost
+            for gap_interval in gap_closing[col]:
+                for k in range(gap_interval.start, gap_interval.end + 1):
+                    nb_open_gap[k]['count'] -= 1
+                    nb_open_gap[k]['sum'] -= gap_interval.w
+        return sp_gp_open
+
+    def compute_efficient_w_sp(self, alignment: list[str], w: list[float]) -> float:
+        sp_s_and_ge_score: list[float] = self.compute_w_sp_s_and_sp_ge(alignment, w)
+        sp_gp_open = self.compute_w_sp_gap_open(alignment, w)
+        return sum(sp_s_and_ge_score) + sp_gp_open

@@ -89,14 +89,10 @@ class WSopStats(BasicStats):
             WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value] if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value in sop_w_options_dict else 0
 
     def calc_w_sp(self, sequences: list[str], sp: SPScore):
-        sop_w_options: list[float] = []
-        if len(self.weight_names) > 0:
-            sop_w_options = sp.compute_naive_sp_score(sequences, self.seq_weights_options)
         sop_w_options_dict: dict[str, float] = {}
         for index, weight_name in enumerate(self.weight_names):
-            sop_w_options_dict[weight_name] = sop_w_options[index]
+            sop_w_options_dict[weight_name] = sp.compute_efficient_w_sp(sequences, self.seq_weights_options[index])
         self.set_my_w_sop(sop_w_options_dict)
-        # print(sop_w_options_dict)
 
     def get_ordered_col_names_with_model(self, model_name: str, go_val: float, ge_val: float) -> list[str]:
         return [f'{col_name}_{model_name}_GO_{go_val}_GE_{ge_val}' for col_name in self.ordered_col_names]

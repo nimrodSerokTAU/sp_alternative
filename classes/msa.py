@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from random import randrange
 from typing import Self
@@ -132,39 +133,39 @@ class MSA:
             res.append(new_msa_seqs)
         return res
 
-    def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
-        res_msas: list[list[str]] = []
-        partial_seq = {'start': -1, 'length': 0}
-        for seq_inx_to_update in range(len(self.seq_names)):
-            chars: list[dict] = []
-            seq: str = self.sequences[seq_inx_to_update]
-            is_gap: bool = True
-            current_seq = partial_seq.copy()
-            if seq[0] != '-':
-                current_seq['start'] = 0
-                is_gap = False
-            for index, c in enumerate(seq):
-                if c == '-':
-                    if not is_gap:
-                        current_seq['length'] = index - current_seq['start']
-                        chars.append(current_seq)
-                        is_gap = True
-                else:
-                    if is_gap:
-                        current_seq = partial_seq.copy()
-                        current_seq['start'] = index
-                        is_gap = False
-            if len(chars) > 1:
-                for cp in chars:
-                    new_seq_as_list: list[str] = list(seq)
-                    index_to_insert: int = cp['start']
-                    del new_seq_as_list[index_to_insert + cp['length']]
-                    new_seq_as_list.insert(index_to_insert, '-')
-                    new_seq: str = ''.join(new_seq_as_list)
-                    new_msa_seqs = self.sequences.copy()
-                    new_msa_seqs[seq_inx_to_update] = new_seq
-                    res_msas.append(new_msa_seqs)
-        return res_msas
+    # def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
+    #     res_msas: list[list[str]] = []
+    #     partial_seq = {'start': -1, 'length': 0}
+    #     for seq_inx_to_update in range(len(self.seq_names)):
+    #         chars: list[dict] = []
+    #         seq: str = self.sequences[seq_inx_to_update]
+    #         is_gap: bool = True
+    #         current_seq = partial_seq.copy()
+    #         if seq[0] != '-':
+    #             current_seq['start'] = 0
+    #             is_gap = False
+    #         for index, c in enumerate(seq):
+    #             if c == '-':
+    #                 if not is_gap:
+    #                     current_seq['length'] = index - current_seq['start']
+    #                     chars.append(current_seq)
+    #                     is_gap = True
+    #             else:
+    #                 if is_gap:
+    #                     current_seq = partial_seq.copy()
+    #                     current_seq['start'] = index
+    #                     is_gap = False
+    #         if len(chars) > 1:
+    #             for cp in chars:
+    #                 new_seq_as_list: list[str] = list(seq)
+    #                 index_to_insert: int = cp['start']
+    #                 del new_seq_as_list[index_to_insert + cp['length']]
+    #                 new_seq_as_list.insert(index_to_insert, '-')
+    #                 new_seq: str = ''.join(new_seq_as_list)
+    #                 new_msa_seqs = self.sequences.copy()
+    #                 new_msa_seqs[seq_inx_to_update] = new_seq
+    #                 res_msas.append(new_msa_seqs)
+    #     return res_msas
 
     def print_me_to_fasta_file(self, dir_path: Path):
         output_file_path = Path(f'{str(dir_path)}/{self.dataset_name}.fas')
@@ -182,30 +183,47 @@ class MSA:
         dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
 
         if len({StatsOutput.ALL, StatsOutput.DISTANCE_LABELS }.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             dist_labels_stats.set_my_distance_from_true(true_msa.sequences, self.sequences)
             self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path, StatsOutput.DISTANCE_LABELS.value,
                                   is_init_file, dist_labels_stats.get_ordered_col_names())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Lables: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.ENTROPY}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             entropy_stats = EntropyStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             entropy_stats.calc_entropy(self.sequences)
             self.print_stats_file(entropy_stats.get_my_features_as_list(), output_dir_path, StatsOutput.ENTROPY.value,
                                   is_init_file, entropy_stats.get_ordered_col_names())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Entropy: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.GAPS}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             gaps_stats = GapStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             gaps_stats.calc_gaps_values(self.sequences)
             self.print_stats_file(gaps_stats.get_my_features_as_list(), output_dir_path, StatsOutput.GAPS.value,
                                   is_init_file, gaps_stats.get_ordered_col_names())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Gaps: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             for k_value in list(config.k_values):
                 k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
                 k_mer_stats.set_k_mer_features(self.sequences)
                 self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
                                       is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value))
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Kmer: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             self.build_nj_tree()
             tree_stats = TreeStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             tree_stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
@@ -216,16 +234,24 @@ class MSA:
                 data_to_print, col_names = dist_labels_stats.get_print_rf()
                 self.print_stats_file(data_to_print, output_dir_path, StatsOutput.RF_LABEL.value,
                                       is_init_file, col_names)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Tree: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.SP}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             for sp in sp_models:
                 sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)
                 self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
                                       is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for regular Sop: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
                 self.build_nj_tree()
             for sp in sp_models:
@@ -235,6 +261,9 @@ class MSA:
                 self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
                                       is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for wSop: {elapsed_time:.4f} seconds")
 
 
     @staticmethod

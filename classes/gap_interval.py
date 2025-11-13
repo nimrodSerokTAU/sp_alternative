@@ -1,9 +1,10 @@
 class GapInterval:
     start: int
     end: int
+    w: float
 
-    def __init__(self):
-        pass
+    def __init__(self, w: float = 1):
+        self.w = w
 
     def set_start(self, start: int):
         self.start = start
@@ -21,7 +22,7 @@ class GapInterval:
         return not hasattr(self, 'start')
 
     def copy_me(self) -> 'GapInterval':
-        new_one = GapInterval()
+        new_one = GapInterval(self.w)
         new_one.set_start(self.start)
         new_one.set_end(self.end)
         return new_one

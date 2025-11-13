@@ -44,11 +44,6 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
             else:
                 true_msa.build_nj_tree()
 
-        # alternative_true: list[list[str]] = true_msa.create_alternative_msas_by_moving_smallest()
-        # for i, m in enumerate(alternative_true):
-        #     inf_alt_msa = MSA(f'true_alt_{i}')
-        #     inf_alt_msa.set_sequences_to_me(m, true_msa.seq_names)
-        #     add_msa_to_stats(all_msa_stats, true_msa, true_msa, config, sp)
         is_init_files: bool = True
         for inferred_file_name in inferred_file_names:
             msa_name = inferred_file_name # if config.is_analyze_per_dir else dir_name
@@ -56,13 +51,8 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
             inferred_msa = MSA(msa_name)
             inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
             inferred_msa.order_sequences(true_msa.seq_names)
-            # alternative_inferred: list[list[str]] = inferred_msa.create_alternative_msas_by_moving_one_part()
             inferred_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
             is_init_files = False
-            # for i, m in enumerate(alternative_inferred):
-            #     inf_alt_msa = MSA(f'{msa_name}_alt_{i}')
-            #     inf_alt_msa.set_sequences_to_me(m, inferred_msa.seq_names)
-            #     add_msa_to_stats(all_msa_stats, inferred_msa, true_msa, config, sp)
         if true_msa is not None:
             true_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
     print('done')
