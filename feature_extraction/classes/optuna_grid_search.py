@@ -12,39 +12,46 @@ i: int = 0
 mode: int = 1
 true_score_name: str = 'dseq_from_true'
 
-# features_file: str = '../out/ortho12_distant_features_260825.csv'
-# empirical: bool = False
+features_file: str = '../out/ortho12_distant_features_121125.csv'
+empirical: bool = False
 # scaler_type = "rank"
 # scaler_type="standard"
 
-features_file: str = '../out/balibase_features_with_foldmason_161025.csv'
-empirical: bool = True
+# features_file: str = '../out/balibase_features_with_foldmason_231025.csv'
+# empirical: bool = True
 # scaler_type = "rank"
 # scaler_type="standard"
-scaler_type_features = "zscore"
-scaler_type_labels = "rank"
+# scaler_type_features = "zscore"
+# scaler_type_labels = "zscore"
+# scaler_type_features = "rank"
+# scaler_type_labels = "rank"
+scaler_type_features = "standard"
+scaler_type_labels = "standard"
 # scaler_type = "zscore"
 # study_mode = '' #TODO - introduce a proper configuration for this and not hardcode by scaler_type
 study_mode = 'minimize_val_loss'
 # loss_fn = "hybrid_mse_ranknet_dynamic"
 # loss_fn = "hybrid_mse_ranknet_loss"
 # loss_fn = 'custom_mse'
-loss_fn = "kendall_loss"
+loss_fn = 'mse'
+# loss_fn = "kendall_loss"
 # study_mode = 'maximize_correlation'
+# study_mode = 'maximize_correlation_of_top_k'
 # study_mode = 'maximize_correlation_and_capture_best'
 
 ######################## SETTINGS ###############################
 
 
-log_file = f"../out/optuna_resultss_{study_mode}_{loss_fn}_featSc_{scaler_type_features}_labSc_{scaler_type_labels}_empirical_{empirical}.csv"
+log_file = f"../out/optuna_results_{study_mode}_{loss_fn}_featSc_{scaler_type_features}_labSc_{scaler_type_labels}_empirical_{empirical}.csv"
 
 if not os.path.exists(log_file):
     with open(log_file, "w") as f:
         headers = [
-            "trial_number", "loss", "val_loss", "corr_coefficient", "avg_per_msa_corr","top50_percentage",
+            "trial_number", "loss", "val_loss", "corr_coefficient", "avg_per_msa_corr","avg_per_msa_topk_corr", "top50_percentage",
             "neurons_1", "neurons_2", "neurons_3", "neurons_4",
             "dropout", "lr", "l1", "l2", "batch_size", "regularizer","top_k", "mse_weight", "ranking_weight",
-            "batch_generation", "loss_fn", "alpha", "epsilon", "scaler_features", "scaler_labels", "val_kendall"
+            "batch_generation", "loss_fn", "alpha", "epsilon", "scaler_features", "scaler_labels",
+            "val_kendall", "val_spearman"
         ]
         f.write(",".join(headers) + "\n")
 
@@ -54,63 +61,83 @@ def objective(trial):
     study_target = None
 
     try:
-        # Suggest hyperparameters
-        neurons = [
-            # trial.suggest_int("neurons_1", 8, 512),
-            # trial.suggest_int("neurons_2", 8, 512),
-            trial.suggest_categorical("neurons_1", [0, 8, 16, 32, 64, 128, 256, 512]),
-            trial.suggest_categorical("neurons_2", [0, 8, 16, 32, 64, 128, 256, 512]),
-            # trial.suggest_int("neurons_3", 0, 256),  # 0 means skip this layer
-            # trial.suggest_int("neurons_4", 0, 256) # 0 means skip this layer
-            trial.suggest_categorical("neurons_3", [0, 8, 16, 32, 64, 128, 256, 512]),
-            trial.suggest_categorical("neurons_4", [0, 8, 16, 32, 64, 128, 256, 512])
-        ]
-        dropout_rate = trial.suggest_float("dropout", 0.1, 0.4)
-        learning_rate = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
-        batch_size = trial.suggest_categorical("batch_size", [8, 32, 64, 128, 256])
-        regularizer_name = trial.suggest_categorical("regularizer", ["l1", "l2", "l1_l2"])
+        if not study_mode == "maximize_correlation_of_top_k":
+            # Suggest hyperparameters
+            neurons = [
+                # trial.suggest_int("neurons_1", 8, 512),
+                # trial.suggest_int("neurons_2", 8, 512),
+                trial.suggest_categorical("neurons_1", [0, 8, 16, 32, 64, 128, 256, 512]),
+                trial.suggest_categorical("neurons_2", [0, 8, 16, 32, 64, 128, 256, 512]),
+                # trial.suggest_int("neurons_2", 8, 512, log=True)
+                # trial.suggest_int("neurons_3", 0, 256),  # 0 means skip this layer
+                # trial.suggest_int("neurons_4", 0, 256) # 0 means skip this layer
+                trial.suggest_categorical("neurons_3", [0, 8, 16, 32, 64, 128, 256, 512]),
+                trial.suggest_categorical("neurons_4", [0, 8, 16, 32, 64, 128, 256, 512])
+            ]
+            dropout_rate = trial.suggest_float("dropout", 0.1, 0.4)
+            learning_rate = trial.suggest_float("lr", 1e-5, 1e-2, log=True)
+            batch_size = trial.suggest_categorical("batch_size", [8, 32, 64, 128, 256])
+            regularizer_name = trial.suggest_categorical("regularizer", ["l1", "l2", "l1_l2"])
 
-        if regularizer_name == "l1":
-            l1 = trial.suggest_float("l1", 1e-7, 1e-4, log=True)
-            l2 = 0
-        elif regularizer_name == "l2":
-            l1 = 0
-            l2 = trial.suggest_float("l2", 1e-7, 1e-4, log=True)
-        elif regularizer_name == "l1_l2":
-            l1 = trial.suggest_float("l1", 1e-7, 1e-4, log=True)
-            l2 = trial.suggest_float("l2", 1e-7, 1e-4, log=True)
+            if regularizer_name == "l1":
+                l1 = trial.suggest_float("l1", 1e-7, 1e-4, log=True)
+                l2 = 0
+            elif regularizer_name == "l2":
+                l1 = 0
+                l2 = trial.suggest_float("l2", 1e-7, 1e-4, log=True)
+            elif regularizer_name == "l1_l2":
+                l1 = trial.suggest_float("l1", 1e-7, 1e-4, log=True)
+                l2 = trial.suggest_float("l2", 1e-7, 1e-4, log=True)
 
-        # scaler_type = trial.suggest_categorical("scaler", ["rank", "zscore"])
-        # scaler_type = trial.suggest_categorical("scaler", ["rank", "standard", "zscore"])
-        # loss_fn = trial.suggest_categorical("loss_fn", ["mse", "custom_mse", 'hybrid_mse_ranknet_loss', 'kendall_loss', 'hybrid_mse_ranknet_dynamic'])
+            # scaler_type = trial.suggest_categorical("scaler", ["rank", "zscore"])
+            # scaler_type = trial.suggest_categorical("scaler", ["rank", "standard", "zscore"])
+            # loss_fn = trial.suggest_categorical("loss_fn", ["mse", "custom_mse", 'hybrid_mse_ranknet_loss', 'kendall_loss', 'hybrid_mse_ranknet_dynamic'])
 
-        if scaler_type == "standard":
-            batch_generation = 'standard'
+            if scaler_type_labels == "standard" and scaler_type_features == "standard":
+                batch_generation = 'standard'
+            else:
+                batch_generation = 'custom'
+
+            if loss_fn == "custom_mse":
+                top_k = 8
+                # top_k = trial.suggest_int("top_k", 2, 10)
+                mse_weight = 1
+                # ranking_weight = trial.suggest_float("ranking_weight", 0.1, 10.0)
+                ranking_weight = 1.5
+                alpha = 0
+                eps = 0
+
+            elif loss_fn == "mse" or loss_fn == "kendall_loss":
+                top_k = 0
+                mse_weight = 0
+                ranking_weight = 0
+                alpha = 0
+                eps = 0
+
+            elif loss_fn == 'hybrid_mse_ranknet_loss' or loss_fn == 'hybrid_mse_ranknet_dynamic':
+                # alpha = trial.suggest_float("alpha", 0.90, 0.995)
+                alpha = 0.98
+                # eps = trial.suggest_float("eps", 1e-6, 1e-3, log=True)
+                eps = 4e-5
+                top_k = 0
+                mse_weight = 0
+                ranking_weight = 0
         else:
+            # For maximizing correlation of top-k, use fixed hyperparameters
+            # loss_fn = 'custom_mse'
+            neurons = [256, 512, 128, 256]
+            dropout_rate = 0.205948598666589
+            learning_rate = 0.0000362102118239549
+            batch_size = 8
+            regularizer_name = 'l2'
+            l1 = 0
+            l2 = 1.25386213021539E-07
             batch_generation = 'custom'
-
-        if loss_fn == "custom_mse":
             top_k = trial.suggest_int("top_k", 2, 10)
             mse_weight = 1
             ranking_weight = trial.suggest_float("ranking_weight", 0.1, 10.0)
             alpha = 0
             eps = 0
-
-        elif loss_fn == "mse" or loss_fn == "kendall_loss":
-            top_k = 0
-            mse_weight = 0
-            ranking_weight = 0
-            alpha = 0
-            eps = 0
-
-        elif loss_fn == 'hybrid_mse_ranknet_loss' or loss_fn == 'hybrid_mse_ranknet_dynamic':
-            # alpha = trial.suggest_float("alpha", 0.90, 0.995)
-            alpha = 0.98
-            # eps = trial.suggest_float("eps", 1e-6, 1e-3, log=True)
-            eps = 4e-5
-            top_k = 0
-            mse_weight = 0
-            ranking_weight = 0
 
 
         # model_instance = Regressor(features_file=features_file,
@@ -121,33 +148,34 @@ def objective(trial):
         model_instance = Regressor(features_file=features_file,
                                    verbose=0,  # turn off during tuning
                                    test_size=0.2,
-                                   mode=mode, i=i, remove_correlated_features=False,
+                                   mode=mode, i=i,
+                                   remove_correlated_features=False,
                                    empirical=empirical,
                                    scaler_type_features=scaler_type_features,
                                    scaler_type_labels=scaler_type_labels,
                                    true_score_name=true_score_name,
                                    explain_features_importance=False)
 
-        mse, loss, val_loss, corr_coefficient, avg_per_msa_corr, top50_percentage, val_kendall = (
+        mse, loss, val_loss, corr_coefficient, avg_per_msa_corr, avg_per_msa_topk_corr, top50_percentage, val_kendall, val_spearman = (
             model_instance.deep_learning(
-                                        epochs=50,
-                                        batch_size=batch_size,
-                                        validation_split=0.2,
-                                        verbose=0,  # turn off during tuning
-                                        learning_rate=learning_rate,
-                                        neurons=neurons,
-                                        dropout_rate=dropout_rate,
-                                        l1=l1,
-                                        l2=l2,
-                                        i=trial.number,  # to name files per trial
-                                        regularizer_name=regularizer_name,
-                                        loss_fn=loss_fn,
-                                        top_k=top_k,
-                                        mse_weight=mse_weight,
-                                        ranking_weight=ranking_weight,
-                                        batch_generation=batch_generation,
-                                        alpha=alpha,
-                                        eps=eps
+                                    epochs=50,
+                                    batch_size=batch_size,
+                                    validation_split=0.2,
+                                    verbose=0,  # turn off during tuning
+                                    learning_rate=learning_rate,
+                                    neurons=neurons,
+                                    dropout_rate=dropout_rate,
+                                    l1=l1,
+                                    l2=l2,
+                                    i=trial.number,  # to name files per trial
+                                    regularizer_name=regularizer_name,
+                                    loss_fn=loss_fn,
+                                    top_k=top_k,
+                                    mse_weight=mse_weight,
+                                    ranking_weight=ranking_weight,
+                                    batch_generation=batch_generation,
+                                    alpha=alpha,
+                                    eps=eps
                                     ))
 
 
@@ -155,10 +183,10 @@ def objective(trial):
             raise ValueError("Non-finite score encountered")
 
         with open(log_file, "a") as f:
-            f.write(f"{trial.number},{loss},{val_loss},{corr_coefficient},{avg_per_msa_corr},{top50_percentage},"
+            f.write(f"{trial.number},{loss},{val_loss},{corr_coefficient},{avg_per_msa_corr},{avg_per_msa_topk_corr}, {top50_percentage},"
                     f"{neurons[0]},{neurons[1]},{neurons[2]},{neurons[3]},"
                     f"{dropout_rate},{learning_rate},{l1},{l2},{batch_size},{regularizer_name},"
-                    f"{top_k},{mse_weight},{ranking_weight},{batch_generation},{loss_fn},{alpha},{eps}, {scaler_type_features}, {scaler_type_labels}, {val_kendall}\n")
+                    f"{top_k},{mse_weight},{ranking_weight},{batch_generation},{loss_fn},{alpha},{eps}, {scaler_type_features}, {scaler_type_labels}, {val_kendall}, {val_spearman}\n")
     # except Exception as e:
     #     print(f"Trial {trial.number} failed: {e}")
     #     return float('inf')  # or a very bad score to discard trial
@@ -182,17 +210,20 @@ def objective(trial):
     elif study_mode == 'maximize_val_kendall':
         study_target = val_kendall
 
+    elif study_mode == "maximize_correlation_of_top_k":
+        study_target = avg_per_msa_topk_corr
+
     return study_target
 
 # if scaler_type == "standard": #MODEL1
 if (study_mode == "maximize_correlation" or study_mode == 'maximize_correlation_and_capture_best'
-        or study_mode == 'maximize_val_kendall'):
+        or study_mode == 'maximize_val_kendall' or study_mode == "maximize_correlation_of_top_k"):
     study = optuna.create_study(direction="maximize")
 # elif scaler_type == "rank" or scaler_type == "zscore": #MODEL2
 elif study_mode == "minimize_val_loss":
     study = optuna.create_study(direction = "minimize")
 
-study.optimize(objective, n_trials=50, n_jobs = 8)
+study.optimize(objective, n_trials=30, n_jobs = 7)
 
 # Print best results
 print("Best Trial:")
