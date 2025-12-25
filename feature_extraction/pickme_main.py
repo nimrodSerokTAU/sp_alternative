@@ -16,18 +16,27 @@ if __name__ == '__main__':
     data_dict = {}
     sop_data_dict = {}
     for i in range(n):
-        true_score_name = 'dseq_from_true'
+        # true_score_name = 'dseq_from_true'
+        true_score_name = 'RF_phangorn_norm'
         mode = 1
-        # pickme = PickMeGameTrio(features_file='./out/ortho12_features_250725.csv',
-        #                         prediction_file=f'./out/ORTHOMAM12/DSEQ/2_standard/prediction_DL_{i}_mode{mode}_{true_score_name}.csv',
+        # pickme = PickMeGameTrio(features_file='./out/ortho12_distant_features_121125.csv',
+        #                         prediction_file=f'./out/OrthoMaM12/DISTANT_SET_INDELible/semi-deduped/model2_3/prediction_DL_{i}_mode{mode}_{true_score_name}.csv',
         #                         true_score_name=true_score_name, error=0, subset=None)
 
         #
-        pickme = PickMeGameTrio(features_file='./out/ortho12_distant_features_260825.csv',
-                                prediction_file=f'./out/prediction_DL_{i}_mode1_dseq_from_true.csv',
-                                true_score_name=true_score_name, error=0, subset = None)
+        # pickme = PickMeGameTrio(features_file='./out/old_models/ortho_monophyly_v3_features_311025.csv',
+        #                         prediction_file=f'./out/prediction_DL_0_mode1_msa_distance.csv',
+        #                         true_score_name=true_score_name, error=0, subset = None)
 
-        # pickme = PickMeGameTrio(features_file='./out/balibase_features_with_foldmason_161025.csv',
+        # pickme = PickMeGameTrio(features_file='./out/balibase_features_with_foldmason_231025.csv',
+        #                         prediction_file=f'./out/prediction_DL_0_mode1_dseq_from_true.csv',
+        #                         true_score_name=true_score_name, error=0, subset=None)
+
+        pickme = PickMeGameTrio(features_file='./out/ortho12_distant_features_RF_301125.csv',
+                                prediction_file=f'./out/prediction_DL_0_mode1_RF_phangorn_norm.csv',
+                                true_score_name=true_score_name, error=0, subset=None)
+
+        # pickme = PickMeGameTrio(features_file='./out/balibase_features_with_foldmason_ESM_151125.csv',
         #                         prediction_file=f'./out/prediction_DL_0_mode1_dseq_from_true.csv',
         #                         true_score_name=true_score_name, error=0, subset=None)
 

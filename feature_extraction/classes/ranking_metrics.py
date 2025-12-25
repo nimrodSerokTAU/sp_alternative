@@ -40,8 +40,8 @@ class PerBatchRankingMetrics(Callback):
 
         logs[f"val_{self.metric}"] = mean_corr
 
-        if self.verbose:
-            print(f"\nEpoch {epoch+1}: mean val_{self.metric} = {mean_corr:.4f}")
+        # if self.verbose:
+        #     print(f"\nEpoch {epoch+1}: mean val_{self.metric} = {mean_corr:.4f}")
 
         # save in self.params so Keras logs it
         self.model.history.history[f"val_{self.metric}"] = \

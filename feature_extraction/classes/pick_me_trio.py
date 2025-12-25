@@ -8,7 +8,7 @@ from feature_extraction.classes.regressor import _read_features_into_df
 
 class PickMeGameTrio:
     def __init__(self, features_file: str, prediction_file: str,
-                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dpos_from_true',
+                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'RF_phangorn_norm'] = 'dpos_from_true',
                  error: float = 0.0, subset = None) -> None:
         self.features_file: str = features_file
         self.prediction_file: str = prediction_file
@@ -68,7 +68,7 @@ class PickMeGameTrio:
             # min_predicted_score_row = group1.loc[group1['nj_parsimony_score'].idxmin()]
             # min_predicted_score_row = group1.loc[group1['number_of_gap_segments'].idxmin()]
             # min_predicted_score_row = df.loc[df[''].idxmin()]
-            min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()] #TODO - min or max
+            min_predicted_score_row = df.loc[df[self.predicted_score].idxmin()]
             # min_value = df[self.predicted_score].min()
             # min_rows = df[df[self.predicted_score] == min_value]
             # min_predicted_score_row = min_rows.loc[min_rows[self.sum_of_pairs_score].idxmax()]
@@ -95,7 +95,8 @@ class PickMeGameTrio:
             #     scores = np.array(scores, dtype=np.float64)
             #     scores[np.isnan(scores)] = np.inf
 
-            scores[1] = 100  # sop is always 100
+            scores[1] = 100  # TODO: we don't want to see SoP on these graphs , only default vs predicted
+            # scores[2] = 100  # TODO: we don't want to see defaults on these graphs , only SoP vs predicted
 
             if scores[1] < scores[0] and scores[1] <= scores[2]:  # sop < predicted and sop <= default
                 winner = "SoP"
@@ -142,12 +143,16 @@ class PickMeGameTrio:
         df2['code1'] = df2['code1'].astype(str)
 
         df = pd.merge(df1, df2, on=['code', 'code1'], how='inner')
+
+        df = df[df[self.true_score] != 'ERROR']
+        df[self.true_score] = df[self.true_score].astype(float)
+
         df = df[~df['code'].str.contains('test_original', na=False)] #TODO-excluded TRUE MSA, might want to include them
 
         df['code'] = df['code'].astype(str)
         df['code1'] = df['code1'].astype(str)
-        df = df[df['code'] != df['code1']]
-        df = df[df['taxa_num'] > 3]
+        df = df[df['code'] != df['code1']] #TODO-excluded TRUE MSA, might want to include them
+        df = df[df['taxa_num'] >= 3]
         # df = df[~df['code'].str.contains('muscle', case=False, na=False, regex=True)] #TODO remove
         df.to_csv("/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_predictions.csv")
         # groups = ['BBS11','BBS12','BBS50','BBS30','BBS20', 'BBA']

@@ -229,9 +229,13 @@ class RegPretrained:
         self.pretrained_model: str = pretrained_model
 
         df = _read_features_into_df(self.features_file)
+        print(len(df))
         self.true_score_name = _assign_true_score_name(self.predicted_measure)
+        df = df.drop_duplicates(subset=[col for col in df.columns if col != 'code'])  # TODO - comment
+        print(len(df))
 
         df['aligner'] = df.apply(_assign_aligner, axis=1)
+        df = df[df['aligner'] != 'muscle']  # TODO - removed all True MSAs
         df = df[df['taxa_num'] > 3]
         df.to_csv('/Users/kpolonsky/Documents/sp_alternative/feature_extraction/out/features_w_aligner.csv',
                   index=False)
@@ -250,8 +254,8 @@ class RegPretrained:
 
     def _scale(self, i: int = 0) -> None:
         if self.scaler_type == 'pretrained_rank':
-            self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
-            # self.scaler = GroupAwareScalerZ(mode='rank', global_scaler=RobustScaler())
+            # self.scaler = GroupAwareScaler(global_scaler=RobustScaler())
+            self.scaler = GroupAwareScalerZ(mode='rank', global_scaler=RobustScaler())
             self.scaler.load(self.scaler_path)
 
             self.X_test_scaled = self.scaler.transform(self.test_df)
@@ -272,8 +276,7 @@ class RegPretrained:
             self.final_features_names = self.scaler.get_feature_names_out()
 
             """ SCALED y-labels """
-            self.y_test_scaled = _rank_percentile_scale_targets(y_true=self.y_test,
-                                                                group_codes=self.main_codes_test)
+            self.y_test_scaled = _zscore_targets_per_group(y_true=self.y_test, group_codes=self.main_codes_test)
             self.y_test = self.y_test_scaled
             """ SCALED y-labels """
 
@@ -281,11 +284,11 @@ class RegPretrained:
             scaler = joblib.load(self.scaler_path)
             self.X_test_scaled = scaler.transform(self.X_test)
             self.X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
+            # in case of standard we don't touch y-labels
 
-
-            self.y_test_scaled = _zscore_targets_per_group(self.y_test, self.main_codes_test)
-
-            self.y_test = self.y_test_scaled
+            # self.y_test_scaled = _zscore_targets_per_group(self.y_test, self.main_codes_test)
+            #
+            # self.y_test = self.y_test_scaled
 
         # Check the size of each set
         if self.verbose == 1:
@@ -313,60 +316,6 @@ class RegPretrained:
         self.main_codes_test = self.test_df['code1']
         self.file_codes_test = self.test_df['code']
         self.aligners_test = self.test_df['aligner']
-
-    # def _finalize_features(self, df: pd.DataFrame) -> None:
-    #     columns_to_drop_dft = ['dpos_dist_from_true', 'rf_from_true', 'code', 'code1',
-    #                      'pypythia_msa_difficulty', 'normalised_sop_score', 'aligner', 'dpos_ng_dist_from_true']
-    #     columns_to_drop_extended = columns_to_drop_dft + ['sop_score']
-    #     if self.empirical == True:
-    #         columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-    #                              'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-    #                              'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
-    #                              'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-    #                              'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-    #                              'num_cols_1_gap', 'single_char_count', 'MEAN_RES_PAIR_SCORE', 'MEAN_COL_SCORE',
-    #                              'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-    #                              'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio']
-    #     else:
-    #         columns_to_choose = ['constant_sites_pct', 'sop_score', 'entropy_mean', 'sp_score_subs_norm', 'sp_ge_count',
-    #                              'number_of_gap_segments', 'nj_parsimony_score', 'msa_len', 'num_cols_no_gaps',
-    #                              'total_gaps', 'entropy_var', 'num_unique_gaps', 'sp_score_gap_e_norm', 'k_mer_10_mean',
-    #                              'av_gaps', 'n_unique_sites', 'skew_bl', 'median_bl', 'bl_75_pct', 'avg_unique_gap',
-    #                              'k_mer_20_var', 'k_mer_10_top_10_norm', 'gaps_2seq_len3plus', 'gaps_1seq_len3plus',
-    #                              'num_cols_1_gap', 'single_char_count',
-    #                              'gaps_len_three_plus', 'number_of_mismatches', 'sp_missmatch_ratio', 'nj_parsimony_sd',
-    #                              'var_bl', 'gaps_len_one','gaps_len_three', 'sp_match_ratio']
-    #
-    #     self.y = df[self.true_score_name]
-    #
-    #     if self.mode == 1:
-    #         self.X = df.drop(
-    #             columns=columns_to_drop_dft)
-    #         self.X_test = self.test_df.drop(
-    #             columns=columns_to_drop_dft)
-    #
-    #     if self.mode == 2:
-    #         self.X = df.drop(
-    #             columns=columns_to_drop_extended)
-    #         self.X_test = self.test_df.drop(
-    #             columns=columns_to_drop_extended)
-    #     if self.mode == 3:
-    #         self.X = df[columns_to_choose]
-    #         self.X_test = self.test_df[
-    #             columns_to_choose]
-    #
-    #     if self.remove_correlated_features:
-    #         correlation_matrix = self.X.corr().abs()
-    #         upper_triangle = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
-    #         to_drop = [column for column in upper_triangle.columns if
-    #                    any(upper_triangle[column] > 0.9)]
-    #         if self.verbose == 1:
-    #             print("Correlated features to drop:", to_drop)
-    #         self.X = self.X.drop(columns=to_drop)
-    #         self.X_test = self.X_test.drop(columns=to_drop)
-    #
-    #     # Set train and test Labels
-    #     self.y_test = self.test_df[self.true_score_name]
 
     def _finalize_features(self, df):
         columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
@@ -573,12 +522,12 @@ if __name__ == '__main__':
         #                              empirical=False, scaler_type="pretrained_rank", scaler_path = './out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/scaler_0_mode1_dseq_from_true.pkl',
         #                              pretrained_model='./out/OrthoMaM12/DISTANT_SET_INDELible/distant_model2/regressor_model_0_mode1_dseq_from_true.keras')
 
-        regressor = log_function_run(RegPretrained, features_file="./out/ortho_monophyly_v2_features_241025.csv",
+        regressor = log_function_run(RegPretrained, features_file="./out/balibase_features_with_foldmason_231025.csv",
                                      mode=1,
                                      predicted_measure='msa_distance', i=i, remove_correlated_features=False,
-                                     empirical=False, scaler_type="pretrained_rank",
-                                     scaler_path='./out/OrthoMaM12/RANDOM_SET_INDELible/random_model2/scaler_0_mode1_dseq_from_true.pkl',
-                                     pretrained_model='./out/OrthoMaM12/RANDOM_SET_INDELible/random_model2/regressor_model_0_mode1_dseq_from_true.keras')
+                                     empirical=False, scaler_type="pretrained_standard",
+                                     scaler_path='./out/OrthoMaM12/DISTANT_SET_INDELible/semi-deduped/Final_Linear_output/model1_optimized/scaler_0_mode1_dseq_from_true.pkl',
+                                     pretrained_model='./out/OrthoMaM12/DISTANT_SET_INDELible/semi-deduped/Final_Linear_output/model1_optimized/regressor_model_0_mode1_dseq_from_true.keras')
 
         # regressor = log_function_run(RegPretrained, features_file="./out/ortho_monophyly_v2_features_241025.csv",
         #                              mode=1,

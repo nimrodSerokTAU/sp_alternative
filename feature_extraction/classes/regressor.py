@@ -115,8 +115,8 @@ def _get_balanced_frequent_codes(df, min_code1_count, frequent_codes):
 
 def _balanced_sample_by_code1_and_taxa(df):
     code_counts = df['code1'].value_counts()
-    # frequent_codes = code_counts[code_counts >= 1600].index #TODO
-    frequent_codes = code_counts[code_counts >= 1235].index #TODO
+    frequent_codes = code_counts[code_counts >= 1600].index #TODO
+    # frequent_codes = code_counts[code_counts >= 1235].index #TODO
     # frequent_codes = code_counts[code_counts >= 1400].index  # TODO
 
     filtered_df = df[df['code1'].isin(frequent_codes)]
@@ -144,8 +144,9 @@ def _balanced_sample_by_code1_and_taxa(df):
 
 def _balanced_sample_1600(df):
     code_counts = df['code1'].value_counts()
-    frequent_codes = code_counts[code_counts >= 1235].index #TODO
-    # frequent_codes = code_counts[code_counts >= 1450].index #TODO
+    # frequent_codes = code_counts[code_counts >= 1235].index #TODO
+    frequent_codes = code_counts[code_counts >= 1604].index #TODO change number
+    # frequent_codes = code_counts[code_counts >= 1200].index  # TODO change number
 
     final_df = df[df['code1'].isin(frequent_codes)]
     num_unique = final_df['code1'].nunique()
@@ -276,7 +277,7 @@ def _zscore_targets_per_group(y_true: pd.Series, group_codes: pd.Series) -> pd.S
     for group_val, group_df in df.groupby("group"):
         vals = group_df["y"].values
         mean, std = np.mean(vals), np.std(vals)
-        print(f"Group: {group_val}, Mean: {mean}, Std: {std}")
+        # print(f"Group: {group_val}, Mean: {mean}, Std: {std}")
 
         if std == 0:
             scaled_vals = np.zeros_like(vals, dtype=np.float32)
@@ -302,6 +303,17 @@ def _zscore_targets_global(y_true: pd.Series) -> pd.Series:
 
     return scaled_series
 
+# def _load_or_compute_prostt5_embeddings(df):
+#     msa_embeddings = {}
+#     for code1 in df['code1'].unique():
+#         msa_fasta = f"./msa_sequences/{code1}.fasta"
+#         msa_sequences = [s for s in SeqIO.parse(msa_fasta, "fasta")]
+#         msa_embeddings[code1] = aggregate_msa_embeddings([str(s.seq) for s in msa_sequences])
+#     emb_df = pd.DataFrame.from_dict(msa_embeddings, orient="index")
+#     emb_df.columns = [f"prostt5_{i}" for i in range(emb_df.shape[1])]
+#     emb_df.reset_index().rename(columns={"index": "code1"})
+#     return emb_df
+
 
 class Regressor:
     '''
@@ -311,9 +323,15 @@ class Regressor:
     remove_correlated_features: if the highly correlated features should be removed (boolean, default value: False)
     scale_labels: y-labels by default are also rank-percentile scaled
     '''
-    def __init__(self, features_file: str, test_size: float, mode: int = 1, remove_correlated_features: bool = False,
-                 i: int = 0, verbose: int = 1, empirical: bool = False, scaler_type_features: Literal['standard', 'rank', 'zscore'] = 'standard', scaler_type_labels: Literal['standard', 'rank', 'zscore'] = 'standard',
-                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true'] = 'dseq_from_true', explain_features_importance: bool = False) -> None:
+    def __init__(self, features_file: str, test_size: float, mode: int = 1,
+                 remove_correlated_features: bool = False,
+                 i: int = 0, verbose: int = 1, empirical: bool = False,
+                 scaler_type_features: Literal['standard', 'rank', 'zscore'] = 'standard',
+                 scaler_type_labels: Literal['standard', 'rank', 'zscore'] = 'standard',
+                 true_score_name: Literal['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'RF_phangorn_norm'] = 'dseq_from_true',
+                 explain_features_importance: bool = False, with_embeddings: bool = False,
+                 deduplicated: bool = False) -> None:
+
         self.explain_features_importance = explain_features_importance
         self.empirical = empirical
         self.verbose = verbose
@@ -332,18 +350,30 @@ class Regressor:
         self.remove_correlated_features: bool = remove_correlated_features
         self.scaler_type_features = scaler_type_features
         self.scaler_type_labels = scaler_type_labels
+        self.with_embeddings = with_embeddings
+        self.deduplicated = deduplicated
         if scaler_type_features not in {'standard', 'rank', 'zscore'}:
             raise ValueError(f"Invalid scaler_type_features: {scaler_type_features}, the allowed options are 'standard' , 'rank' or 'zscore'\n")
         if scaler_type_labels not in {'standard', 'rank', 'zscore'}:
             raise ValueError(f"Invalid scaler_type_labels: {scaler_type_labels}, the allowed options are 'standard' , 'rank' or 'zscore'\n")
         self.true_score_name = true_score_name
-        if true_score_name not in {'ssp_from_true', 'dseq_from_true', 'dpos_from_true'}:
-            raise ValueError(f"Invalid true_score_name: {true_score_name}, the allowed options are 'ssp_from_true', 'dseq_from_true', 'dpos_from_true'\n")
+        if true_score_name not in {'ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'RF_phangorn_norm'}:
+            raise ValueError(f"Invalid true_score_name: {true_score_name}, the allowed options are 'ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'RF_phangorn_norm'\n")
 
         df = _read_features_into_df(self.features_file)
 
+        # if self.with_embeddings:  # TODO - add embeddings
+        #     prostt5_embeddings = _load_or_compute_prostt5_embeddings(df)
+        #     df = df.merge(prostt5_embeddings, on='code1', how='left')
+
         df['aligner'] = df.apply(_assign_aligner, axis=1)
         # df = df[df['aligner'] != 'true']  # TODO - removed all True MSAs
+        # df = df[df['aligner'] == 'mafft']  # TODO - removed all True MSAs
+
+        if self.true_score_name == 'RF_phangorn_norm':
+            df = df[df[self.true_score_name] != 'ERROR']
+            df[self.true_score_name] = df[self.true_score_name].astype(float)
+
 
         # df = df[df['dpos_from_true'] != 0] #TODO - comment
         # summary = _summarize_data(df)  # TODO
@@ -353,21 +383,35 @@ class Regressor:
         # summary = _summarize_data(df)  # TODO
         # df = _get_balanced_dpos_distribution(df)
         # summary = _summarize_data(df)  # TODO
+        # df = df[(df['dpos_from_true'] <= 0.6)]
 
         #
         # df = _balanced_sample_by_code1_and_taxa(
         #     df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
         # summary = _summarize_data(df)  # TODO
 
-        df = df.drop_duplicates(subset=[col for col in df.columns if col != 'code'])  # TODO - comment
-        summary = _summarize_data(df)  # TODO
+        # df = df[df['code1'].str.startswith('BBS', na=False)]
 
-        if self.empirical:
-            df = _balanced_sample_1600(df)
-        else:
-            df = _balanced_sample_by_code1_and_taxa(
-            df)  # TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
-        summary = _summarize_data(df)
+        if self.deduplicated:
+            df = df.drop_duplicates(subset=[col for col in df.columns if col != 'code'])  # TODO - comment
+            summary = _summarize_data(df)  # TODO
+
+        else: # not dropping all duplicates but very problematic codes
+            df2 = df.drop_duplicates(subset=[col for col in df.columns if col != 'code'])
+            # dup_counts = df.groupby('code1').size()
+            # dup_counts_removed = df.groupby('code1').size() - df2.groupby('code1').size()
+            problematic_codes = df2.groupby('code1').filter(lambda x: len(x) < 1100)['code1'].unique() #TODO: change number
+            print("Problematic codes to be removed due to too many duplicates:\n", problematic_codes)
+            df_cleaned = df[~df['code1'].isin(problematic_codes)]
+            df = df_cleaned
+
+        if self.true_score_name != 'RF_phangorn_norm':
+            if self.empirical:
+                df = _balanced_sample_1600(df)
+            else:
+                df = _balanced_sample_by_code1_and_taxa(df)
+                #TODO - comment, this is just to get balanced set per taxa with 1600 alt MSAs for each code
+            summary = _summarize_data(df)
 
 
         if self.verbose == 1:
@@ -540,7 +584,7 @@ class Regressor:
 
 
     def _finalize_features(self, df):
-        columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'code', 'code1',
+        columns_to_drop_dft = ['ssp_from_true', 'dseq_from_true', 'dpos_from_true', 'RF_phangorn_norm', 'code', 'code1',
                                'aligner']
 
         if self.empirical == True:
@@ -614,12 +658,14 @@ class Regressor:
         self.y_test = self.test_df[self.true_score_name]
 
     def deep_learning(self, epochs: int = 50, batch_size: int = 32, validation_split: float = 0.2, verbose: int = 1,
-                      learning_rate: float = 0.01, neurons: list[int] = [128, 64, 16], dropout_rate: float = 0.2,
+                      learning_rate: float = 0.01, neurons: list[int] = [0, 128, 64, 16], dropout_rate: float = 0.2,
                       l1: float = 1e-5, l2: float = 1e-5, i: int = 0, undersampling: bool = False, repeats: int = 1,
                       mixed_portion: float = 0, top_k: int = 4, mse_weight: float = 1, ranking_weight: float = 1,
-                      per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse","hybrid_mse_ranknet_loss"] = 'mse',
-                      regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2',
-                      batch_generation: Literal['standard', 'custom'] = 'standard', alpha: float = 0.5, eps: float = 1e-5) -> tuple[float, float, float, float, float, float, float]:
+                      per_aligner: bool = False, loss_fn: Literal["mse", "custom_mse", "hybrid_mse_ranknet_loss",
+                      "hybrid_mse_approx_ndcg_loss", "hybrid_mse_ranknet_dynamic", "kendall_loss",
+                      "approx_ndcg_loss"] = 'mse', regularizer_name: Literal["l1", 'l2','l1_l2'] = 'l2',
+                      batch_generation: Literal['standard', 'custom'] = 'standard', alpha: float = 0.5,
+                      eps: float = 1e-5) -> tuple[float, float, float, float, float, float, float, float, float]:
         history = None
         tf.config.set_visible_devices([], 'GPU') #disable GPU in tensorflow
 
@@ -656,6 +702,60 @@ class Regressor:
 
             return total_loss
 
+        def topk_ranking_loss(y_true: tf.Tensor, y_pred: tf.Tensor, top_k: int=3, margin: float =0.0) -> tf.Tensor:
+            # Flatten into shape (batch_size,)
+            y_true = tf.reshape(y_true, [-1])
+            y_pred = tf.reshape(y_pred, [-1])
+
+            n = tf.shape(y_true)[0]
+
+            # Indices of the true top-k (lowest true label = best MSA)
+            true_order = tf.argsort(y_true, axis=0)  # ascending
+            true_topk = true_order[:top_k]  # shape (k,)
+
+            # Predicted scores for all items
+            pred_all = y_pred  # shape (n,)
+
+            # Predicted scores for the true top-k
+            pred_topk = tf.gather(y_pred, true_topk)  # shape (k,)
+
+            # Expand for pairwise comparison:
+            # pred_topk_expanded: (k, n)
+            # pred_all_expanded:  (k, n)
+            pred_topk_expanded = pred_topk[:, None]
+            pred_all_expanded = pred_all[None, :]
+
+            # Hinge ranking loss:
+            # Want: pred_topk[i] + margin < pred_all[j] for all j outside top_k
+            loss_matrix = tf.nn.relu(margin + pred_topk_expanded - pred_all_expanded)
+
+            # Create mask to ignore comparisons inside the top-k set
+            topk_mask = tf.scatter_nd(
+                indices=true_topk[:, None],
+                updates=tf.ones_like(true_topk, dtype=tf.float32),
+                shape=(n,)
+            )
+
+            # Mask: 1 for non-top-k, 0 for top-k
+            non_topk_mask = 1.0 - topk_mask  # shape (n,)
+            non_topk_mask = non_topk_mask[None, :]  # broadcast to (k, n)
+
+            # Apply mask (only penalize when comparing top-k to non-top-k)
+            loss_matrix = loss_matrix * non_topk_mask
+
+            # Final loss: average over all valid comparisons
+            return tf.reduce_mean(loss_matrix)
+
+        def mse_with_topk_rank_loss(y_true: tf.Tensor, y_pred: tf.Tensor, top_k: int = 4,
+                               ranking_weight: float = 0.3, margin: float = 0.0) -> tf.Tensor:
+
+            mse_loss = K.mean(K.square(K.cast(y_true - y_pred, dtype=tf.float32)))  # MSE loss
+            top_k_rank_loss = topk_ranking_loss(y_true, y_pred, top_k=top_k, margin=margin)
+            ranking_weight = tf.cast(ranking_weight, dtype=tf.float32)
+            top_k_rank_loss = tf.cast(top_k_rank_loss, dtype=tf.float32)
+            total_loss = mse_loss + ranking_weight * top_k_rank_loss
+
+            return total_loss
 
         def kendall_loss(y_true, y_pred):
             y_true = tf.cast(y_true, tf.float32)
@@ -755,6 +855,174 @@ class Regressor:
             ndcg = dcg / (idcg + eps)
             return 1.0 - ndcg  # Loss to minimize
 
+        def hybrid_mse_approx_ndcg_loss(y_true, y_pred, alpha=0.5, eps=1e-10):
+            """
+            Hybrid loss combining Mean Squared Error and ApproxNDCG loss.
+            alpha: weight for MSE (0.0–1.0)
+            eps: numerical stability
+            """
+            # ----- MSE component -----
+            mse = tf.reduce_mean(tf.square(y_true - y_pred))
+
+            # ----- ApproxNDCG component -----
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            # Pairwise differences for smooth rank
+            pred_diffs = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            # Soft rank approximation
+            soft_rank = tf.reduce_sum(tf.nn.sigmoid(-pred_diffs), axis=-1) + 1.0
+
+            # Gains and discounts
+            gains = tf.pow(2.0, y_true) - 1.0
+            discounts = 1.0 / (tf.math.log(1.0 + soft_rank) / tf.math.log(2.0))
+
+            dcg = tf.reduce_sum(gains * discounts)
+
+            # Ideal DCG
+            sorted_true = tf.sort(y_true, direction='DESCENDING')
+            ideal_gains = tf.pow(2.0, sorted_true) - 1.0
+            ideal_discounts = 1.0 / (
+                        tf.math.log(1.0 + tf.range(1, tf.size(y_true) + 1, dtype=tf.float32)) / tf.math.log(2.0))
+            idcg = tf.reduce_sum(ideal_gains * ideal_discounts)
+
+            ndcg = dcg / (idcg + eps)
+            ndcg_loss = 1.0 - ndcg
+
+            # ----- Combine -----
+            total_loss = alpha * mse + (1.0 - alpha) * ndcg_loss
+            return total_loss
+
+        def lambda_rank_loss(y_true, y_pred, eps=1e-10):
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            # Pairwise differences
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            # Compute pairwise labels: 1 if i < j (true_i < true_j means i is better)
+            S = tf.cast(diff_true < 0, tf.float32)
+
+            # Delta NDCG weighting (approximate gain drop if misordered)
+            gain = tf.pow(2.0, y_true) - 1.0
+            rank = tf.argsort(tf.argsort(-y_true)) + 1.0
+            discount = 1.0 / tf.math.log1p(rank) / tf.math.log(2.0)
+            dcg = tf.reduce_sum(gain * discount)
+            delta_ndcg = tf.abs(tf.expand_dims(discount, 1) - tf.expand_dims(discount, 0))
+
+            P = tf.nn.sigmoid(diff_pred)
+            loss = delta_ndcg * (S * -tf.math.log(P + eps) + (1 - S) * -tf.math.log(1 - P + eps))
+            return tf.reduce_mean(loss)
+
+        def weighted_ranknet_loss(y_true, y_pred, topk_weight_decay=0.3, eps=1e-6):
+            """
+            Weighted RankNet loss giving higher importance to top-ranked (lowest y_true) items.
+            y_true: smaller = better (e.g. percentile rank)
+            """
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            # --- Pairwise differences ---
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            # --- Pairwise label: 1 if i should rank higher than j (i.e., smaller y_true) ---
+            S = tf.cast(diff_true < 0, tf.float32)  # notice the '<' instead of '>'
+            P = tf.nn.sigmoid(-diff_pred)  # flip sign so that smaller y_pred = higher rank
+
+            # --- Compute item weights: higher weight for smaller (better) y_true ---
+            ranks = tf.argsort(tf.argsort(y_true))  # smaller = better
+            item_weights = tf.exp(-topk_weight_decay * tf.cast(ranks, tf.float32))
+            pair_weights = (tf.expand_dims(item_weights, 1) + tf.expand_dims(item_weights, 0)) / 2.0
+
+            # --- Weighted RankNet loss ---
+            loss = -pair_weights * (S * tf.math.log(P + eps) + (1.0 - S) * tf.math.log(1.0 - P + eps))
+
+            # normalize
+            loss = tf.reduce_sum(loss) / (tf.reduce_sum(pair_weights) + eps)
+            return loss
+
+        def hybrid_weighted_ranknet_loss(
+                y_true,
+                y_pred,
+                topk_weight_decay=0.3,
+                alpha=0.5,
+                beta=0.2,
+                margin=0.2,
+                eps=1e-6
+        ):
+            """
+            Hybrid RankNet loss designed for 'smaller = better' targets (e.g. percentile ranks).
+            Emphasizes correct ordering *and* separation of the best item in each group.
+
+            Parameters
+            ----------
+            y_true : tensor of shape [n_items]
+                Ground truth ranks or scores (smaller = better).
+            y_pred : tensor of shape [n_items]
+                Model-predicted scores (smaller = better).
+            topk_weight_decay : float
+                Controls how fast weights decay for lower-ranked items.
+            alpha : float
+                Weight for pointwise 'best classification' term.
+            beta : float
+                Weight for margin separation term.
+            margin : float
+                Minimum margin enforced between the best item and others.
+            """
+
+            y_true = tf.cast(y_true, tf.float32)
+            y_pred = tf.cast(y_pred, tf.float32)
+
+            # -----------------------------
+            # (1) Pairwise RankNet component
+            # -----------------------------
+            diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
+            diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
+
+            # i should rank higher if its true label is smaller
+            S = tf.cast(diff_true < 0, tf.float32)
+            P = tf.nn.sigmoid(-diff_pred)
+
+            ranks = tf.argsort(tf.argsort(y_true))
+            item_weights = tf.exp(-topk_weight_decay * tf.cast(ranks, tf.float32))
+            pair_weights = (tf.expand_dims(item_weights, 1) + tf.expand_dims(item_weights, 0)) / 2.0
+
+            pairwise_loss = -pair_weights * (
+                    S * tf.math.log(P + eps) + (1.0 - S) * tf.math.log(1.0 - P + eps)
+            )
+            pairwise_loss = tf.reduce_sum(pairwise_loss) / (tf.reduce_sum(pair_weights) + eps)
+
+            # -----------------------------
+            # (2) "Best item" classification component
+            # -----------------------------
+            # Find the best (lowest) item(s)
+            min_val = tf.reduce_min(y_true)
+            best_mask = tf.cast(tf.equal(y_true, min_val), tf.float32)
+
+            # Encourage the best item to have low predicted score
+            best_class_loss = -tf.reduce_mean(
+                best_mask * tf.math.log(tf.nn.sigmoid(-y_pred) + eps)
+            )
+
+            # -----------------------------
+            # (3) Margin-based separation component
+            # -----------------------------
+            # For all items except the best, enforce a margin gap
+            non_best_mask = 1.0 - best_mask
+            best_pred = tf.reduce_min(y_pred)
+            margin_loss = tf.reduce_mean(
+                non_best_mask * tf.nn.relu(margin - (y_pred - best_pred))
+            )
+
+            # -----------------------------
+            # (4) Combine
+            # -----------------------------
+            total_loss = pairwise_loss + alpha * best_class_loss + beta * margin_loss
+
+            return total_loss
 
         # MODEL PART
         model = Sequential()
@@ -857,7 +1125,68 @@ class Regressor:
 
         elif loss_fn == "approx_ndcg_loss":
             model.compile(optimizer=optimizer,
-                          loss=lambda y_true, y_pred: approx_ndcg_loss(y_true, y_pred, eps=1e-10))
+                          loss=lambda y_true, y_pred:
+                          approx_ndcg_loss(
+                              y_true,
+                              y_pred,
+                              eps=1e-10))
+
+        elif loss_fn == 'hybrid_mse_approx_ndcg_loss':
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          hybrid_mse_approx_ndcg_loss(
+                              y_true,
+                              y_pred,
+                              alpha=alpha,
+                              eps=eps))
+
+        elif loss_fn == 'ranknet_loss':
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          ranknet_loss(
+                              y_true,
+                              y_pred,
+                              margin=0.0,
+                              eps=eps))
+
+        elif loss_fn == 'lambda_rank_loss':
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          lambda_rank_loss(
+                              y_true,
+                              y_pred,
+                              eps=eps))
+
+        elif loss_fn == 'weighted_ranknet_loss':
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          weighted_ranknet_loss(
+                              y_true,
+                              y_pred,
+                              topk_weight_decay=alpha,
+                              eps=eps))
+
+        elif loss_fn == 'hybrid_weighted_ranknet_loss':
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          hybrid_weighted_ranknet_loss(
+                              y_true,
+                              y_pred,
+                              topk_weight_decay=alpha,
+                              alpha=0.5,
+                              beta=0.2,
+                              margin=0.2,
+                              eps=eps))
+
+        elif loss_fn == 'mse_with_topk_rank_loss':
+            model.compile(optimizer=optimizer,
+                          loss=lambda y_true, y_pred:
+                          mse_with_topk_rank_loss(
+                              y_true,
+                              y_pred,
+                              top_k=top_k,
+                              ranking_weight=ranking_weight,
+                              margin=0.0))
 
 
         unique_train_codes = self.main_codes_train.unique()
@@ -893,20 +1222,22 @@ class Regressor:
             # min_delta=1e-5  # the threshold for val loss improvement - to identify the plateau
         )
 
-        ranking_callback = PerBatchRankingMetrics(val_generator=val_generator, metric="kendall", verbose=1)
-        ranking_callback2 = PerBatchRankingMetrics(val_generator=val_generator, metric="spearman", verbose=1)
+        # ranking_callback = PerBatchRankingMetrics(val_generator=val_generator, metric="kendall", verbose=1)
+        # ranking_callback2 = PerBatchRankingMetrics(val_generator=val_generator, metric="spearman", verbose=1)
 
         val_kendall = None
+        val_spearman = None
         if batch_generation == 'custom':
             callbacks = [
                 early_stopping,
-                lr_scheduler,
-                ranking_callback,
-                ranking_callback2
+                lr_scheduler
+                # ranking_callback,
+                # ranking_callback2
             ]
             history = model.fit(batch_generator, epochs=epochs, validation_data=val_generator, verbose=verbose,
                                     callbacks=callbacks)
-            val_kendall = model.history.history["val_kendall"][-1] # get last kendall correlation (can get max instead if I want
+            # val_kendall = model.history.history["val_kendall"][-1] # get last kendall correlation (can get max instead if I want
+            # val_spearman = model.history.history["val_spearman"][-1] # get last spearman correlation (can get max instead if I want
 
         elif batch_generation == 'standard':
             callbacks = [
@@ -936,7 +1267,13 @@ class Regressor:
             plot_model(model, to_file=f'./out/model_architecture_{i}_mode{self.mode}_{self.true_score_name}.png', show_shapes=True, show_layer_names=True,
                        show_layer_activations=True)
             model.save(f'./out/regressor_model_{i}_mode{self.mode}_{self.true_score_name}.keras')
-            plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+            # plot_model(model, to_file='./out/model_architecture.dot', show_shapes=True, show_layer_names=True)
+            plot_model(
+                model,
+                to_file='./out/model_architecture.png',  # use .png or .jpg or .svg
+                show_shapes=True,
+                show_layer_names=True
+            )
 
         # substrings = ['original', 'concat']
         # X_test_scaled_with_names = pd.DataFrame(self.X_test_scaled, columns=self.X_test.columns)
@@ -974,21 +1311,33 @@ class Regressor:
         })
 
         per_msa_corrs = []
+        per_msa_topk_corrs = []
+
         for msa_id, group in df_corr.groupby("msa_code"):
+
             if group["y_true"].nunique() > 1 and group["y_pred"].nunique() > 1:
                 r, _ = pearsonr(group["y_true"], group["y_pred"])
                 per_msa_corrs.append(r)
 
+            group_topk = group.nlargest(top_k, "y_pred")
+            if group_topk["y_true"].nunique() > 1 and group_topk["y_pred"].nunique() > 1:
+                r_topk, _ = pearsonr(group_topk["y_true"], group_topk["y_pred"])
+                per_msa_topk_corrs.append(r_topk)
+
         if len(per_msa_corrs) > 0:
             avg_per_msa_corr = np.mean(per_msa_corrs)
+            avg_per_msa_topk_corr = np.mean(per_msa_topk_corrs)
             median_per_msa_corr = np.median(per_msa_corrs)
+
         else:
             avg_per_msa_corr = np.nan
+            avg_per_msa_topk_corr = np.nan
             median_per_msa_corr = np.nan
+
 
         print(f"Average per-MSA Pearson correlation: {avg_per_msa_corr:.4f}")
         print(f"Median per-MSA Pearson correlation: {median_per_msa_corr:.4f}")
-
+        print(f"Average per-MSA Top-{top_k} Pearson correlation: {avg_per_msa_topk_corr:.4f}")
 
 
         ### START - TRY Evaluating per-MSA top-50 metric % ###
@@ -1081,7 +1430,7 @@ class Regressor:
 
         # return mse
         val_loss = history.history["val_loss"][-1]
-        return mse, loss, val_loss, corr_coefficient, avg_per_msa_corr, top50_percentage, val_kendall
+        return mse, loss, val_loss, corr_coefficient, avg_per_msa_corr, avg_per_msa_topk_corr, top50_percentage, val_kendall, val_spearman
 
     def plot_results(self, model_name: Literal["svr", "rf", "knn-r", "gbr", "dl"], mse: float, i: int) -> None:
         plt.figure(figsize=(12, 8))
