@@ -1,10 +1,7 @@
-import os
+import time
 from pathlib import Path
 from random import randrange
-
-import pandas as pd
-
-# from typing import Self
+from typing import Self
 
 from classes.config import Configuration
 from classes.dist_labels_stats import DistanceLabelsStats
@@ -43,44 +40,23 @@ class MSA:
         self.sequences = sequences.copy()
         self.seq_names = seq_names.copy()
 
-    # def read_me_from_fasta(self, file_path: Path):
-    #     seq: str = ''
-    #     seq_name: str = ''
-    #     with open(file_path, 'r') as in_file:
-    #         for line in in_file:
-    #             line = line.strip()
-    #
-    #             if len(line) == 0:
-    #                 self.add_sequence_to_me(seq, seq_name)
-    #                 return
-    #             if line[0] == '>':
-    #                 if len(seq) > 0:
-    #                     self.add_sequence_to_me(seq, seq_name)
-    #                     seq = ''
-    #                 seq_name = line[1:]
-    #             else:
-    #                 seq += line
-    #     if len(seq) > 0:
-    #         self.add_sequence_to_me(seq, seq_name)
-
     def read_me_from_fasta(self, file_path: Path):
         seq: str = ''
         seq_name: str = ''
         with open(file_path, 'r') as in_file:
             for line in in_file:
                 line = line.strip()
-                if not line:
-                    continue
-
-                if line.startswith('>'):
-                    if seq:
+                if len(line) == 0:
+                    self.add_sequence_to_me(seq, seq_name)
+                    return
+                if line[0] == '>':
+                    if len(seq) > 0:
                         self.add_sequence_to_me(seq, seq_name)
                         seq = ''
                     seq_name = line[1:]
                 else:
                     seq += line
-
-        if seq:
+        if len(seq) > 0:
             self.add_sequence_to_me(seq, seq_name)
 
     def order_sequences(self, ordered_seq_names: list[str]):
@@ -157,39 +133,39 @@ class MSA:
             res.append(new_msa_seqs)
         return res
 
-    def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
-        res_msas: list[list[str]] = []
-        partial_seq = {'start': -1, 'length': 0}
-        for seq_inx_to_update in range(len(self.seq_names)):
-            chars: list[dict] = []
-            seq: str = self.sequences[seq_inx_to_update]
-            is_gap: bool = True
-            current_seq = partial_seq.copy()
-            if seq[0] != '-':
-                current_seq['start'] = 0
-                is_gap = False
-            for index, c in enumerate(seq):
-                if c == '-':
-                    if not is_gap:
-                        current_seq['length'] = index - current_seq['start']
-                        chars.append(current_seq)
-                        is_gap = True
-                else:
-                    if is_gap:
-                        current_seq = partial_seq.copy()
-                        current_seq['start'] = index
-                        is_gap = False
-            if len(chars) > 1:
-                for cp in chars:
-                    new_seq_as_list: list[str] = list(seq)
-                    index_to_insert: int = cp['start']
-                    del new_seq_as_list[index_to_insert + cp['length']]
-                    new_seq_as_list.insert(index_to_insert, '-')
-                    new_seq: str = ''.join(new_seq_as_list)
-                    new_msa_seqs = self.sequences.copy()
-                    new_msa_seqs[seq_inx_to_update] = new_seq
-                    res_msas.append(new_msa_seqs)
-        return res_msas
+    # def create_alternative_msas_by_moving_one_part(self) -> list[list[str]]:
+    #     res_msas: list[list[str]] = []
+    #     partial_seq = {'start': -1, 'length': 0}
+    #     for seq_inx_to_update in range(len(self.seq_names)):
+    #         chars: list[dict] = []
+    #         seq: str = self.sequences[seq_inx_to_update]
+    #         is_gap: bool = True
+    #         current_seq = partial_seq.copy()
+    #         if seq[0] != '-':
+    #             current_seq['start'] = 0
+    #             is_gap = False
+    #         for index, c in enumerate(seq):
+    #             if c == '-':
+    #                 if not is_gap:
+    #                     current_seq['length'] = index - current_seq['start']
+    #                     chars.append(current_seq)
+    #                     is_gap = True
+    #             else:
+    #                 if is_gap:
+    #                     current_seq = partial_seq.copy()
+    #                     current_seq['start'] = index
+    #                     is_gap = False
+    #         if len(chars) > 1:
+    #             for cp in chars:
+    #                 new_seq_as_list: list[str] = list(seq)
+    #                 index_to_insert: int = cp['start']
+    #                 del new_seq_as_list[index_to_insert + cp['length']]
+    #                 new_seq_as_list.insert(index_to_insert, '-')
+    #                 new_seq: str = ''.join(new_seq_as_list)
+    #                 new_msa_seqs = self.sequences.copy()
+    #                 new_msa_seqs[seq_inx_to_update] = new_seq
+    #                 res_msas.append(new_msa_seqs)
+    #     return res_msas
 
     def print_me_to_fasta_file(self, dir_path: Path):
         output_file_path = Path(f'{str(dir_path)}/{self.dataset_name}.fas')
@@ -198,93 +174,97 @@ class MSA:
                 print(f'>{self.seq_names[i]}', file=outfile)
                 print(seq, file=outfile)
 
-    def calc_and_print_stats(self, true_msa: 'MSA', config: Configuration, sp_models: list[SPScore], output_dir_path: Path,
+    def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp_models: list[SPScore], output_dir_path: Path,
                              true_tree: UnrootedTree, is_init_file: bool):
-        stats_list = [] #TODO - KSENIA
-
         basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
                                  ['code', 'taxa_num', 'msa_length'])
-        # stats_list.append(basic_stats)  # TODO - KSENIA
-        # self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
-        #                       is_init_file, basic_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
+        self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
+                              is_init_file, basic_stats.get_ordered_col_names())
         dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
 
         if len({StatsOutput.ALL, StatsOutput.DISTANCE_LABELS }.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             dist_labels_stats.set_my_distance_from_true(true_msa.sequences, self.sequences)
-            # stats_list.append(dist_labels_stats)  # TODO - KSENIA
-            # self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path, StatsOutput.DISTANCE_LABELS.value,
-            #                       is_init_file, dist_labels_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
+            self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path, StatsOutput.DISTANCE_LABELS.value,
+                                  is_init_file, dist_labels_stats.get_ordered_col_names())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Lables: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.ENTROPY}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             entropy_stats = EntropyStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             entropy_stats.calc_entropy(self.sequences)
-            # stats_list.append(entropy_stats)  #TODO - KSENIA
-            # self.print_stats_file(entropy_stats.get_my_features_as_list(), output_dir_path, StatsOutput.ENTROPY.value,
-            #                       is_init_file, entropy_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
+            self.print_stats_file(entropy_stats.get_my_features_as_list(), output_dir_path, StatsOutput.ENTROPY.value,
+                                  is_init_file, entropy_stats.get_ordered_col_names())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Entropy: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.GAPS}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             gaps_stats = GapStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             gaps_stats.calc_gaps_values(self.sequences)
-            # stats_list.append(gaps_stats)  #TODO - KSENIA
-            # self.print_stats_file(gaps_stats.get_my_features_as_list(), output_dir_path, StatsOutput.GAPS.value,
-            #                       is_init_file, gaps_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
+            self.print_stats_file(gaps_stats.get_my_features_as_list(), output_dir_path, StatsOutput.GAPS.value,
+                                  is_init_file, gaps_stats.get_ordered_col_names())
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Gaps: {elapsed_time:.4f} seconds")
 
-        k_mer_stats_list = []  # TODO KSENIA
         if len({StatsOutput.ALL, StatsOutput.K_MER}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             for k_value in list(config.k_values):
                 k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
                 k_mer_stats.set_k_mer_features(self.sequences)
-                # stats_list.append(k_mer_stats)  #TODO - KSENIA
-                k_mer_stats_list.append((k_mer_stats,k_value))  #TODO KSENIA
-                # self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
-                #                       is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value)) # TODO - KSENIA uncomment
+                self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
+                                      is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value))
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Kmer: {elapsed_time:.4f} seconds")
 
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             self.build_nj_tree()
             tree_stats = TreeStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             tree_stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
-            # stats_list.append(tree_stats)  # TODO - KSENIA
-            # self.print_stats_file(tree_stats.get_my_features_as_list(), output_dir_path, StatsOutput.TREE.value,
-            #                       is_init_file, tree_stats.get_ordered_col_names()) # TODO - KSENIA uncomment
+            self.print_stats_file(tree_stats.get_my_features_as_list(), output_dir_path, StatsOutput.TREE.value,
+                                  is_init_file, tree_stats.get_ordered_col_names())
             if len({StatsOutput.ALL, StatsOutput.RF_LABEL}.intersection(config.stats_output)) > 0:
                 dist_labels_stats.set_rf_from_true(self.tree, true_tree)
                 data_to_print, col_names = dist_labels_stats.get_print_rf()
-                # self.print_stats_file(data_to_print, output_dir_path, StatsOutput.RF_LABEL.value,
-                #                       is_init_file, col_names) # TODO - KSENIA uncomment
-                # stats_list.append(dist_labels_stats)  # TODO - KSENIA
+                self.print_stats_file(data_to_print, output_dir_path, StatsOutput.RF_LABEL.value,
+                                      is_init_file, col_names)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for Tree: {elapsed_time:.4f} seconds")
 
-        stats_list.append(dist_labels_stats) # TODO - KSENIA
-        stats_list.append(basic_stats)  # TODO - KSENIA
-        stats_list.append(entropy_stats)  # TODO - KSENIA
-        stats_list.append(gaps_stats) # TODO - KSENIA
-        stats_list.append(tree_stats) # TODO - KSENIA
-
-        sop_stats_list = [] #TODO KSENIA
         if len({StatsOutput.ALL, StatsOutput.SP}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             for sp in sp_models:
                 sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)
-                sop_stats_list.append((sop_stats, sp.model_name, sp.ge_cost, sp.go_cost)) #TODO KSENIA
-                # self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
-                #                       is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
-                #                       sp.model_name, sp.go_cost, sp.ge_cost)  # TODO - KSENIA uncomment
+                self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
+                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
+                                      sp.model_name, sp.go_cost, sp.ge_cost)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for regular Sop: {elapsed_time:.4f} seconds")
 
-        weighted_sop_stats_list = []  # TODO KSENIA
         if len({StatsOutput.ALL, StatsOutput.W_SP}.intersection(config.stats_output)) > 0:
+            start_time = time.time()
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
                 self.build_nj_tree()
             for sp in sp_models:
                 w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
                 w_sop_stats.calc_w_sp(self.sequences, sp)
-                # stats_list.append(w_sop_stats)  # TODO - KSENIA
-                weighted_sop_stats_list.append((w_sop_stats, sp.model_name, sp.ge_cost, sp.go_cost))  #TODO KSENIA
-                # self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
-                #                       is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
-                #                       sp.model_name, sp.go_cost, sp.ge_cost) # TODO - KSENIA uncomment
+                self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
+                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
+                                      sp.model_name, sp.go_cost, sp.ge_cost)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for wSop: {elapsed_time:.4f} seconds")
 
-            # #combine features #TODO - KSENIA ADDED THIS PART
-            self.combine_stats(stats_list, sop_stats_list, weighted_sop_stats_list, k_mer_stats_list, true_msa.dataset_name, self.dataset_name) #TODO - KSENIA
 
     @staticmethod
     def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
@@ -300,65 +280,4 @@ class MSA:
             with (open(output_file_path, 'a') as outfile):
                 print(str(dist_labels_stats)[1:-1], file=outfile)
 
-    # @staticmethod
-    def combine_stats(self, stats_objects_list, sop_stats_list, weighted_sop_stats_list, k_mer_stats_list, code1, code): #TODO - KSENIA
-
-        # combined_dict = {}
-        seen_keys = set()
-        combined_dict = {"code1" : f"{code1}", "code" : f"{code}"}
-        seen_keys.add(code1)
-        seen_keys.add(code)
-
-        for obj in stats_objects_list:
-            features = obj.get_ordered_col_names()
-            values = obj.get_my_features_as_list()
-
-            for key, value in zip(features, values):
-                if key in seen_keys:
-                    continue
-                combined_dict[key] = value
-                seen_keys.add(key)
-
-        for obj, model_name, ge_cost, go_cost in sop_stats_list:
-            original_features = obj.get_ordered_col_names()
-            values = obj.get_my_features_as_list()
-
-            for key, value in zip(original_features, values):
-                if key == "code":
-                    continue
-                if key in ['sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm',
-                           'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm']:
-                    renamed_key = key
-                elif key in ['sp_match', 'sp_match_norm', 'sp_mismatch', 'sp_mismatch_norm']:
-                    renamed_key = f"{key}_{model_name}"
-                else:
-                    renamed_key = f"{key}_{model_name}_GO_{go_cost}_GE_{ge_cost}"
-                combined_dict[renamed_key] = value
-
-        for obj, model_name, ge_cost, go_cost in weighted_sop_stats_list:
-            original_features = obj.get_ordered_col_names()
-            values = obj.get_my_features_as_list()
-
-            for key, value in zip(original_features, values):
-                if key == "code":
-                    continue
-                renamed_key = f"{key}_{model_name}_GO_{go_cost}_GE_{ge_cost}"
-                combined_dict[renamed_key] = value
-
-        for obj, k_value in k_mer_stats_list:
-            original_features = obj.get_ordered_col_names()
-            values = obj.get_my_features_as_list()
-
-            for key, value in zip(original_features, values):
-                if key == "code":
-                    continue
-                renamed_key = f"{key}_K{k_value}"
-                combined_dict[renamed_key] = value
-
-        df = pd.DataFrame([combined_dict])
-        # df.to_csv(f"./output/comparison_results_{self.dataset_name}.csv", index=False)
-
-        file_path = f"./output/comparison_results_{code1}.csv"
-        write_header = not os.path.exists(file_path)
-        df.to_csv(file_path, mode="a", header=write_header, index=False)
 
