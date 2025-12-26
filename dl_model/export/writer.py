@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from dl_model.config.config import OutputConfig
 
-class ArtifactWriter:
+class OutputsWriter:
     def __init__(self, cfg: OutputConfig):
         self.cfg = cfg
         self.out_dir = Path(cfg.out_dir)

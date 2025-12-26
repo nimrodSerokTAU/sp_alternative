@@ -11,7 +11,7 @@ from dl_model.data_processing.features_selector import FeatureSelector
 from dl_model.data_processing.scaling import FeatureScaler
 from dl_model.modeling.model_train import Trainer
 from dl_model.evaluation.metrics import per_msa_correlations, top50_percentage
-from dl_model.export.writer import ArtifactWriter
+from dl_model.export.writer import OutputsWriter
 from dl_model.export.writer import save_loss_plot
 from dl_model.evaluation.shap_explain import run_shap_keras
 
@@ -37,7 +37,7 @@ class RegressionExperiment:
         self.selector = FeatureSelector(feat_cfg, target_col=data_cfg.true_score_name)
         self.scaler = FeatureScaler(feat_cfg)
         self.trainer = Trainer(out_cfg)
-        self.writer = ArtifactWriter(out_cfg)
+        self.writer = OutputsWriter(out_cfg)
 
     def run(self) -> dict:
         df = read_features(self.data_cfg.features_file)

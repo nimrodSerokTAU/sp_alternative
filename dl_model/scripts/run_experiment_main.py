@@ -14,7 +14,7 @@ data_cfg = DataConfig(
 )
 
 feat_cfg = FeatureConfig(
-    mode=3,
+    mode=1,
     remove_correlated_features=False,
     scaler_type_features="rank",
     scaler_type_labels="rank",

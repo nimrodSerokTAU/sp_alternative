@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.initializers import GlorotUniform
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.models import load_model
-from classes.regressor import Regressor
+# from classes.regressor import Regressor
 import shap
 from dl_model.scripts.predict_with_pretrained import use_test_from_origin
 
