@@ -50,6 +50,7 @@ out_cfg = OutputConfig(
     save_scaled_csv=True,
     save_predictions_csv=True,
     save_plots=True,
+    save_scaler=True,
 )
 
 explain_cfg = ShapExplainConfig(
