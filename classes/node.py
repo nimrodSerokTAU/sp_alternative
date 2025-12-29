@@ -1,12 +1,14 @@
-from typing import Self
+# from typing import Self
 
 
 class Node:
     id: int
     keys: set[str]
-    father: Self
+    # father: Self
+    father: 'Node'
     branch_length: float
-    children: list[Self]
+    # children: list[Self]
+    children: list['Node']
     newick_part: str
     parsimony_set: set[str]
     children_bl_sum: float
@@ -16,7 +18,7 @@ class Node:
     w_from_root: list[float]
     weight: float
 
-    def __init__(self, node_id: int, keys: set[str], children: list[Self], children_bl_sum: float,
+    def __init__(self, node_id: int, keys: set[str], children: list['Node'], children_bl_sum: float,
                  branch_length: float = 0):
         self.id = node_id
         self.keys = keys
@@ -29,7 +31,7 @@ class Node:
         self.w_from_root = []
 
     @classmethod
-    def create_from_children(cls, children_list: list[Self], inx: int | None):
+    def create_from_children(cls, children_list: list['Node'], inx: int | None):
         keys: set[str] = set()
         children_bl_sum = 0
         for child in children_list:
@@ -83,7 +85,7 @@ class Node:
             res.append({'node': self.father, 'dist': self.branch_length})
         return res
 
-    def update_children_only(self, children_list: list[Self]):
+    def update_children_only(self, children_list: list['Node']):
         self.children = children_list
 
     def set_rank_from_root(self, rank: int):

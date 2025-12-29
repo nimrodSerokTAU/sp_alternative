@@ -1,24 +1,25 @@
 import copy
 import sys
+from typing import List
 
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
 
 
 class NeighborJoining:
-    distance_matrix: list[list[float]]
-    nodes: list[Node]
-    q_matrix: list[list[float]]
-    all_nodes: list[Node]
+    distance_matrix: List[List[float]]
+    nodes: List[Node]
+    q_matrix: List[List[float]]
+    all_nodes: List[Node]
     tree_res: UnrootedTree
 
-    def __init__(self, distanceMatrix: list[list[float]], nodes: list[Node]):
+    def __init__(self, distanceMatrix: List[List[float]], nodes: List[Node]):
         self.distance_matrix = copy.deepcopy(distanceMatrix)
         self.nodes = nodes
         self.all_nodes = nodes.copy()
         self.tree_res = self.build_tree()
 
-    def calc_q_matrix(self) -> list[list[int]]:
+    def calc_q_matrix(self) -> List[List[int]]:
         number_of_seq = len(self.nodes)
         q_matrix = []
         for i in range(len(self.distance_matrix) - 1):

@@ -1,6 +1,8 @@
+import sys
 from pathlib import Path
 from classes.msa import MSA
 
+DIR = "/groups/pupko/kseniap/"
 
 def create_multiple_msa_alt(msa_file_path: Path, msa_name: str, output_dir_path: Path):
     msa = MSA(msa_name)
@@ -13,9 +15,16 @@ def create_multiple_msa_alt(msa_file_path: Path, msa_name: str, output_dir_path:
     print('done')
 
 
-create_multiple_msa_alt('C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/comparison_files/AATF/MSA.MAFFT.aln.With_Names',
-                        'MSA.MAFFT.aln.With_Names',
-                        'C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/alt_out')
+if __name__ == '__main__':
+    if len(sys.argv) > 3:
+        msa_file_path = sys.argv[1]
+        msa_name = sys.argv[2]
+        output_dir_path = sys.argv[3]
+    else:
+        print(f"Less than 3 parameters given to the script: {sys.argv[1]}\n")
+    create_multiple_msa_alt(msa_file_path,
+                        msa_name,
+                        output_dir_path)
 
 
 
