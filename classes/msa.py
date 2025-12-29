@@ -254,6 +254,7 @@ class MSA:
             start_time = time.time()
             if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) == 0:
                 self.build_nj_tree()
+
             for sp in sp_models:
                 w_sop_stats = WSopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)

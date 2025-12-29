@@ -50,23 +50,23 @@ class SopStats(BasicStats):
 
     def set_my_sop_score_parts(self, sp:SPScore, sequences: list[str]):
         sp_match_score, sp_mismatch_score, go_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, sp_go_count, sp_ge_count = sp.compute_efficient_sp_parts(sequences)
-        number_of_pairs = self.taxa_num * (self.taxa_num - 1) / 2 * self.msa_length
+        number_of_pairs_with_msa_length = self.taxa_num * (self.taxa_num - 1) / 2 * self.msa_length
 
         self.sp_match_count = sp_match_count
-        self.sp_match_count_norm = sp_match_count / number_of_pairs
+        self.sp_match_count_norm = sp_match_count / number_of_pairs_with_msa_length
         self.sp_mismatch_count = sp_mismatch_count
-        self.sp_mismatch_count_norm = sp_mismatch_count / number_of_pairs
+        self.sp_mismatch_count_norm = sp_mismatch_count / number_of_pairs_with_msa_length
         self.sp_go = sp_go_count
-        self.sp_go_norm = sp_go_count / number_of_pairs
+        self.sp_go_norm = sp_go_count / number_of_pairs_with_msa_length
         self.sp_ge = sp_ge_count
-        self.sp_ge_norm = sp_ge_count / number_of_pairs
+        self.sp_ge_norm = sp_ge_count / number_of_pairs_with_msa_length
         self.sp_match = sp_match_score
-        self.sp_match_norm = self.sp_match / number_of_pairs
+        self.sp_match_norm = self.sp_match / number_of_pairs_with_msa_length
         self.sp_mismatch = sp_mismatch_score
-        self.sp_mismatch_norm = self.sp_mismatch / number_of_pairs
+        self.sp_mismatch_norm = self.sp_mismatch / number_of_pairs_with_msa_length
 
         self.sp = sp_match_score + sp_mismatch_score + go_score + sp_score_gap_e
-        self.sp_norm = self.sp / number_of_pairs
+        self.sp_norm = self.sp / number_of_pairs_with_msa_length
 
 
 

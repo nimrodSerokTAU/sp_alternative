@@ -23,6 +23,7 @@ configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62'), E
                                               EvoModel(-10, -1, 'PAM250'), EvoModel(-6, -1, 'PAM250'),
                                               EvoModel(-10, -0.2, 'PAM250'), EvoModel(-6, -0.2, 'PAM250')],
                                              SopCalcTypes.EFFICIENT, folder,
+
                                              {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT,
                                               WeightMethods.CLUSTAL_DIFFERENTIAL_SUM},
                                              [5, 10, 20], {StatsOutput.ALL})
@@ -45,6 +46,10 @@ if __name__ == '__main__':
     # if not os.path.exists(f'/groups/pupko/kseniap/sp_alternative2/output/comparison_results_{code}.csv'):
     #     multiple_msa_calc_features_and_labels(configuration)
 
+
     multiple_msa_calc_features_and_labels(configuration)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
 # TODO: consider alternatives creation.

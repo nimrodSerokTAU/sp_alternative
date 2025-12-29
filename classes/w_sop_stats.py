@@ -1,3 +1,5 @@
+import time
+
 from classes.msa_basic_stats import BasicStats
 from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
@@ -66,6 +68,7 @@ class WSopStats(BasicStats):
         if len(additional_weights) == 0:
             return None
         if WeightMethods.HENIKOFF_WG in additional_weights or WeightMethods.HENIKOFF_WOG in additional_weights:
+            start_time = time.time()
             seq_weights_with_gap, seq_weights_no_gap = self.compute_seq_w_henikoff_vars(sequences)
             if WeightMethods.HENIKOFF_WG in additional_weights:
                 self.seq_weights_options.append(seq_weights_with_gap)
@@ -73,12 +76,22 @@ class WSopStats(BasicStats):
             if WeightMethods.HENIKOFF_WOG in additional_weights:
                 self.seq_weights_options.append(seq_weights_no_gap)
                 self.weight_names.append(WeightMethods.HENIKOFF_WOG.value)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time HENIKOFF_WG: {elapsed_time:.4f} seconds")
+            start_time = time.time()
             if WeightMethods.CLUSTAL_MID_ROOT in additional_weights:
                 self.seq_weights_options.append(self.get_weight_list(tree, RootingMethods.LONGEST_PATH_MID, seq_names))
                 self.weight_names.append(WeightMethods.CLUSTAL_MID_ROOT.value)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time CLUSTAL_MID_ROOT: {elapsed_time:.4f} seconds")
             if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
                 self.seq_weights_options.append(self.get_weight_list(tree, RootingMethods.MIN_DIFFERENTIAL_SUM, seq_names))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time CLUSTAL_DIFFERENTIAL_SUM: {elapsed_time:.4f} seconds")
 
     def set_my_w_sop(self, sop_w_options_dict: dict[str, float]):
         self.sp_HENIKOFF_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0

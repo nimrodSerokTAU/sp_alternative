@@ -1399,3 +1399,18 @@ def test_align_from_pattern():
                       original_file_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/input_for_align/AATF_orig.fas',
                       pattern_file_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/input_for_align/AATF_pattern.fas',
                       output_dir_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/output/from_pattern')
+
+
+def test_col_score():
+    msa_seq_a: list[str] = [
+        'AT-CG',
+        'ACA-G',
+        'AT-CT',
+        'ATC-G',
+        'ATACG'
+    ]
+    msa_a = MSA('test')
+    msa_a.sequences = msa_seq_a
+    entropy_stats = EntropyStats(msa_a.dataset_name, msa_a.get_taxa_num(), msa_a.get_msa_len())
+    entropy_stats.calc_entropy(msa_seq_a)
+    assert entropy_stats.constant_sites_pct == 0.4
