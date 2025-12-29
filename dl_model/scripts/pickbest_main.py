@@ -4,7 +4,7 @@ from dl_model.config.config import PickBestConfig
 pickbest_cfg = PickBestConfig(
     features_file="../input/ortho12_distant_features_121125.csv",
     true_score_name="dseq_from_true",
-    prediction_file=f"../out/prediction_DL_0_mode3_dseq_from_true.csv",
+    prediction_file=f"../out/prediction_DL_0_mode1_dseq_from_true.csv",
     error=0.0,
     subset=None,
     out_dir="../out",

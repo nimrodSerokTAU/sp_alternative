@@ -1,7 +1,9 @@
 import time
 from pathlib import Path
 from random import randrange
-from typing import Self
+# from typing import Self
+from typing_extensions import Self
+
 
 from classes.config import Configuration
 from classes.dist_labels_stats import DistanceLabelsStats

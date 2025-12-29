@@ -21,19 +21,19 @@ feat_cfg = FeatureConfig(
 )
 
 train_cfg = TrainConfig(
-    epochs=30,
+    epochs=50,
     batch_size=32,
-    learning_rate=1e-2,
-    neurons=(0, 128, 64, 16),
-    dropout_rate=0.2,
+    learning_rate=0.0022,
+    neurons=(64, 128, 64, 512),
+    dropout_rate=0.24,
     regularizer_name="l2",
-    l2=1e-5,
+    l2=1.65e-5,
 
     loss_fn="custom_mse",
-    alpha=0.5,
-    eps=1e-6,
-    top_k=4,
-    ranking_weight=0.3,
+    alpha=0,
+    eps=0,
+    top_k=8,
+    ranking_weight=1.33,
     margin=0.0,
 
     batch_generation="custom",   # or "standard"
