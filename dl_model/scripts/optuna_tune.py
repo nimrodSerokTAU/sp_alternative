@@ -315,7 +315,7 @@ def main() -> None:
         save_scaled_csv=False,
         save_predictions_csv=False,
         save_plots=False,
-        save_features_scv=False,
+        save_features_csv=False,
         save_scaler=False,
     )
 

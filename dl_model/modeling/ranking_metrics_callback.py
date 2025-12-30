@@ -6,7 +6,7 @@ from tensorflow.keras.callbacks import Callback
 class PerBatchRankingMetrics(Callback):
     def __init__(self, val_generator, metric: str = "kendall", verbose: int = 1):
         """
-        val_generator: your validation BatchGenerator (must yield (X, y))
+        val_generator: custom validation BatchGenerator (must yield (X, y))
         metric: 'kendall' or 'spearman'
         """
         super().__init__()

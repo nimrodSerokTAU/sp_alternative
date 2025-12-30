@@ -12,7 +12,7 @@ from dl_model.data_processing.scaling import FeatureScaler
 from dl_model.modeling.model_train import Trainer
 from dl_model.evaluation.metrics import per_msa_correlations, top50_percentage
 from dl_model.export.writer import OutputsWriter
-from dl_model.export.writer import save_loss_plot
+from dl_model.export.writer import save_loss_plot, save_correlation_plot
 from dl_model.evaluation.shap_explain import run_shap_keras
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class RegressionExperiment:
         df = read_features(self.data_cfg.features_file)
         df = self.prep.preprocess(df)
 
-        if self.out_cfg.save_features_scv:
+        if self.out_cfg.save_features_csv:
             self.writer.save_features_csv(df, filename=f"features_w_aligner_{self.feat_cfg.mode}_{self.data_cfg.true_score_name}.csv")
 
         codes = df[GROUP_COL].unique()
@@ -88,7 +88,7 @@ class RegressionExperiment:
             "test_loss": results["test_loss"],
             "val_loss": results["val_loss"],
             "pearson_r": results["pearson_r"],
-            "pearson_p": results["pearson_p"],
+            "pearson_p": format(float(results["pearson_p"]), ".4f"),
             **corr,
             "top50_percentage": top50,
         }
@@ -100,6 +100,7 @@ class RegressionExperiment:
 
         if self.out_cfg.save_plots:
             save_loss_plot(results["history"], f"{self.out_cfg.out_dir}/loss_graph_{rid}_mode{self.feat_cfg.mode}_{self.data_cfg.true_score_name}.png")
+            save_correlation_plot(y_test_s, results["y_pred"], self.train_cfg.loss_fn, self.feat_cfg.mode, self.data_cfg.true_score_name, results["mse"], rid, out_path=self.out_cfg.out_dir)
 
         if self.out_cfg.save_model:
             self.writer.save_model(results["model"], f"regressor_model_{rid}_mode{self.feat_cfg.mode}_{self.data_cfg.true_score_name}.keras")
@@ -124,7 +125,7 @@ class RegressionExperiment:
             self.writer.save_predictions(groups_test, test_df[CODE_COL], results["y_pred"],
                                          filename=f"prediction_DL_{rid}_mode{self.feat_cfg.mode}_{self.data_cfg.true_score_name}.csv")
 
-        # SHAP (optional)
+        # SHAP explainability
         if self.explain_cfg.enabled:
             X_test_named = pd.DataFrame(X_test, columns=self.scaler.feature_names_out or list(X_test_df.columns))
             run_shap_keras(results["model"], X_test_named, out_dir=self.out_cfg.out_dir,
