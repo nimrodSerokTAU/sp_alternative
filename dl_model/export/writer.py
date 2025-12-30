@@ -112,6 +112,8 @@ def save_correlation_plot(y_test, y_pred, loss_fn: str, mode: int, true_score_na
     else:
         density = np.ones_like(y_pred, dtype=float)
 
+    # here pearson is after masking
+    r = pearsonr(y_pred, y_test)[0] if len(np.unique(y_test)) > 1 else np.nan
     plt.text(
         0.65, 0.95, f"Pearson r = {r:.3f}",
         ha="right", va="top",
