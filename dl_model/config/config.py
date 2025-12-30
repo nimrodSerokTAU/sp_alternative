@@ -97,7 +97,7 @@ class OutputConfig:
     save_scaled_csv: bool = True
     save_predictions_csv: bool = True
     save_plots: bool = True
-    save_features_scv: bool = True
+    save_features_csv: bool = True
     save_scaler: bool = True
 
 @dataclass(frozen=True)

@@ -43,7 +43,7 @@ class RegressionExperiment:
         df = read_features(self.data_cfg.features_file)
         df = self.prep.preprocess(df)
 
-        if self.out_cfg.save_features_scv:
+        if self.out_cfg.save_features_csv:
             self.writer.save_features_csv(df, filename=f"features_w_aligner_{self.feat_cfg.mode}_{self.data_cfg.true_score_name}.csv")
 
         codes = df[GROUP_COL].unique()
@@ -88,7 +88,7 @@ class RegressionExperiment:
             "test_loss": results["test_loss"],
             "val_loss": results["val_loss"],
             "pearson_r": results["pearson_r"],
-            "pearson_p": results["pearson_p"],
+            "pearson_p": format(float(results["pearson_p"]), ".4f"),
             **corr,
             "top50_percentage": top50,
         }

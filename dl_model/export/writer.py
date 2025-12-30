@@ -71,11 +71,10 @@ def save_correlation_plot(y_test, y_pred, loss_fn: str, mode: int, true_score_na
     plt.figure(figsize=(12, 8))
     plt.scatter(y_test, y_pred, color='blue', edgecolor='k', alpha=0.7)
     plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], color='red', linestyle='--')
-    corr_coefficient, _ = pearsonr(y_test, y_pred)
-    # mse = np.mean((y_test - y_pred) ** 2)
+    r = pearsonr(y_pred, y_test)[0] if len(np.unique(y_test)) > 1 else np.nan
     plt.text(
         0.05, 0.95,
-        f'Pearson Correlation: {corr_coefficient:.2f}, MSE: {mse:.6f}',
+        f'Pearson Correlation: {r:.2f}, MSE: {mse:.6f}',
         transform=plt.gca().transAxes,
         fontsize=18,
         verticalalignment='top'
@@ -94,24 +93,40 @@ def save_correlation_plot(y_test, y_pred, loss_fn: str, mode: int, true_score_na
     plt.close()
 
     #CORRELATION PLOT 2 WITH DENSITY
-    out = Path(f"{out_path}/regression_results_{rid}_mode{mode}_{true_score_name}_w_density.png")
-    kde = gaussian_kde([y_pred, y_test], bw_method=0.1)
-    density = kde([y_test, y_pred])
+    out = Path(out_path) / f"regression_results_{rid}_mode{mode}_{true_score_name}_w_density.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    y_pred = np.asarray(y_pred).ravel()
+    y_test = np.asarray(y_test).ravel()
+
+    mask = np.isfinite(y_pred) & np.isfinite(y_test)
+    y_pred = y_pred[mask]
+    y_test = y_test[mask]
+
     plt.figure(figsize=(8, 6))
-    r, _ = pearsonr(y_pred, y_test)
-    plt.text(0.65, 0.95, f'Pearson r = {r:.3f}',
-             ha='right', va='top',
-             transform=plt.gca().transAxes,
-             fontsize=16, color='black', weight='bold', zorder=2)
 
-    plt.ylim(bottom=min(y_test), top=max(y_test) * 1.1)
-    scatter = plt.scatter(y_pred, y_test, c=density, cmap='plasma', edgecolors='none',
-                          alpha=0.7)
-    cbar = plt.colorbar(scatter, label='Density')
-    cbar.set_label('Density', fontsize=18, weight='bold', labelpad=10)
+    if len(y_pred) >= 2 and np.std(y_pred) > 1e-12 and np.std(y_test) > 1e-12:
+        xy = np.vstack([y_pred, y_test])
+        kde = gaussian_kde(xy, bw_method=0.1)
+        density = kde(xy)
+    else:
+        density = np.ones_like(y_pred, dtype=float)
 
-    plt.xlabel('Predicted distance', fontsize=16, weight='bold', labelpad=10)
-    plt.ylabel('d_seq distance ("true distance")', fontsize=16, weight='bold', labelpad=10)
+    plt.text(
+        0.65, 0.95, f"Pearson r = {r:.3f}",
+        ha="right", va="top",
+        transform=plt.gca().transAxes,
+        fontsize=16, weight="bold", zorder=2
+    )
+
+    plt.ylim(bottom=float(np.min(y_test)), top=float(np.max(y_test)) * 1.1)
+
+    scatter = plt.scatter(y_pred, y_test, c=density, cmap="plasma", edgecolors="none", alpha=0.7)
+    cbar = plt.colorbar(scatter)
+    cbar.set_label("Density", fontsize=18, weight="bold", labelpad=10)
+
+    plt.xlabel("Predicted distance", fontsize=16, weight="bold", labelpad=10)
+    plt.ylabel('d_seq distance ("true distance")', fontsize=16, weight="bold", labelpad=10)
     plt.tight_layout()
-    plt.savefig(out, format='png')
+    plt.savefig(out, format="png", dpi=300)
     plt.close()

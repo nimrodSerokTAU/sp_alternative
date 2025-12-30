@@ -109,6 +109,6 @@ class Trainer:
             "val_loss": val_loss,
             "mse": mse,
             "pearson_r": float(r),
-            "pearson_p": format(float(p), ".4f"),
+            "pearson_p": float(p),
             "y_pred": y_pred,
         }

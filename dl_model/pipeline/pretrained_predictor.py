@@ -101,7 +101,7 @@ class PretrainedPredictor:
             save_model=False, #hardcoded , not to save for pretrained
             save_scaled_csv=False, #hardcoded , not to save for pretrained
             save_plots=False, #hardcoded , not to save for pretrained
-            save_features_scv=False, #hardcoded , not to save for pretrained
+            save_features_csv=False, #hardcoded , not to save for pretrained
             save_scaler=False, #hardcoded , not to save for pretrained
         )
 
