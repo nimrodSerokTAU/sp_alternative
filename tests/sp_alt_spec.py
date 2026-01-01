@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-from classes.compare_msas import msa_comp_main
 from classes.config import Configuration
 from classes.dist_labels_stats import DistanceLabelsStats
 from classes.entropy_stats import EntropyStats
@@ -1387,11 +1386,6 @@ def test_features_doc_k_mer_average():
     k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(), 4)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
     assert k_mer_stats.k_mer_average == 1.2
-
-
-def comp_3():  # use when needed # TODO: remove later
-    res = msa_comp_main()
-    assert res is None
 
 
 def test_align_from_pattern():
