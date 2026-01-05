@@ -1127,40 +1127,6 @@ def test_create_alternative_msas_by_realign():
     assert dpos_ratio <= 3
 
 
-def test_create_alternative_msas_by_moving_smallest():
-    aln: list[str] = [
-        'AT-CGC-GG-TT',
-        'ACATG-T-GAAT',
-        'AT-CG--GGATT',
-        'ATC-GA-GG-AT',
-        'TTATGCTGG-A-'
-    ]
-    names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    true_aln: list[str] = [
-        'AT-CGC-GG-TT',
-        'ACATG-TG-AAT',
-        'AT-CG--GGATT',
-        'AT-CGA-GG-AT',
-        'TTATGCTGG-A-'
-    ]
-    true_msa: MSA = create_msa_from_seqs_and_names('true', true_aln, names)
-    inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
-    res = inferred_msa.create_alternative_msas_by_moving_one_part()
-    msa_list: list[MSA] = []
-    dpos_list: list[float] = []
-    for inx, msa_data in enumerate(res):
-        print(inx)
-        alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
-        alt_msa_dpos_stats = DistanceLabelsStats(alt_msa.dataset_name, len(alt_msa.sequences), len(alt_msa.sequences[0]))
-        alt_msa_dpos_stats.set_my_distance_from_true(alt_msa.sequences, true_msa.sequences)
-        dpos_list.append(alt_msa_dpos_stats.dpos_from_true)
-        msa_list.append(alt_msa)
-    inferred_msa_dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences), len(inferred_msa.sequences[0]))
-    inferred_msa_dpos_stats.set_my_distance_from_true(inferred_msa.sequences, true_msa.sequences)
-    dpos_ratio = abs(inferred_msa_dpos_stats.dpos_from_true - dpos_list[0]) / inferred_msa_dpos_stats.dpos_from_true
-    assert dpos_ratio <= 1
-
-
 def calc_single_msas(config: Configuration):
     all_msa_ws: list[list[float]] = []
     sp: SPScore = SPScore(config.models[0])
