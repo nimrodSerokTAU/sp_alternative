@@ -39,7 +39,6 @@ The unit-tests on `tests/sp_alt_spec.py` provide examples for running and testin
 ### Results analysis
 The `results_analyzer` directory includes the code for the results analysis described in the paper, which can be executed and configured through the `analyzer.py` file.
 
-
 ### Ranking prediction with the pre-trained model (MODEL2)
 To generate ranking predictions using the pre-trained model, run the script  `predict_pretrained_main.py` 
 (located in `dl_model/scripts`) with the appropriate command-line arguments.
