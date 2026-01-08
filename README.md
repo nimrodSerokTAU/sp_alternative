@@ -72,11 +72,104 @@ Type of scaling applied to the input features. For MODEL2, this should be set to
 3. `--scaler-type-labels` 
 Type of scaling applied to the labels during training. For MODEL2, this should be set to `rank`
 
-3. `--model-path` 
+4. `--model-path` 
 Path to the pre-trained deep learning model file (`.keras` format).
 
-4. `--scaler-path` 
+5. `--scaler-path` 
 Path to the scaler used for feature normalization (`.pkl` format).
 
-5. `--out-dir <output_directory>`
+6. `--out-dir <output_directory>`
 Directory where the prediction results will be saved.
+
+### Training a new model 
+
+This section describes how to train a new deep learning model using the provided training pipeline. 
+The `run_experiment_main.py` script located in the `dl_model/scripts` orchestrates data loading, feature preprocessing, model configuration, 
+training, evaluation, and optional explainability in a single experiment run. 
+Training behavior is fully controlled through configuration objects, allowing you to easily reproduce experiments 
+or adjust hyperparameters without modifying the core code.
+The example below shows how to define the required configuration blocks for data handling, 
+feature processing, model training, output management, and SHAP-based model explanation.
+
+#### Example
+
+```python
+data_cfg = DataConfig(
+    features_file="../input/ortho12_distant_features_121125.csv",
+    true_score_name="dseq_from_true",
+    test_size=0.2,
+    deduplicated=False,
+    empirical=False,
+)
+
+feat_cfg = FeatureConfig(
+    mode=1,
+    remove_correlated_features=False,
+    scaler_type_features="rank",
+    scaler_type_labels="rank",
+)
+
+train_cfg = TrainConfig(
+    epochs=50,
+    batch_size=32,
+    learning_rate=0.0022,
+    neurons=(64, 128, 64, 512),
+    dropout_rate=0.24,
+    regularizer_name="l2",
+    l2=1.65e-5,
+    loss_fn="custom_mse",
+    alpha=0,
+    eps=0,
+    top_k=8,
+    ranking_weight=1.33,
+    margin=0.0,
+    batch_generation="custom",   # or "standard"
+    repeats=1,
+    mixed_portion=0.0,
+    per_aligner=False,
+)
+
+out_cfg = OutputConfig(
+    out_dir="../out",
+    run_id="0",
+    verbose=True,
+    save_model=True,
+    save_scaled_csv=True,
+    save_predictions_csv=True,
+    save_plots=True,
+    save_scaler=True,
+)
+
+
+explain_cfg = ShapExplainConfig(
+    enabled=True,
+    sample_n=500
+)
+```
+
+#### Arguments
+
+1. `data_cfg` (DataConfig):
+    features_file: Path to the input features file (.csv format) for training.
+    true_score_name: Name of the column in the features file representing the true MSA quality score (label) to predict.
+    empirical: Whether to use empirical data for training (155 features) or simulated data (153 features).
+2. `feat_cfg` (FeatureConfig):
+    mode: Feature processing mode (1 uses all features, 2 uses short list of features).
+    remove_correlated_features: Whether to remove highly correlated features.
+    scaler_type_features: Type of scaling for features ('rank', 'standard', 'zscore').
+    scaler_type_labels: Type of scaling for labels ('rank', 'standard', 'zscore').
+3. `train_cfg` (TrainConfig):
+    loss_fn="custom_mse": Loss function to use ('mse', 'custom_mse', 'ranknet_loss', 'hybrid_mse_ranknet_loss', 'kendall_loss', etc.).
+    batch_generation: Method for generating training batches ('standard', 'custom'). Custom uses a specialized batch generation strategy where all samples in the same mini-batch come from the same MSA-batch.
+    regularizer_name: Type of regularization to apply ('l1', 'l2', 'l1_l2').
+4.  `out_cfg` (OutputConfig):
+    out_dir: Directory to save output files.
+    run_id: Identifier for the training run.
+    save_model: Whether to save the trained model (.keras format).
+    save_scaled_csv: Whether to save the scaled features and labels to a CSV file.
+    save_predictions_csv: Whether to save the model's predictions to a CSV file.
+    save_plots: Whether to generate and save training plots.
+    save_scaler: Whether to save the feature scaler used during training (.pkl format).
+5. `explain_cfg` (ShapExplainConfig):
+    enabled: Whether to perform SHAP-based model explainability analysis.
+    sample_n: Number of samples to use for SHAP analysis.
