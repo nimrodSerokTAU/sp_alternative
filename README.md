@@ -158,26 +158,26 @@ explain_cfg = ShapExplainConfig(
 #### Arguments
 
 1. `data_cfg` (DataConfig):
-    features_file: Path to the input features file (.csv format) for training.
-    true_score_name: Name of the column in the features file representing the true MSA quality score (label) to predict.
-    empirical: Whether to use empirical data for training (155 features) or simulated data (153 features).
+    `features_file`: Path to the input features file (.csv format) for training.
+    `true_score_name`: Name of the column in the features file representing the true MSA quality score (label) to predict.
+    `empirical`: Whether to use empirical data for training (155 features) or simulated data (153 features).
 2. `feat_cfg` (FeatureConfig):
-    mode: Feature processing mode (1 uses all features, 2 uses short list of features).
-    remove_correlated_features: Whether to remove highly correlated features.
-    scaler_type_features: Type of scaling for features ('rank', 'standard', 'zscore').
-    scaler_type_labels: Type of scaling for labels ('rank', 'standard', 'zscore').
+    `mode`: Feature processing mode (1 uses all features, 2 uses short list of features).
+    `remove_correlated_features`: Whether to remove highly correlated features.
+    `scaler_type_features`: Type of scaling for features ('rank', 'standard', 'zscore').
+    `scaler_type_labels`: Type of scaling for labels ('rank', 'standard', 'zscore').
 3. `train_cfg` (TrainConfig):
-    loss_fn="custom_mse": Loss function to use ('mse', 'custom_mse', 'ranknet_loss', 'hybrid_mse_ranknet_loss', 'kendall_loss', etc.).
-    batch_generation: Method for generating training batches ('standard', 'custom'). Custom uses a specialized batch generation strategy where all samples in the same mini-batch come from the same MSA-batch.
-    regularizer_name: Type of regularization to apply ('l1', 'l2', 'l1_l2').
+    `loss_fn`: Loss function to use ('mse', 'custom_mse', 'ranknet_loss', 'hybrid_mse_ranknet_loss', 'kendall_loss', etc.).
+    `batch_generation`: Method for generating training batches ('standard', 'custom'). Custom uses a specialized batch generation strategy where all samples in the same mini-batch come from the same MSA-batch.
+    `regularizer_name`: Type of regularization to apply ('l1', 'l2', 'l1_l2').
 4.  `out_cfg` (OutputConfig):
-    out_dir: Directory to save output files.
-    run_id: Identifier for the training run.
-    save_model: Whether to save the trained model (.keras format).
-    save_scaled_csv: Whether to save the scaled features and labels to a CSV file.
-    save_predictions_csv: Whether to save the model's predictions to a CSV file.
-    save_plots: Whether to generate and save training plots.
-    save_scaler: Whether to save the feature scaler used during training (.pkl format).
+    `out_dir`: Directory to save output files.
+    `run_id`: Identifier for the training run.
+    `save_model`: Whether to save the trained model (.keras format).
+    `save_scaled_csv`: Whether to save the scaled features and labels to a CSV file.
+    `save_predictions_csv`: Whether to save the model's predictions to a CSV file.
+    `save_plots`: Whether to generate and save training plots.
+    `save_scaler`: Whether to save the feature scaler used during training (.pkl format).
 5. `explain_cfg` (ShapExplainConfig):
-    enabled: Whether to perform SHAP-based model explainability analysis.
-    sample_n: Number of samples to use for SHAP analysis.
+    `enabled`: Whether to perform SHAP-based model explainability analysis.
+    `sample_n`: Number of samples to use for SHAP analysis.
