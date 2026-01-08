@@ -43,7 +43,7 @@ The `results_analyzer` directory includes the code for the results analysis desc
 To generate ranking predictions using the pre-trained model, run the script  `predict_pretrained_main.py` 
 (located in `dl_model/scripts`) with the appropriate command-line arguments.
 
-*Example*
+#### Example
 
 The following example shows how to use MODEL2, pre-trained on OrthoMaM-based simulated data:
    ```bash
@@ -56,7 +56,7 @@ The following example shows how to use MODEL2, pre-trained on OrthoMaM-based sim
    --out-dir <output_directory>
    ```
 
-*Arguments*
+#### Arguments
 
 1. `--features-file <path_to_features_file>`
 Path to the input features file (.csv format) for which predictions will be generated.
