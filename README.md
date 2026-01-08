@@ -90,6 +90,14 @@ Training behavior is fully controlled through configuration objects, allowing yo
 or adjust hyperparameters without modifying the core code.
 The example below shows how to define the required configuration blocks for data handling, 
 feature processing, model training, output management, and SHAP-based model explanation.
+To train MODEL1, 
+set `loss_fn="mse"` and `batch_generation="standard"` in `TrainConfig`, 
+and use the appropriate features file for `data_cfg` and hyperparameters (as described in the paper).
+To train MODEL2, 
+set `loss_fn="custom_mse"` and `batch_generation="custom"` in `TrainConfig`, 
+and use the appropriate features file for `data_cfg` and hyperparameters (as described in the paper).
+Adjust empirical=False/True in `data_cfg` according to the features file used (simulated/empirical).
+Finally, call the `run_experiment_main.py` script with the defined configurations to start training.
 
 #### Example
 
