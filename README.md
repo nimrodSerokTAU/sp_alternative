@@ -73,11 +73,11 @@ Type of scaling applied to the input features. For MODEL2, this should be set to
 3. `--scaler-type-labels` 
 Type of scaling applied to the labels during training. For MODEL2, this should be set to `rank`
 
-4`--model-path` 
+3. `--model-path` 
 Path to the pre-trained deep learning model file (`.keras` format).
 
-5`--scaler-path` 
+4. `--scaler-path` 
 Path to the scaler used for feature normalization (`.pkl` format).
 
-6`--out-dir <output_directory>`
+5. `--out-dir <output_directory>`
 Directory where the prediction results will be saved.
