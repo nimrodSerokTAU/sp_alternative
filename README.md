@@ -39,6 +39,7 @@ The unit-tests on `tests/sp_alt_spec.py` provide examples for running and testin
 ### Results analysis
 The `results_analyzer` directory includes the code for the results analysis described in the paper, which can be executed and configured through the `analyzer.py` file.
 
+
 ### Ranking prediction with the pre-trained model (MODEL2)
 To generate ranking predictions using the pre-trained model, run the script  `predict_pretrained_main.py` 
 (located in `dl_model/scripts`) with the appropriate command-line arguments.
@@ -72,11 +73,11 @@ Type of scaling applied to the input features. For MODEL2, this should be set to
 3. `--scaler-type-labels` 
 Type of scaling applied to the labels during training. For MODEL2, this should be set to `rank`
 
-3. `--model-path` 
+4`--model-path` 
 Path to the pre-trained deep learning model file (`.keras` format).
 
-4. `--scaler-path` 
+5`--scaler-path` 
 Path to the scaler used for feature normalization (`.pkl` format).
 
-5. `--out-dir <output_directory>`
+6`--out-dir <output_directory>`
 Directory where the prediction results will be saved.
