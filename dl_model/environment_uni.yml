@@ -1,0 +1,36 @@
+name: dl_model_env
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # ---- core ----
+  - python=3.10
+  - pip
+
+  # ---- numeric stack (compiled via conda) ----
+  - numpy=1.26.4
+  - scipy
+  - pandas
+  - matplotlib
+  - scikit-learn=1.5.1
+  - joblib
+
+  # ---- misc ----
+  - tqdm
+  - pyyaml
+
+  # ---- pip-only packages ----
+  - pip:
+      # TensorFlow + Keras (must be pip)
+      - tensorflow==2.17.0
+      - keras==3.5.0
+
+      # optional but commonly used in your repo
+      - shap
+      - seaborn
+      - transformers
+      - torch
+      - torchvision
+      - torchtext
