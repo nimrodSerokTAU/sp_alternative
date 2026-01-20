@@ -1,9 +1,7 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Dict, Any
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -12,7 +10,6 @@ from scipy.stats import pearsonr
 from sklearn.metrics import mean_squared_error
 
 from dl_model.config.config import DataConfig, FeatureConfig, OutputConfig
-
 from dl_model.data_processing.io import read_features
 from dl_model.data_processing.preprocess import DatasetPreprocessor
 from dl_model.data_processing.features_selector import FeatureSelector
@@ -73,6 +70,7 @@ def _load_model(path: str, custom_objects: Optional[Dict[str, Any]] = None) -> t
     if not p.exists():
         raise FileNotFoundError(f"Model not found: {p}")
     # return tf.keras.models.load_model(str(p), custom_objects=custom_objects, safe_mode=False)
+
     return tf.keras.models.load_model(str(p), custom_objects=custom_objects, safe_mode=False, compile=False)
 
 class PretrainedPredictor:
@@ -124,6 +122,8 @@ class PretrainedPredictor:
 
         # 3) load scaler + scale X
         scaler = _load_scaler(self.cfg.scaler_path, self.cfg.scaler_type_features)
+        if self.cfg.verbose:
+            print(f"[pretrained] loaded scaler from: {self.cfg.scaler_path}")
 
         if self.cfg.scaler_type_features == "standard":
             X_scaled = scaler.transform(X).astype("float64")
@@ -143,7 +143,7 @@ class PretrainedPredictor:
             self.writer.save_predictions(df[GROUP_COL], df[CODE_COL], y_pred, pred_filename)
 
         if self.cfg.verbose:
-            print(f"[pretrained] wrote: {Path(self.cfg.out_dir) / pred_filename}")
+            print(f"[pretrained] predictions saved: {Path(self.cfg.out_dir) / pred_filename}")
 
         metrics: dict[str, float] = {}
         if self.cfg.compute_metrics_if_possible and self.cfg.true_score_name in df.columns:

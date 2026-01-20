@@ -3,6 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
+
+# add project root
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
 
 from dl_model.pipeline.pretrained_predictor import (
     PretrainedPredictConfig,
@@ -57,4 +63,16 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    import platform, sys
+    import numpy as np
+    import pandas as pd
+    import tensorflow as tf
+
+    print("exe:", sys.executable)
+    print("machine:", platform.machine())
+    print("numpy:", np.__version__)
+    print("pandas:", pd.__version__)
+    print("tf:", tf.__version__)
+    print("tf.keras:", tf.keras.__version__ if hasattr(tf.keras, "__version__") else "ok")
+
     raise SystemExit(main(sys.argv[1:]))
