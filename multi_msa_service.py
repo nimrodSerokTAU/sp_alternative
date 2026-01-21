@@ -13,14 +13,13 @@ def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | Non
     true_tree_file_name: str | None = None
     other_file_names: list[str] = []
     for file_name in file_names:
-        ext: str = file_name.split('.')[-1]
-        if ext == 'fas':  # TODO: define identification
+        if '_TRUE.' in file_name:
             true_file_name = file_name
-        elif ext == 'txt':  # TODO: define identification
+        elif '_true_tree.' in file_name:
             true_tree_file_name = file_name
         else:
             other_file_names.append(file_name)
-    return true_file_name, true_tree_file_name, other_file_names  # TODO: can protect
+    return true_file_name, true_tree_file_name, other_file_names
 
 
 def multiple_msa_calc_features_and_labels(config: Configuration):

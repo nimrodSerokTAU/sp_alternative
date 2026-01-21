@@ -55,7 +55,7 @@ class GlobalAlign:
         self.codes_dict_to_inx: dict[str, int] = {}
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        matrix_file_path = os.path.join(script_dir, f'../input_config_files/{configuration.matrix_file_name}.txt')
+        matrix_file_path = f'../input_config_files/{configuration.matrix_file_name}.txt'
         matching_matrix, codes_dict_to_inx = read_matching_matrix(matrix_file_path)
         self.matching_matrix = matching_matrix
         self.codes_dict_to_inx = codes_dict_to_inx
