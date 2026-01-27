@@ -1,5 +1,8 @@
-import os
+from datetime import timedelta
+import time
 from pathlib import Path
+import os
+
 
 from classes.msa import MSA
 from classes.config import Configuration
@@ -23,6 +26,7 @@ def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | Non
 
 
 def multiple_msa_calc_features_and_labels(config: Configuration):
+    start = time.monotonic()
     all_msa_stats: dict[str, dict] = {}
     for stats_file_name in config.stats_output:
         all_msa_stats[stats_file_name.value] = {}
@@ -54,5 +58,6 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
             is_init_files = False
         if true_msa is not None:
             true_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
-    print('done')
-    # TODO: decide how to handle alternative_inferred
+
+    end = time.monotonic()
+    print(f"Done - Total duration: {timedelta(seconds=end - start)}")
