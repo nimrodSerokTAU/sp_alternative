@@ -17,7 +17,7 @@ class SPScore:
 
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
-        blosum_file_path = os.path.join(script_dir, f'../input_config_files/{evo_model.matrix_file_name}.txt')
+        blosum_file_path = f'../input_config_files/{evo_model.matrix_file_name}.txt'
         w_matrix, code_to_index_dict = read_matching_matrix(blosum_file_path)
         self.w_matrix = w_matrix
         self.code_to_index_dict = code_to_index_dict
