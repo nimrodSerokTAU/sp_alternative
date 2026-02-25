@@ -8,7 +8,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import load_model
 
-from dl_model.scripts.predict_with_pretrained import construct_test_set, use_test_from_origin
 
 def run_shap_keras(model, X_test: pd.DataFrame, out_dir: str, sample_n: int = 500, run_id: str = "0"):
     X_subset = X_test.sample(n=min(sample_n, len(X_test)), random_state=42)
