@@ -16,7 +16,6 @@ class OutputsWriter:
         self.out_dir.mkdir(parents=True, exist_ok=True)
 
     def save_scaler(self, scaler, name: str):
-        # GroupAwareScalerZ has .save(); sklearn scalers can be joblib dumped
         path = self.out_dir / name
         if hasattr(scaler, "save"):
             scaler.save(str(path))

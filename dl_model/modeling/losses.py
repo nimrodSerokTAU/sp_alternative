@@ -33,16 +33,16 @@ def _topk_ranking_hinge(y_true: tf.Tensor, y_pred: tf.Tensor, top_k: int, margin
     k = tf.minimum(tf.cast(top_k, tf.int32), n)
 
     true_order = tf.argsort(y_true, direction="ASCENDING")
-    true_topk = true_order[:k]                       # (k,)
-    pred_all = y_pred                                # (n,)
-    pred_topk = tf.gather(y_pred, true_topk)          # (k,)
+    true_topk = true_order[:k]
+    pred_all = y_pred
+    pred_topk = tf.gather(y_pred, true_topk)
 
     # pairwise hinge: relu(margin + pred_topk[i] - pred_all[j])
-    loss_matrix = tf.nn.relu(tf.cast(margin, tf.float32) + pred_topk[:, None] - pred_all[None, :])  # (k,n)
+    loss_matrix = tf.nn.relu(tf.cast(margin, tf.float32) + pred_topk[:, None] - pred_all[None, :])
 
     # mask out comparisons among topk itself
-    topk_mask = tf.scatter_nd(true_topk[:, None], tf.ones([k], tf.float32), [n])  # (n,)
-    non_topk_mask = (1.0 - topk_mask)[None, :]                                    # (1,n)
+    topk_mask = tf.scatter_nd(true_topk[:, None], tf.ones([k], tf.float32), [n])
+    non_topk_mask = (1.0 - topk_mask)[None, :]
     loss_matrix = loss_matrix * non_topk_mask
 
     return tf.reduce_mean(loss_matrix)
@@ -71,7 +71,7 @@ def _kendall_smooth(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
     diff_true = tf.expand_dims(y_true, 1) - tf.expand_dims(y_true, 0)
     diff_pred = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
     sign_true = tf.sign(diff_true)
-    sign_pred = tf.tanh(diff_pred) # smooth sign
+    sign_pred = tf.tanh(diff_pred) #smooth sign
     tau = tf.reduce_mean(sign_true * sign_pred)
     return 1.0 - tau # maximize Kendall's τ --> minimize 1 - τ
 
@@ -88,7 +88,7 @@ def _approx_ndcg(y_true: tf.Tensor, y_pred: tf.Tensor, eps: float) -> tf.Tensor:
     eps = tf.cast(eps, tf.float32)
 
     pred_diffs = tf.expand_dims(y_pred, 1) - tf.expand_dims(y_pred, 0)
-    soft_rank = tf.reduce_sum(tf.nn.sigmoid(-pred_diffs), axis=-1) + 1.0  # (n,)
+    soft_rank = tf.reduce_sum(tf.nn.sigmoid(-pred_diffs), axis=-1) + 1.0
 
     gains = tf.pow(2.0, y_true) - 1.0
     discounts = 1.0 / (tf.math.log(1.0 + soft_rank) / tf.math.log(2.0))
@@ -100,7 +100,7 @@ def _approx_ndcg(y_true: tf.Tensor, y_pred: tf.Tensor, eps: float) -> tf.Tensor:
     idcg = tf.reduce_sum(ideal_gains * ideal_discounts)
 
     ndcg = dcg / (idcg + eps)
-    return 1.0 - ndcg # maximize NDCG --> minimize 1 - NDCG
+    return 1.0 - ndcg #maximize NDCG --> minimize 1 - NDCG
 
 
 def _weighted_ranknet(y_true: tf.Tensor, y_pred: tf.Tensor, topk_weight_decay: float, eps: float) -> tf.Tensor:
@@ -114,7 +114,7 @@ def _weighted_ranknet(y_true: tf.Tensor, y_pred: tf.Tensor, topk_weight_decay: f
     S = tf.cast(diff_true < 0, tf.float32)
     P = tf.nn.sigmoid(-diff_pred)
 
-    ranks = tf.argsort(tf.argsort(y_true))  # smaller y_true => smaller rank index
+    ranks = tf.argsort(tf.argsort(y_true))  #smaller y_true => smaller rank index
     ranks = tf.cast(ranks, tf.float32)
     item_w = tf.exp(-decay * ranks)
     pair_w = (tf.expand_dims(item_w, 1) + tf.expand_dims(item_w, 0)) / 2.0
@@ -163,10 +163,6 @@ def _hybrid_weighted_ranknet(
 
     return pairwise + alpha * best_class + beta * margin_loss
 
-
-# ============================================================
-# Serializable Loss Classes
-# ============================================================
 
 @tf.keras.utils.register_keras_serializable(package="msa_regression")
 class MSEWithRankLoss(tf.keras.losses.Loss):
@@ -401,13 +397,6 @@ def make_loss(loss_fn: str, **kwargs):
             ranking_weight=kwargs.get("ranking_weight", 0.3),
         )
 
-    # if loss_fn == "mse_with_topk_rank_loss":
-    #     return MSEWithTopKRankLoss(
-    #         top_k=kwargs.get("top_k", 4),
-    #         ranking_weight=kwargs.get("ranking_weight", 0.3),
-    #         margin=kwargs.get("margin", 0.0),
-    #     )
-
     if loss_fn == "ranknet_loss":
         return RankNetLoss(
             margin=kwargs.get("margin", 0.0),
@@ -431,9 +420,6 @@ def make_loss(loss_fn: str, **kwargs):
     if loss_fn == "kendall_loss":
         return KendallLoss()
 
-    # if loss_fn == "soft_kendall_loss":
-    #     return SoftKendallLoss(tau=kwargs.get("tau", 1.0))
-
     if loss_fn == "listnet_loss":
         return ListNetLoss()
 
@@ -442,9 +428,6 @@ def make_loss(loss_fn: str, **kwargs):
 
     if loss_fn == "hybrid_mse_approx_ndcg_loss":
         return HybridMSEApproxNDCGLoss(alpha=kwargs.get("alpha", 0.5), eps=kwargs.get("eps", 1e-10))
-
-    # if loss_fn == "lambda_rank_loss":
-    #     return LambdaRankLoss(eps=kwargs.get("eps", 1e-10))
 
     if loss_fn == "weighted_ranknet_loss":
         return WeightedRankNetLoss(

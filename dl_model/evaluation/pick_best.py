@@ -52,8 +52,8 @@ class PickBest:
         #{0:predicted, 1:sop, 2:default}
         winner = None
         if scores:
-            scores[1] = 100  # TODO: we don't want to see SoP on these graphs , only default vs predicted
-            # scores[2] = 100  # TODO: we don't want to see defaults on these graphs , only SoP vs predicted
+            scores[1] = 100  # we don't want to see SoP on these graphs , only default vs predicted
+            # scores[2] = 100  # we don't want to see defaults on these graphs , only SoP vs predicted
 
             if scores[1] < scores[0] and scores[1] <= scores[2]:  # sop < predicted and sop <= default
                 winner = "SoP"
@@ -102,18 +102,18 @@ class PickBest:
         df = df[df[self.true_score] != 'ERROR']
         df[self.true_score] = df[self.true_score].astype(float)
 
-        df = df[~df['code'].str.contains('test_original', na=False)] #TODO-excluded TRUE MSA, might want to include them
+        df = df[~df['code'].str.contains('test_original', na=False)] #excluded TRUE MSA, might want to include them
 
         df['code'] = df['code'].astype(str)
         df['code1'] = df['code1'].astype(str)
-        df = df[df['code'] != df['code1']] #TODO-excluded TRUE MSA, might want to include them
+        df = df[df['code'] != df['code1']] #excluded TRUE MSA, might want to include them
         df = df[df['taxa_num'] >= 3]
-        df.to_csv(f"{self.output_dir}/features_w_predictions.csv") #TODO - fix the path
+        df.to_csv(f"{self.output_dir}/features_w_predictions.csv")
 
         for code in df['code1'].unique():
             code_df = df[df['code1'] == code]
             substrings = ['original', 'concat', '_alt_']
-            mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False) #TODO so TRUE MSA is excluded
+            mask = code_df['code'].str.contains('|'.join(substrings), case=False, na=False) #TRUE MSA is excluded
             code_df = code_df[~mask]
 
             # True_score for MAFFT DEFAULT
@@ -143,30 +143,30 @@ class PickBest:
             mafft_df = code_df[~mask]
             mafft_scores = self.set_scores(mafft_df)
             mafft_scores.append(default_mafft_true_score)
-            # mafft_scores.append(100) #TODO
+            # mafft_scores.append(100) #if want to exclude default from the graph
 
             # Minimum true_score and filename among PRANK alternative MSAs
             prank_df = code_df[code_df['code'].str.contains('prank', case=False, na=False, regex=True)]
             prank_scores = self.set_scores(prank_df)
             prank_scores.append(default_prank_true_score)
-            # prank_scores.append(100) #TODO
+            # prank_scores.append(100) #if want to exclude default from the graph
 
             # Minimum true_score and filename among MUSCLE alternative MSAs
             muscle_df = code_df[code_df['code'].str.contains('muscle', case=False, na=False, regex=True)]
             muscle_scores = self.set_scores(muscle_df)
             muscle_scores.append(default_muscle_true_score)
-            # muscle_scores.append(100) #TODO
+            # muscle_scores.append(100) #if want to exclude default from the graph
 
             # Minimum true_score and filename among BALI-PHY alternative MSAs
             baliphy_df = code_df[code_df['code'].str.contains('bali_phy|BALIPHY', case=False, na=False, regex=True)]
             baliphy_scores = self.set_scores(baliphy_df)
             baliphy_scores.append(default_baliphy_true_score)
-            # baliphy_scores.append(100) #TODO
+            # baliphy_scores.append(100) #if want to exclude default from the graph
 
             overall_scores = self.set_scores(code_df)
             # overall_scores.extend([default_mafft_true_score, default_prank_true_score, default_muscle_true_score, default_baliphy_true_score])
             overall_scores.extend([np.nan, np.nan, np.nan,
-                                   np.nan]) #TODO - use this line if you want to exclude defaults from overall results
+                                   np.nan]) #if we want to exclude defaults from overall results
 
             mafft_winner = self.choose_winner(mafft_scores)
             prank_winner = self.choose_winner(prank_scores)
@@ -224,7 +224,7 @@ class PickBest:
                         (p.get_x() + p.get_width() / 2., p.get_y() + p.get_height() / 2.),
                         ha='center', va='center', color='black', fontsize=10)
 
-        ax.legend(title=None, loc='upper left', fontsize=12)  # <- Remove title, move to upper left
+        ax.legend(title=None, loc='upper left', fontsize=12)
 
         plt.xticks(rotation=45)
         plt.tight_layout()
@@ -234,7 +234,6 @@ class PickBest:
     def plot_overall_results(self, i: int):
         plotname = f'{self.output_dir}/pick_me_trio_overall_plot_v{i}.png'
         df = self.overall_winners_df
-        # counts = df.apply(lambda x: x.value_counts()).fillna(0)
         legend = ["SoP", "Predicted", 'Tie(predicted and SoP)']
         counts = df.apply(lambda x: x.value_counts()).fillna(0)
         counts = counts.reindex(legend, fill_value=0)
@@ -293,7 +292,6 @@ class PickMeAggregator:
         self.overall_winners_df.to_csv(filename, index=False)
 
     def summarize(self):
-        # Create a DataFrame from the results
         results_df = pd.DataFrame(self.results)
         # results_df = results_df.drop('code', axis=1)
         winners_df = pd.DataFrame(self.winners)
@@ -332,9 +330,8 @@ class PickMeAggregator:
         plotname = f'{self.output_dir}/pick_me_overall_plot_ALL.png'
         df = self.overall_winners_df
         df = df.drop('code', axis=1)
-        # counts = df.apply(lambda x: x.value_counts()).fillna(0)
         legend = ["min predicted", "max sop", "default mafft", "default prank", "default muscle",
-                  "default baliphy"]  # Add 'D' to ensure it gets counted as 0 if missing
+                  "default baliphy"]
         counts = df.apply(lambda x: x.value_counts()).fillna(0)
         counts = counts.reindex(legend, fill_value=0)
 

@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from typing import Literal, List, Any, Iterator, Tuple, Optional
 import math
+
+
 class BatchGenerator(Sequence):
     def __init__(self, features, true_labels, true_msa_ids, train_msa_ids, val_msa_ids, aligners, batch_size, validation_split=0.2, is_validation=False, repeats=1, mixed_portion=0.0, per_aligner=False, classification_task = False, features_w_names=np.nan, only_intra_msa: bool = True):
         self.only_intra_msa = only_intra_msa
@@ -20,7 +22,6 @@ class BatchGenerator(Sequence):
         self.per_aligner = per_aligner
         self.aligners = aligners
         self.unique_aligners = np.unique(aligners)[np.unique(aligners) != "true"]
-        # self.features_w_names = features_w_names
         self.features_w_names = features_w_names.reset_index(drop=True)
 
         self.classification_task = classification_task
@@ -48,7 +49,7 @@ class BatchGenerator(Sequence):
         remaining_samples = num_samples % self.batch_size
         leaving_out = math.floor(self.mixed_portion * num_full_batches)
 
-        for i in range(num_full_batches - leaving_out): # I want to leave out some batches into the mix of remaining samples
+        for i in range(num_full_batches - leaving_out): # leave out some batches into the mix of remaining samples
             batch_idx = idx[i * self.batch_size: (i + 1) * self.batch_size]
             batches.append((self.features[batch_idx], self.true_labels[batch_idx]))
 
@@ -73,14 +74,14 @@ class BatchGenerator(Sequence):
                             for aligner in self.unique_aligners:
                                 idx_aln = np.intersect1d(np.where(self.aligners == aligner)[0], idx)
                                 if len(idx_aln) > self.batch_size:
-                                    np.random.shuffle(idx_aln) #TODO check that shuffling here instead of within _split_idx_into_batches doesn't mess with the results
+                                    np.random.shuffle(idx_aln)
                                     btchs, rem_sam_set = self._split_idx_into_batches(idx_aln)
                                     batches.extend(btchs)
                                     remaining_samples_set.extend(rem_sam_set)
                                 else:
                                     continue
                         else:
-                            np.random.shuffle(idx) #TODO check that shuffling here instead of within _split_idx_into_batches doesn't mess with the results
+                            np.random.shuffle(idx)
                             btchs, rem_sam_set = self._split_idx_into_batches(idx)
                             batches.extend(btchs)
                             remaining_samples_set.extend(rem_sam_set)
@@ -101,7 +102,6 @@ class BatchGenerator(Sequence):
         else:
             final_batches = batches + batches_mix
 
-        # final_batches = batches + batches_mix
         np.random.shuffle(final_batches)
 
         return final_batches

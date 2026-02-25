@@ -33,9 +33,6 @@ class GroupAwareScalerZ:
 
         df = df.copy()
 
-        # Reset index if group_col is in index
-        # if self.group_col in df.index.names:
-        #     df = df.reset_index()
         # Drop index level if group_col is both in index and columns
         if self.group_col in df.index.names and self.group_col in df.columns:
             df.index = df.index.droplevel(self.group_col)
@@ -45,7 +42,6 @@ class GroupAwareScalerZ:
         global_scaled = self.global_scaler.transform(df[self.feature_names])
 
         scaled_array = np.zeros_like(global_scaled)
-        # X_scaled = np.zeros((len(df), len(self.feature_names)))
 
         for i, feature in enumerate(self.feature_names):
             scaled_feature = np.zeros(len(df))
@@ -61,12 +57,6 @@ class GroupAwareScalerZ:
                         scaled_feature[group_idx] = (ranks - 1) / (len(vals) - 1)
 
                 elif self.mode == "zscore":
-                    # mean = np.mean(vals)
-                    # std = np.std(vals)
-                    # if std == 0:
-                    #     scaled_feature[group_idx] = 0.0
-                    # else:
-                    #     scaled_feature[group_idx] = (vals - mean) / std
                     if self.use_global:
                         mean = self.global_scaler.mean_[i]
                         std = np.sqrt(self.global_scaler.var_[i])
@@ -109,6 +99,6 @@ class GroupAwareScalerZ:
     def get_feature_names_out(self) -> list:
         scaled = [f"{f}_scaled" for f in self.feature_names]
         ranked = [f"{f}_{self.mode}" for f in self.feature_names]
-        # return scaled + ranked #TODO uncomment this line
-        return ranked #TODO - assumeed that only ranked features are used, and globally scaled are dropped
+        # return scaled + ranked
+        return ranked #only ranked features are used
 

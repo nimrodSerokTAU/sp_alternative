@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Optional, Tuple
 
-
 TrueScoreName = Literal["ssp_from_true", "dseq_from_true", "dpos_from_true", "RF_phangorn_norm", "class_label"]
 ScalerType = Literal["standard", "rank", "zscore"]
 
@@ -29,7 +28,6 @@ class DataConfig:
     test_size: float = 0.2
     random_state: int = 42
 
-    # dataset knobs
     deduplicated: bool = False
     empirical: bool = False
 

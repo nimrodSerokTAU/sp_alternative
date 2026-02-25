@@ -56,7 +56,11 @@ class DatasetPreprocessor:
             df2.groupby(GROUP_COL)
                .filter(lambda x: len(x) < self.configuration.min_rows_per_code_after_dedup)[GROUP_COL]
                .unique()
-        )
+        ) #Identify codes that have too few rows after deduplication (i.e., <1100 out of 1600 left after deduplication)
+        #The threshold is set in configuration to ensure that we have enough data for each code after deduplication,
+        # which is important for training the model effectively. If a code has too few rows,
+        # it may not provide sufficient information for the model to learn from,
+        # and thus we remove those codes from the dataset.
         if len(problematic_codes) > 0:
             logger.info("Removing %d problematic codes due to duplicates. Example: %s",
                         len(problematic_codes), problematic_codes[:10])

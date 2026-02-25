@@ -23,7 +23,7 @@ class GroupAwareScaler:
 
         df = df.copy()
 
-        # Drop index level if group_col is both in index and columns
+        # drop index level if group_col is both in index and columns
         if self.group_col in df.index.names and self.group_col in df.columns:
             df.index = df.index.droplevel(self.group_col)
         elif self.group_col in df.index.names:
@@ -46,10 +46,9 @@ class GroupAwareScaler:
                 percentiles[group_idx] = p
             rank_scaled[:, i] = percentiles
 
-        # Combine global_scaled and rank_scaled
-        combined = np.concatenate([global_scaled, rank_scaled], axis=1)
-        # return combined #TODO uncomment this line
-        return rank_scaled #TODO - assumeed that only ranked features are used, and globally scaled are dropped
+        # combined = np.concatenate([global_scaled, rank_scaled], axis=1) # Combine global_scaled and rank_scaled
+        # return combined
+        return rank_scaled #only ranked features are used
 
     def fit_transform(self, df: pd.DataFrame, group_col: str, feature_cols: list) -> np.ndarray:
         self.fit(df, group_col, feature_cols)
@@ -75,5 +74,5 @@ class GroupAwareScaler:
     def get_feature_names_out(self) -> list:
         scaled = [f"{f}_scaled" for f in self.feature_names]
         ranked = [f"{f}_rank" for f in self.feature_names]
-        # return scaled + ranked #TODO uncomment this line
-        return ranked #TODO - assumeed that only ranked features are used, and globally scaled are dropped
+        # return scaled + ranked
+        return ranked #only ranked features are used
