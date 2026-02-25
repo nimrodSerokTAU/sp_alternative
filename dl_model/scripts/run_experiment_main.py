@@ -6,7 +6,7 @@ from dl_model.pipeline.experiment import RegressionExperiment
 logging.basicConfig(level=logging.INFO)
 
 data_cfg = DataConfig(
-    features_file="../input/ortho12_distant_features_121125.csv",
+    features_file="../input/ortho12_distant_features_121125.csv", #replace with your features file
     true_score_name="dseq_from_true",
     test_size=0.2,
     deduplicated=False,

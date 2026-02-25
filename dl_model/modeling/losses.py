@@ -1,6 +1,7 @@
 from __future__ import annotations
 import tensorflow as tf
 
+
 def _flatten(y_true: tf.Tensor, y_pred: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
     """Flatten to shape (n,) and cast to float32."""
     y_true = tf.reshape(tf.cast(y_true, tf.float32), [-1])

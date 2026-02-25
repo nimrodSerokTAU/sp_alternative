@@ -269,7 +269,7 @@ def build_objective(
 
 def main() -> None:
     data_cfg = DataConfig(
-        features_file="../out/ortho12_distant_features_121125.csv", #replace with path of actual features file
+        features_file="../input/ortho12_distant_features_121125.csv", #replace with your features file
         true_score_name="dseq_from_true",
         test_size=0.2,
         empirical=False,
