@@ -37,7 +37,6 @@ class Trainer:
         tf.config.set_visible_devices([], "GPU")
 
         model = build_model(X_train.shape[1], train_cfg)
-        # loss = make_loss(train_cfg)
         loss = make_loss(
             train_cfg.loss_fn,
             top_k=train_cfg.top_k,

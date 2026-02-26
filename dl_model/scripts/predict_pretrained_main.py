@@ -1,9 +1,13 @@
 from __future__ import annotations
-
 import argparse
 import json
 import sys
 from pathlib import Path
+import platform, sys
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+import time
 
 # add project root
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -39,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
+    t0 = time.perf_counter()
+
     args = build_parser().parse_args(argv)
 
     cfg = PretrainedPredictConfig(
@@ -59,20 +65,13 @@ def main(argv=None) -> int:
 
     out = PretrainedPredictor(cfg).run(custom_objects=None)
     print(json.dumps(out, indent=2))
+
+    t1 = time.perf_counter()
+    total_time = t1 - t0
+    print(f"\nTOTAL runtime (config + predict): {total_time:.3f} s")
+
     return 0
 
 
 if __name__ == "__main__":
-    import platform, sys
-    import numpy as np
-    import pandas as pd
-    import tensorflow as tf
-
-    print("exe:", sys.executable)
-    print("machine:", platform.machine())
-    print("numpy:", np.__version__)
-    print("pandas:", pd.__version__)
-    print("tf:", tf.__version__)
-    print("tf.keras:", tf.keras.__version__ if hasattr(tf.keras, "__version__") else "ok")
-
     raise SystemExit(main(sys.argv[1:]))

@@ -69,9 +69,9 @@ def _load_model(path: str, custom_objects: Optional[Dict[str, Any]] = None) -> t
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"Model not found: {p}")
-    # return tf.keras.models.load_model(str(p), custom_objects=custom_objects, safe_mode=False)
 
     return tf.keras.models.load_model(str(p), custom_objects=custom_objects, safe_mode=False, compile=False)
+
 
 class PretrainedPredictor:
     def __init__(self, cfg: PretrainedPredictConfig):
@@ -109,18 +109,18 @@ class PretrainedPredictor:
         if self.cfg.verbose:
             print(f"[pretrained] reading: {self.cfg.features_file}")
 
-        # 1) read + preprocess
+        # read + preprocess
         df = read_features(self.cfg.features_file)
         df = DatasetPreprocessor(self.data_cfg).preprocess(df)
 
         if self.cfg.verbose:
             print(f"[pretrained] rows after preprocess: {len(df)}")
 
-        # 2) feature selection
+        # feature selection
         selector = FeatureSelector(self.feat_cfg, target_col=self.cfg.true_score_name)
         X, y = selector.select(df)
 
-        # 3) load scaler + scale X
+        # load scaler + scale X
         scaler = _load_scaler(self.cfg.scaler_path, self.cfg.scaler_type_features)
         if self.cfg.verbose:
             print(f"[pretrained] loaded scaler from: {self.cfg.scaler_path}")

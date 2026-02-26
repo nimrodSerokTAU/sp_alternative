@@ -5,11 +5,10 @@ channels:
   - defaults
 
 dependencies:
-  # ---- core ----
   - python=3.10
   - pip
 
-  # ---- numeric stack (compiled via conda) ----
+  # compiled via conda for better performance and compatibility with CUDA and GPU support.
   - numpy=1.26.4
   - scipy
   - pandas
@@ -17,17 +16,14 @@ dependencies:
   - scikit-learn=1.5.1
   - joblib
 
-  # ---- misc ----
   - tqdm
   - pyyaml
 
-  # ---- pip-only packages ----
   - pip:
-      # TensorFlow + Keras (must be pip)
+      # TensorFlow + Keras must be installed via pip to ensure compatibility with CUDA and GPU support.
       - tensorflow==2.17.0
       - keras==3.5.0
 
-      # optional but commonly used in your repo
       - shap
       - seaborn
       - transformers

@@ -26,7 +26,14 @@ def per_msa_correlations(groups: pd.Series, y_true: pd.Series, y_pred: np.ndarra
     }
 
 
-def top50_percentage(groups: pd.Series, file_codes: pd.Series, y_true: pd.Series, y_pred: np.ndarray, top_n: int = 50) -> float:
+def top50_percentage(
+        groups: pd.Series,
+        file_codes: pd.Series,
+        y_true: pd.Series,
+        y_pred: np.ndarray,
+        top_n: int = 50
+        ) -> float:
+
     df = pd.DataFrame({
         "msa_code": groups.values,
         "file_code": file_codes.values,

@@ -179,9 +179,11 @@ First create and activate the environment:
   conda activate dl_model_env
 ```
 
-Then run the prediction script:
+Then run the prediction script.
+While you are already within the `dl_model` directory, you can run the prediction script from there, 
+or navigate to the `dl_model/scripts/` directory and run it from there.
    ```bash
-   cd dl_model/scripts/
+   cd scripts/
    python predict_pretrained_main.py \
    --features-file ../../example_data/features/126014_features.csv \
    --true-score-name dseq_from_true \

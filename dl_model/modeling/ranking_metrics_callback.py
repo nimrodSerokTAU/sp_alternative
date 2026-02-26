@@ -22,8 +22,7 @@ class PerBatchRankingMetrics(Callback):
             y_pred = self.model.predict(X_batch, verbose=0).flatten()
             y_true = y_batch.flatten()
 
-            # Compute correlation only if > 1 unique label
-            if np.std(y_true) == 0 or len(np.unique(y_true)) < 2:
+            if np.std(y_true) == 0 or len(np.unique(y_true)) < 2:  # compute correlation only if > 1 unique labels
                 continue
 
             if self.metric == "kendall":
@@ -40,9 +39,5 @@ class PerBatchRankingMetrics(Callback):
 
         logs[f"val_{self.metric}"] = mean_corr
 
-        # if self.verbose:
-        #     print(f"\nEpoch {epoch+1}: mean val_{self.metric} = {mean_corr:.4f}")
-
-        # save in self.params so Keras logs it
         self.model.history.history[f"val_{self.metric}"] = \
             self.model.history.history.get(f"val_{self.metric}", []) + [mean_corr]
