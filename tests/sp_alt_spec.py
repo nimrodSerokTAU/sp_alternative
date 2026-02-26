@@ -991,7 +991,7 @@ def test_mid_point_rooting_case_b():
                     'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
 
 
-def test_differential_sum_rooting(): # TODO: check this
+def test_differential_sum_rooting():
     unrooted = create_unrooted_tree_for_test()
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
@@ -1352,13 +1352,6 @@ def test_features_doc_k_mer_average():
     k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(), 4)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
     assert k_mer_stats.k_mer_average == 1.2
-
-
-def test_align_from_pattern():
-    MsaAlignByPattern(dataset_name='a',
-                      original_file_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/input_for_align/AATF_orig.fas',
-                      pattern_file_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/input_for_align/AATF_pattern.fas',
-                      output_dir_path='C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/sp_alternative/output/from_pattern')
 
 
 def test_col_score():

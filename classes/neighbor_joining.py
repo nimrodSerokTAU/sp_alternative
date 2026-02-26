@@ -63,7 +63,6 @@ class NeighborJoining:
         self.nodes[f_inx].set_branch_length(delta_f)
         self.nodes[s_inx].set_branch_length(delta_s)
         new_node = Node.create_from_children([self.nodes[f_inx], self.nodes[s_inx]], len(self.all_nodes))
-        # new_node.fill_newick()  # TODO: remove later for test only
         self.all_nodes.append(new_node)
         self.nodes[f_inx].set_a_father(new_node)
         self.nodes[s_inx].set_a_father(new_node)

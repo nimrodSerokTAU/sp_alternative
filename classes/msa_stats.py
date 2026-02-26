@@ -220,7 +220,7 @@ class MSAStats:
         self.sp_score_subs = sp_score_subs
         self.sp_ge_count = sp_ge_count
 
-    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]): # TODO: continue from here. use default
+    def set_my_w_sop(self, sop_w_options_dict: dict[str, float]):
         self.henikoff_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
         self.henikoff_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
         self.clustal_mid_root = sop_w_options_dict[

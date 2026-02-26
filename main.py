@@ -52,4 +52,3 @@ if __name__ == '__main__':
     elapsed_time = end_time - start_time
     print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
-# TODO: consider alternatives creation.

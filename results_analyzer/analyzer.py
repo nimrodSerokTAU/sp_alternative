@@ -5,9 +5,9 @@ from results_analyzer.classes.correlation_analyzer import CorrelationAnalyzer
 from results_analyzer.classes.measure import Measure
 from results_analyzer.classes.pdf_analyzer import PDFAnalyzer
 
-empirical_example: str = 'BBA0058' # 'BBA0164' # 'BBA0043' # ->'BBS12042' # 'BBA0164' # 'BBS12042' # 'BBA0058' # 'BBS12040'
+empirical_example: str = 'BBA0058'
 sim_example: str = '126014'
-data_dir = 'C:/Users/Nimrod.Serok/Nimrod/PhDB/sp_alt/code/data_analyzer/corr'
+data_dir = '../data_analyzer/corr'  # use your own path
 output_path = f'{data_dir}/output/layout'
 
 # fig 1 a, c:
