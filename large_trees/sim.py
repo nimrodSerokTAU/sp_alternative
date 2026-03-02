@@ -4,13 +4,12 @@ from dendropy.simulate import treesim
 
 # Parameters
 birth_rate = 1.0
-death_rate = 0.3
 target_height = 1.0
 rate_min = 0.5
 rate_max = 2.0
 
 
-def create_birth_death_tree(n_taxa: int) -> str:
+def create_birth_death_tree(n_taxa: int, death_rate: float) -> str:
     # Simulate birth–death tree conditioned on number of extant taxa
     tree = treesim.birth_death_tree(
         birth_rate=birth_rate,
@@ -46,13 +45,18 @@ def create_birth_death_tree(n_taxa: int) -> str:
     return tree.as_string(schema="newick", suppress_rooting=True)
 
 
-def create_trees(trees_num: int, taxa_num: int, res_path: str):
+def create_trees(trees_num: int, taxa_num: int, min_death_rate: float, max_death_rate: float, res_path: str):
     curr_dir = Path(__file__).parent
     file_path = curr_dir / res_path
     with open(file_path, "a") as file:
         for t in range(trees_num):
-            newick_str = create_birth_death_tree(taxa_num)
+            death_rate = random.uniform(min_death_rate, max_death_rate)
+            newick_str = create_birth_death_tree(taxa_num, death_rate)
             file.write(newick_str)
 
 
-create_trees(70, 40, '../output/trees_40.txt')
+create_trees(70, 40, 0.3, 0.5, '../output/trees_40.txt')
+create_trees(70, 50, 0.3, 0.5, '../output/trees_50.txt')
+create_trees(70, 60, 0.3, 0.5, '../output/trees_60.txt')
+create_trees(70, 70, 0.3, 0.5, '../output/trees_70.txt')
+create_trees(70, 80, 0.3, 0.5, '../output/trees_80.txt')
