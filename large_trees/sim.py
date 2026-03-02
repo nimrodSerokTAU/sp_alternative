@@ -1,6 +1,5 @@
 import random
 
-import dendropy
 from dendropy.simulate import treesim
 
 # Parameters

@@ -42,12 +42,15 @@ class GapStats(BasicStats):
     def __init__(self, code: str, taxa_num: int, msa_length: int):
         super().__init__(code, taxa_num, msa_length,
                          [
-                              'code',
-            'num_gap_segments_norm', 'av_gap_segment_length', 'gaps_len_one', 'gaps_len_two',
-            'gaps_len_three', 'gaps_len_four_plus', 'num_unique_gaps', 'num_unique_gaps_norm', 'avg_unique_gap_length',
-            'gaps_1seq_len1', 'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2', 'gaps_1seq_len3', 'gaps_2seq_len3', 'gaps_1seq_len4plus', 'gaps_2seq_len4plus',
-            'gaps_all_except_1_len1', 'gaps_all_except_1_len2', 'gaps_all_except_1_len3', 'gaps_all_except_1_len4plus',
-            'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
+                             'code',
+                             'num_gap_segments_norm', 'av_gap_segment_length', 'gaps_len_one', 'gaps_len_two',
+                             'gaps_len_three', 'gaps_len_four_plus', 'num_unique_gaps', 'num_unique_gaps_norm',
+                             'avg_unique_gap_length',
+                             'gaps_1seq_len1', 'gaps_2seq_len1', 'gaps_1seq_len2', 'gaps_2seq_len2', 'gaps_1seq_len3',
+                             'gaps_2seq_len3', 'gaps_1seq_len4plus', 'gaps_2seq_len4plus',
+                             'gaps_all_except_1_len1', 'gaps_all_except_1_len2', 'gaps_all_except_1_len3',
+                             'gaps_all_except_1_len4plus',
+                             'num_cols_no_gaps', 'num_cols_1_gap', 'num_cols_2_gaps', 'num_cols_all_gaps_except1',
                              'single_char_count', 'double_char_count',
                              'seq_max_len', 'seq_min_len'
                          ])
@@ -81,7 +84,6 @@ class GapStats(BasicStats):
         self.double_char_count = 0
         self.seq_max_len = -1
         self.seq_min_len = -1
-
 
     def calc_gaps_values(self, aln: list[str]) -> None:
         min_length = 1000000000
@@ -117,12 +119,14 @@ class GapStats(BasicStats):
                 self.num_cols_all_gaps_except1 += 1
         self.seq_min_len = min_length
         self.seq_max_len = max_length
-        self.gaps_len_one = gaps_length_histogram[1] / self.taxa_num  # double counts the "same" gap in different sequences
-        self.gaps_len_two = gaps_length_histogram[2] / self.taxa_num  # double counts the "same" gap in different sequences
-        self.gaps_len_three = gaps_length_histogram[3] / self.taxa_num  # double counts the "same" gap in different sequences
+        self.gaps_len_one = gaps_length_histogram[
+                                1] / self.taxa_num  # double counts the "same" gap in different sequences
+        self.gaps_len_two = gaps_length_histogram[
+                                2] / self.taxa_num  # double counts the "same" gap in different sequences
+        self.gaps_len_three = gaps_length_histogram[
+                                  3] / self.taxa_num  # double counts the "same" gap in different sequences
         self.gaps_len_four_plus = sum(count for length, count in gaps_length_histogram.items() if
-                                       length > 3) / self.taxa_num  # double counts the "same" gap in different sequences
-
+                                      length > 3) / self.taxa_num  # double counts the "same" gap in different sequences
 
     def record_gap_lengths(self, sequence: str, seq_index: int, gap_positions: dict, gaps_length_histogram) -> None:
         start_index = -1
@@ -142,7 +146,7 @@ class GapStats(BasicStats):
             else:
                 if current_length > 0:
                     if (current_length, start_index) in gap_positions and seq_index not in gap_positions[
-                            (current_length, start_index)]:
+                        (current_length, start_index)]:
                         gap_positions[(current_length, start_index)].append(seq_index)
                     else:
                         gap_positions[(current_length, start_index)] = [seq_index]
@@ -153,7 +157,7 @@ class GapStats(BasicStats):
         # Record if the sequence ends with gaps
         if current_length > 0:
             if (current_length, start_index) in gap_positions and seq_index not in gap_positions[
-                    (current_length, start_index)]:
+                (current_length, start_index)]:
                 gap_positions[(current_length, start_index)].append(seq_index)
             else:
                 gap_positions[(current_length, start_index)] = [seq_index]

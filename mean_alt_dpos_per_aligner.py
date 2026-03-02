@@ -11,7 +11,7 @@ aligners = {
     'MUSCLE': ['muscle', 'MUSCLE'],
     'PRANK': ['prank', 'PRANK'],
     'MAFFT': ['mafft', 'MAFFT'],
-    'BALIPHY': ['baliphy','bali_phy', 'BALIPHY']
+    'BALIPHY': ['baliphy', 'bali_phy', 'BALIPHY']
 }
 
 

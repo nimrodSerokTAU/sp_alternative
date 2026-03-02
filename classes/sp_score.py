@@ -40,19 +40,21 @@ class SPScore:
                 seq_j = profile[j]
                 clean_seq_i: list[str] = []
                 clean_seq_j: list[str] = []
-                seq_weights_multiplication = [seq_w_options[w_option_index][i] * seq_w_options[w_option_index][j] for w_option_index in range(weight_options_count) ]
+                seq_weights_multiplication = [seq_w_options[w_option_index][i] * seq_w_options[w_option_index][j] for
+                                              w_option_index in range(weight_options_count)]
                 for k in range(seq_len):
                     if not (seq_i[k] == '-' and seq_j[k] == '-'):
                         clean_seq_i.append(seq_i[k])
                         clean_seq_j.append(seq_j[k])
                     if seq_i[k] != '-' and seq_j[k] != '-':
                         for w_option_index in range(weight_options_count):
-                            sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * seq_weights_multiplication[w_option_index]
+                            sp_score_subs[w_option_index] += self.subst(seq_i[k], seq_j[k]) * \
+                                                             seq_weights_multiplication[w_option_index]
                 for gap_interval in (self.compute_gap_intervals(clean_seq_i) + self.compute_gap_intervals(clean_seq_j)):
                     for w_option_index in range(weight_options_count):
-                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.go_cost, self.ge_cost) * seq_weights_multiplication[w_option_index]
+                        sp_score_gaps[w_option_index] += gap_interval.g_cost(self.go_cost, self.ge_cost) * \
+                                                         seq_weights_multiplication[w_option_index]
         return [sp_score_subs[w_op] + sp_score_gaps[w_op] for w_op in range(weight_options_count)]
-
 
     def compute_naive_sp_score_per_col(self, profile: list[str]) -> tuple[list[float], list[float], list[float]]:
         seq_len: int = len(profile[0])
@@ -81,7 +83,6 @@ class SPScore:
                             sp_score_gap_o[k] += self.go_cost
         return sp_score_subs, sp_score_gap_o, sp_score_gap_e
 
-
     @staticmethod
     def compute_gap_intervals(seq_i: list[str], seq_w: float = 1) -> list[GapInterval]:
         seq_len: int = len(seq_i)
@@ -92,11 +93,13 @@ class SPScore:
                 gap_interval.set_start(start=k)
             if seq_i[k] != '-' and not gap_interval.is_empty():  # the current gap interval finish at previous position
                 gap_interval.end = k - 1
-                gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
+                gap_intervals_list.append(
+                    gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
                 gap_interval = GapInterval(seq_w)
         if not gap_interval.is_empty():  # handle terminal gap if any
             gap_interval.end = seq_len - 1
-            gap_intervals_list.append(gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
+            gap_intervals_list.append(
+                gap_interval.copy_me())  # append a copy of gp_interval to the list gap_intervals_list
         return gap_intervals_list
 
     def compute_sp_s_and_sp_ge(self, profile: list[str]) -> tuple[float, float, float, int, int, int]:
@@ -121,12 +124,12 @@ class SPScore:
             for i in range(options_count):
                 if histo[i]['count'] != 0:
                     sp_match_score += float(self.w_matrix[i][i] *
-                                           histo[i]['count'] * (histo[i]['count'] - 1) / 2)
+                                            histo[i]['count'] * (histo[i]['count'] - 1) / 2)
                     sp_match_count += histo[i]['count'] * (histo[i]['count'] - 1) / 2
                     for j in range(i + 1, options_count):
                         if histo[j]['count'] != 0:
                             sp_mismatch_score += (self.w_matrix[i][j] *
-                                            histo[i]['count'] * histo[j]['count'])
+                                                  histo[i]['count'] * histo[j]['count'])
                             sp_mismatch_count += histo[i]['count'] * histo[j]['count']
             if histo[-1]['count'] > 0:
                 ge_count += (len(profile) - histo[-1]['count']) * histo[-1]['count']
@@ -169,10 +172,10 @@ class SPScore:
         return sp_match_score + sp_mismatch_score + sp_score_gap_e + go_score
 
     def compute_efficient_sp_parts(self, profile: list[str]) -> tuple[float, float, float, float, int, int, int, int]:
-        sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, ge_count = self.compute_sp_s_and_sp_ge(profile)
+        sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, ge_count = self.compute_sp_s_and_sp_ge(
+            profile)
         go_score, go_count = self.compute_sp_gap_open(profile)
         return sp_match_score, sp_mismatch_score, go_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, go_count, ge_count
-
 
     def get_pair_score(self, i: int, j: int):
         min_i = min(i, j)
@@ -182,6 +185,7 @@ class SPScore:
         return self.ge_cost
 
     '''This is the improved function'''
+
     def compute_w_sp_s_and_sp_ge(self, alignment: list[str], seq_w: list[float]) -> list[float]:
         options_count = len(self.w_matrix[0]) + 1
         seq_len: int = len(alignment[0])
@@ -200,14 +204,16 @@ class SPScore:
             for char_i in range(options_count - 1):  # limited number
                 if histo[char_i]['count'] != 0:
                     sp_subs_and_ge_score[col] += float(self.get_pair_score(char_i, char_i) *
-                                            (histo[char_i]['sum'] * histo[char_i]['sum'] - histo[char_i]['sq_sum'] ) / 2)
+                                                       (histo[char_i]['sum'] * histo[char_i]['sum'] - histo[char_i][
+                                                           'sq_sum']) / 2)
                     for j in range(char_i + 1, options_count):
                         if histo[j]['count'] != 0:
                             sp_subs_and_ge_score[col] += (self.get_pair_score(char_i, j) *
-                                             histo[char_i]['sum'] * histo[j]['sum'])
+                                                          histo[char_i]['sum'] * histo[j]['sum'])
         return sp_subs_and_ge_score
 
     '''This is the improved function'''
+
     def compute_w_sp_gap_open(self, alignment: list[str], w: list[float]) -> float:
         if len(alignment) == 0:
             return 0

@@ -27,9 +27,10 @@ class TreeStats(BasicStats):
     def __init__(self, code: str, taxa_num: int, msa_length: int):
         super().__init__(code, taxa_num, msa_length,
                          [
-            'code',
-            'bl_sum', 'bl_mean', 'bl_25_pct', 'bl_75_pct', 'bl_max', 'bl_min',
-            'parsimony_mean', 'parsimony_sum', 'parsimony_max', 'parsimony_min', 'parsimony_25_pct', 'parsimony_75_pct'
+                             'code',
+                             'bl_sum', 'bl_mean', 'bl_25_pct', 'bl_75_pct', 'bl_max', 'bl_min',
+                             'parsimony_mean', 'parsimony_sum', 'parsimony_max', 'parsimony_min', 'parsimony_25_pct',
+                             'parsimony_75_pct'
                          ])
         self.bl_mean = -1
         self.bl_25_pct = -1

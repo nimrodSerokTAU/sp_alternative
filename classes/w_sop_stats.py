@@ -8,7 +8,6 @@ from enums import WeightMethods, RootingMethods
 
 
 class WSopStats(BasicStats):
-
     sp_HENIKOFF_with_gaps: float
     sp_HENIKOFF_without_gaps: float
     sp_CLUSTAL_WEIGHTS_mid_root: float
@@ -21,8 +20,9 @@ class WSopStats(BasicStats):
     def __init__(self, code: str, taxa_num: int, msa_length: int):
         super().__init__(code, taxa_num, msa_length,
                          [
-            'code',
-            'sp_HENIKOFF_with_gaps', 'sp_HENIKOFF_without_gaps', 'sp_CLUSTAL_WEIGHTS_mid_root', 'sp_CLUSTAL_WEIGHTS_diff_sum',
+                             'code',
+                             'sp_HENIKOFF_with_gaps', 'sp_HENIKOFF_without_gaps', 'sp_CLUSTAL_WEIGHTS_mid_root',
+                             'sp_CLUSTAL_WEIGHTS_diff_sum',
                          ])
         self.sp_HENIKOFF_with_gaps = -1
         self.sp_HENIKOFF_without_gaps = -1
@@ -87,15 +87,18 @@ class WSopStats(BasicStats):
             elapsed_time = end_time - start_time
             print(f"Elapsed time CLUSTAL_MID_ROOT: {elapsed_time:.4f} seconds")
             if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
-                self.seq_weights_options.append(self.get_weight_list(tree, RootingMethods.MIN_DIFFERENTIAL_SUM, seq_names))
+                self.seq_weights_options.append(
+                    self.get_weight_list(tree, RootingMethods.MIN_DIFFERENTIAL_SUM, seq_names))
                 self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
             end_time = time.time()
             elapsed_time = end_time - start_time
             print(f"Elapsed time CLUSTAL_DIFFERENTIAL_SUM: {elapsed_time:.4f} seconds")
 
     def set_my_w_sop(self, sop_w_options_dict: dict[str, float]):
-        self.sp_HENIKOFF_with_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
-        self.sp_HENIKOFF_without_gaps = sop_w_options_dict[WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
+        self.sp_HENIKOFF_with_gaps = sop_w_options_dict[
+            WeightMethods.HENIKOFF_WG.value] if WeightMethods.HENIKOFF_WG.value in sop_w_options_dict else 0
+        self.sp_HENIKOFF_without_gaps = sop_w_options_dict[
+            WeightMethods.HENIKOFF_WOG.value] if WeightMethods.HENIKOFF_WOG.value in sop_w_options_dict else 0
         self.sp_CLUSTAL_WEIGHTS_mid_root = sop_w_options_dict[
             WeightMethods.CLUSTAL_MID_ROOT.value] if WeightMethods.CLUSTAL_MID_ROOT.value in sop_w_options_dict else 0
         self.sp_CLUSTAL_WEIGHTS_diff_sum = sop_w_options_dict[

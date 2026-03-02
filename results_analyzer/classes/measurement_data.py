@@ -21,4 +21,3 @@ class MeasurementDataPerCode:
             if continue_missing_code:
                 return
         self.r_value, p_value = pearsonr(x, np.array(self.ordered_scores))
-

@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 class ColPlot:
     df: pd.DataFrame
     m_keys: list[str]
@@ -20,7 +21,3 @@ class ColPlot:
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.data_count = data_count
-
-
-
-

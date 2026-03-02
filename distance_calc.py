@@ -52,7 +52,7 @@ def get_place_d(set_a: set, set_b: set, distance_type: DistanceType) -> float:
 def create_h_table(profile_naming: list[list[str]], distance_type: DistanceType) -> list[list[set[str]]]:
     seq_len: int = len(profile_naming[0])
     seq_count: int = len(profile_naming)
-    h_table: list[list[set[str]]] = [[] for i in range(seq_count)]
+    h_table: list[list[set[str]]] = [[] for _ in range(seq_count)]
     for col_index in range(seq_len):
         col: list[str] = get_column(profile_naming, col_index)
         for i in range(seq_count):

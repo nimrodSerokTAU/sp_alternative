@@ -10,6 +10,7 @@ from results_analyzer.utils import normalize
 class Point:
     distance: float
     score: float
+
     def __init__(self, distance, score):
         self.distance = distance
         self.score = score
@@ -20,7 +21,6 @@ class DataSet:
     dist: list[float]
     measurementsData: list[MeasurementDataPerCode]
 
-
     def __init__(self, code: str, measures: list[Measure]):
         self.code = code
         self.dist = []
@@ -28,13 +28,11 @@ class DataSet:
         for measure in measures:
             self.measurementsData.append(MeasurementDataPerCode(measure.key, self.code))
 
-
     def append_sample(self, dist: str | float, scores: list[str | float]):
         if dist != '':
             self.dist.append(float(dist))
             for score_i in range(len(scores)):
                 self.measurementsData[score_i].append_single_msa_score(scores[score_i])
-
 
     def normalize(self):
         for val in self.measurementsData:
@@ -79,12 +77,10 @@ class DataSet:
         y_max += diff_y * 0.05
 
         y = measure.ordered_scores
-        name: str =  NAMING[measure.measure_key]
+        name: str = NAMING[measure.measure_key]
 
         sp = ScatterPlot(x, ['x'], 0.3, 0.7, 10, 'black', '--',
-                          0.6, r'$d_{seq}$', "Score", None)
+                         0.6, r'$d_{seq}$', "Score", None)
         sp.set_data([y], [name], [COLORS[measure.measure_key]], [f'{name} (r={measure.r_value:.2f})'],
                     [measure.r_value], x_min, x_max, y_min, y_max, min_dist_score, len(x))
         return sp
-
-

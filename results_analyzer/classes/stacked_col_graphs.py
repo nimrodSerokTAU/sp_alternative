@@ -15,6 +15,7 @@ class PBDataSet:
         self.code = code
         self.winner = winner
 
+
 class DataGroup:
     measure_key: str
     samples: list[PBDataSet]
@@ -26,6 +27,7 @@ class DataGroup:
 
     def append_one_sample(self, sample: PBDataSet):
         self.samples.append(sample)
+
 
 class DataSource:
     name: str
@@ -48,12 +50,11 @@ class DataSource:
             self.data_groups[measure.key] = DataGroup(measure.key)
             self.external_to_key_dict[measure.external_name] = measure.key
 
-
     def calc_results(self):
         for ds in self.data_groups.values():
             ds.percent = len(ds.samples) / self.total_count
 
-    def calc_chi_square_df_1(self, keys:[str, str]) -> float:
+    def calc_chi_square_df_1(self, keys: [str, str]) -> float:
         sample_a_count = len(self.data_groups[keys[0]].samples)
         sample_b_count = len(self.data_groups[keys[1]].samples)
         observed_frequencies: [int, int] = [sample_a_count, sample_b_count]
@@ -72,7 +73,8 @@ class StackedColGraphData:
     label: list[str]
     hatch: list[str]
 
-    def __init__(self, x, data_by_labels: list[float], width: float, bottom: np.array, color: list[str], label: list[str], hatch: list[str]):
+    def __init__(self, x, data_by_labels: list[float], width: float, bottom: np.array, color: list[str],
+                 label: list[str], hatch: list[str]):
         self.x = x
         self.data_by_labels = data_by_labels
         self.width = width
@@ -81,10 +83,11 @@ class StackedColGraphData:
         self.label = label
         self.hatch = hatch
 
+
 class StackedColSubPlot:
     data: list[StackedColGraphData]
     data_sources: list[DataSource]
-    ylabel: str # 'Dataset Percentage'
+    ylabel: str  # 'Dataset Percentage'
     categories: list[str]
     samples_num: int
     labels_list: list[dict]
@@ -97,7 +100,7 @@ class StackedColSubPlot:
         self.categories = categories
         self.samples_num = samples_num
         self.labels_list = labels_list
-        self.p_value_per_ds=p_value_per_ds
+        self.p_value_per_ds = p_value_per_ds
 
 
 class StackedColGraph:
@@ -106,8 +109,9 @@ class StackedColGraph:
     measures: list[Measure]
     subplot: StackedColSubPlot
 
-    def __init__(self, dir_path: str, files_data: list[dict], input_data_sources: list[Measure], measures: list[Measure],
-                 is_calc_chi_square: bool, keys:[str, str]):
+    def __init__(self, dir_path: str, files_data: list[dict], input_data_sources: list[Measure],
+                 measures: list[Measure],
+                 is_calc_chi_square: bool, keys: [str, str]):
         self.data_sources = []
         self.categories = []
         self.measures = measures
@@ -149,7 +153,7 @@ class StackedColGraph:
                         ds.data_groups[res_key].append_one_sample(dataset_result)
                         ds.total_count += 1
 
-    def calc_chi_square_for_two(self, is_calc_chi_square: bool, keys:[str, str]) -> list[float] | None:
+    def calc_chi_square_for_two(self, is_calc_chi_square: bool, keys: [str, str]) -> list[float] | None:
         if not is_calc_chi_square:
             return None
         return [data_source.calc_chi_square_df_1(keys) for data_source in self.data_sources]
@@ -174,18 +178,20 @@ class StackedColGraph:
 
         x = np.arange(len(self.categories))
 
-        bottom = [0 for i in range(len(self.data_sources))]
+        bottom = [0 for _ in range(len(self.data_sources))]
         bottom = np.array(bottom)
 
         data_res: list[StackedColGraphData] = []
         for i in range(len(data_by_labels)):
-            p_labels = [f'{NAMING[x.override_key]} Default' for x in self.data_sources] if i == 0 and labels[0] == 'Default' else labels[i]
-            p_colors = [COLORS[x.override_key] for x in self.data_sources] if i == 0 and labels[0] == 'Default' else  colors[i]
+            p_labels = [f'{NAMING[x.override_key]} Default' for x in self.data_sources] if i == 0 and labels[
+                0] == 'Default' else labels[i]
+            p_colors = [COLORS[x.override_key] for x in self.data_sources] if i == 0 and labels[0] == 'Default' else \
+            colors[i]
             p_hatches = [HATCHS[x.override_key] for x in self.data_sources] if i == 0 and labels[
                 0] == 'Default' else hatches[i]
             data_res.append(StackedColGraphData(x, data_by_labels[i], width=0.6, bottom=bottom, label=p_labels,
-                                         color=p_colors, hatch=p_hatches))
-            labels_list.append({'x':x, 'bottom':bottom, 'val':data_by_labels[i]})
+                                                color=p_colors, hatch=p_hatches))
+            labels_list.append({'x': x, 'bottom': bottom, 'val': data_by_labels[i]})
             bottom = np.array(bottom) + np.array(data_by_labels[i])
 
         res = StackedColSubPlot(data=data_res, data_sources=self.data_sources, ylabel='Dataset Percentage',
@@ -199,10 +205,10 @@ def add_labels(x, h: list[float], values: list[float]):
         this_h = h[i] + values[i] * 0.75
         plt.text(i, this_h, f'{values[i]:.1f}%', ha='center', va='top')
 
-def double_plot(data_by_labels: list[StackedColSubPlot], dir_path: str, identifier: str):
 
+def double_plot(data_by_labels: list[StackedColSubPlot], dir_path: str, identifier: str):
     # plt.figure(figsize=(26, 7), layout='constrained')
-    fig, axs = plt.subplots(1, 2, figsize=(15, 7)) # len(data_by_labels)
+    fig, axs = plt.subplots(1, 2, figsize=(15, 7))  # len(data_by_labels)
     plt.rcParams['hatch.linewidth'] = 0.5
     plt.rcParams['hatch.color'] = '#404245'
 
@@ -215,9 +221,11 @@ def double_plot(data_by_labels: list[StackedColSubPlot], dir_path: str, identifi
                 label = 'DL-model'
             if label == 'Tie (Model2 and Default)':
                 label = 'Tie (DL-model and Default)'
-            axs[j].bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.6, bottom=list(stacked_col_data.bottom),
-                          label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
-            add_comp_labels(axs[j], plot_data.labels_list[i]['x'], plot_data.labels_list[i]['bottom'],  plot_data.labels_list[i]['val'])
+            axs[j].bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.6,
+                       bottom=list(stacked_col_data.bottom),
+                       label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
+            add_comp_labels(axs[j], plot_data.labels_list[i]['x'], plot_data.labels_list[i]['bottom'],
+                            plot_data.labels_list[i]['val'])
             axs[j].set_ylabel(plot_data.ylabel, fontsize=12)
             axs[j].set_xticks(stacked_col_data.x, plot_data.categories, fontsize=12)
 
@@ -226,9 +234,10 @@ def double_plot(data_by_labels: list[StackedColSubPlot], dir_path: str, identifi
     handles.extend(h)
     labels.extend(l)
 
-    fig.legend(handles, labels, ncol=3, loc='upper center', fontsize=11, bbox_to_anchor=(0.5, 0.1)) #loc='upper left',
+    fig.legend(handles, labels, ncol=3, loc='upper center', fontsize=11, bbox_to_anchor=(0.5, 0.1))
     fig.tight_layout(rect=[0, 0.1, 1, 1])
-    plt.savefig(f'{dir_path}/{identifier}_pick_best_{data_by_labels[0].samples_num}_emp_{data_by_labels[1].samples_num}_sim_datasets.tiff')
+    plt.savefig(
+        f'{dir_path}/{identifier}_pick_best_{data_by_labels[0].samples_num}_emp_{data_by_labels[1].samples_num}_sim_datasets.tiff')
     plt.show()
 
 
@@ -238,5 +247,3 @@ def add_comp_labels(fig, x, h: list[float], values: list[float]):
         fig.text(i, this_h, f'{values[i]:.1f}%', ha='center', va='top', fontsize=12,
                  # fontweight='bold'
                  )
-
-

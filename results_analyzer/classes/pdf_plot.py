@@ -26,8 +26,3 @@ class PDFPlot:
         self.s = s
         self.xlabel = xlabel
         self.ylabel = ylabel
-
-
-
-
-

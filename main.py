@@ -46,9 +46,5 @@ if __name__ == '__main__':
     # if not os.path.exists(f'/groups/pupko/kseniap/sp_alternative2/output/comparison_results_{code}.csv'):
     #     multiple_msa_calc_features_and_labels(configuration)
 
-
     multiple_msa_calc_features_and_labels(configuration)
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time:.4f} seconds")
 

@@ -4,7 +4,6 @@ from random import randrange
 # from typing import Self
 from typing_extensions import Self
 
-
 from classes.config import Configuration
 from classes.dist_labels_stats import DistanceLabelsStats
 from classes.entropy_stats import EntropyStats
@@ -103,14 +102,14 @@ class MSA:
         get_seq_inx_to_realign_b: int = randrange(get_seq_inx_to_realign_a + 1, len(self.seq_names))
         seq_a: str = self.sequences[get_seq_inx_to_realign_a]
         seq_b: str = self.sequences[get_seq_inx_to_realign_b]
-        seq_a = seq_a.replace('-','')
-        seq_b = seq_b.replace('-','')
+        seq_a = seq_a.replace('-', '')
+        seq_b = seq_b.replace('-', '')
         ga = GlobalAlign(seq_a, seq_b, config.models[0])
         res_seq = list(map(lambda x: {'seq_a': x.profile_a, 'seq_b': x.profile_b}, ga.aligned_sequences))
         res: list[list[str]] = []
         for option in res_seq:
             inx_on_a: int = 0
-            inx_on_msa: int  = 0
+            inx_on_msa: int = 0
             new_cols_on_msa: list[int] = []
             while inx_on_a < len(option['seq_a']):
                 if option['seq_a'][inx_on_a] == self.sequences[get_seq_inx_to_realign_a][inx_on_msa]:
@@ -176,18 +175,20 @@ class MSA:
                 print(f'>{self.seq_names[i]}', file=outfile)
                 print(seq, file=outfile)
 
-    def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp_models: list[SPScore], output_dir_path: Path,
+    def calc_and_print_stats(self, true_msa: Self, config: Configuration, sp_models: list[SPScore],
+                             output_dir_path: Path,
                              true_tree: UnrootedTree, is_init_file: bool):
         basic_stats = BasicStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(),
                                  ['code', 'taxa_num', 'msa_length'])
-        self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path,'basic_stats',
+        self.print_stats_file(basic_stats.get_my_features_as_list(), output_dir_path, 'basic_stats',
                               is_init_file, basic_stats.get_ordered_col_names())
         dist_labels_stats = DistanceLabelsStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
 
-        if len({StatsOutput.ALL, StatsOutput.DISTANCE_LABELS }.intersection(config.stats_output)) > 0:
+        if len({StatsOutput.ALL, StatsOutput.DISTANCE_LABELS}.intersection(config.stats_output)) > 0:
             start_time = time.time()
             dist_labels_stats.set_my_distance_from_true(true_msa.sequences, self.sequences)
-            self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path, StatsOutput.DISTANCE_LABELS.value,
+            self.print_stats_file(dist_labels_stats.get_my_features_as_list(), output_dir_path,
+                                  StatsOutput.DISTANCE_LABELS.value,
                                   is_init_file, dist_labels_stats.get_ordered_col_names())
             end_time = time.time()
             elapsed_time = end_time - start_time
@@ -219,7 +220,8 @@ class MSA:
                 k_mer_stats = KMerStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len(), k_value)
                 k_mer_stats.set_k_mer_features(self.sequences)
                 self.print_stats_file(k_mer_stats.get_my_features_as_list(), output_dir_path, StatsOutput.K_MER.value,
-                                      is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(), k_value=str(k_value))
+                                      is_init_file, k_mer_stats.get_ordered_col_names_with_k_value(),
+                                      k_value=str(k_value))
             end_time = time.time()
             elapsed_time = end_time - start_time
             print(f"Elapsed time for Kmer: {elapsed_time:.4f} seconds")
@@ -246,7 +248,8 @@ class MSA:
                 sop_stats = SopStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
                 sop_stats.set_my_sop_score_parts(sp, self.sequences)
                 self.print_stats_file(sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.SP.value,
-                                      is_init_file, sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
+                                      is_init_file,
+                                      sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)
             end_time = time.time()
             elapsed_time = end_time - start_time
@@ -262,16 +265,18 @@ class MSA:
                 w_sop_stats.calc_seq_weights(config.additional_weights, self.sequences, self.seq_names, self.tree)
                 w_sop_stats.calc_w_sp(self.sequences, sp)
                 self.print_stats_file(w_sop_stats.get_my_features_as_list(), output_dir_path, StatsOutput.W_SP.value,
-                                      is_init_file, w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost, sp.ge_cost),
+                                      is_init_file,
+                                      w_sop_stats.get_ordered_col_names_with_model(sp.model_name, sp.go_cost,
+                                                                                   sp.ge_cost),
                                       sp.model_name, sp.go_cost, sp.ge_cost)
             end_time = time.time()
             elapsed_time = end_time - start_time
             print(f"Elapsed time for wSop: {elapsed_time:.4f} seconds")
 
-
     @staticmethod
     def print_stats_file(dist_labels_stats, output_dir_path, file_name: str, is_init_file: bool,
-                         col_names: list[str], model_name: str = None, go_val: float = None, ge_val: float = None, k_value: str = None):
+                         col_names: list[str], model_name: str = None, go_val: float = None, ge_val: float = None,
+                         k_value: str = None):
         model_str = f'_{model_name}_GO_{go_val}_GE_{ge_val}' if model_name is not None else ''
         k_value_str = f'_K{k_value}' if k_value is not None else ''
         output_file_path = Path(f'{str(output_dir_path)}/{file_name}{model_str}{k_value_str}.csv')
@@ -282,5 +287,3 @@ class MSA:
         else:
             with (open(output_file_path, 'a') as outfile):
                 print(str(dist_labels_stats)[1:-1], file=outfile)
-
-

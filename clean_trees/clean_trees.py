@@ -14,11 +14,11 @@ def clean_nodes(newick_str: str, leaf_names_to_keep: list[str]) -> tuple[str, li
 def get_length_from_root(node: TreeNode) -> float:
     return sum([n._dist for n in node.get_ancestors()])
 
+
 def get_length_from_root_from_newick_and_name(newick: str, name: str) -> float:
     t = Tree(newick)
     node: TreeNode = t.search_nodes(name=name)[0]
     return get_length_from_root(node)
-
 
 
 def read_file_and_get_names(fila_name) -> tuple[str, list[str]]:
@@ -33,8 +33,8 @@ def read_file_and_get_names(fila_name) -> tuple[str, list[str]]:
 
 
 def delete_rand_items(items, n) -> list:
-    to_delete = set(random.sample(range(len(items)),n))
-    return [x for i,x in enumerate(items) if not i in to_delete]
+    to_delete = set(random.sample(range(len(items)), n))
+    return [x for i, x in enumerate(items) if not i in to_delete]
 
 
 def remove_some_leaves(fila_name: str, wanted_leaf_number: int) -> tuple[str, list[str]]:

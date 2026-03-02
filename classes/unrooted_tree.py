@@ -48,10 +48,10 @@ class UnrootedTree:
 
     def get_longest_path(self, u: Node) -> tuple[Node, list[dict], float]:
         nodes_count: int = len(self.all_nodes)
-        nodes_by_id: list[Node | None] = [None for i in range(nodes_count + 1)]
+        nodes_by_id: list[Node | None] = [None for _ in range(nodes_count + 1)]
         # mark all distance with -1
-        distance = [-1 for i in range(nodes_count + 1)]
-        path: list[list[dict]] = [[] for i in range(nodes_count + 1)]
+        distance = [-1 for _ in range(nodes_count + 1)]
+        path: list[list[dict]] = [[] for _ in range(nodes_count + 1)]
 
         # distance of u from u will be 0
         distance[u.id] = 0
@@ -101,8 +101,8 @@ class UnrootedTree:
 
     def get_longest_dist_to(self, dest: Node) -> float:
         nodes_count: int = len(self.all_nodes)
-        nodes_by_id: list[Node | None] = [None for i in range(nodes_count + 1)]
-        distance = [-1 for i in range(nodes_count + 1)]
+        nodes_by_id: list[Node | None] = [None for _ in range(nodes_count + 1)]
+        distance = [-1 for _ in range(nodes_count + 1)]
         distance[dest.id] = 0
         queue: list[Node] = [dest]
         nodes_by_id[dest.id] = dest
@@ -193,7 +193,3 @@ def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level
     for child in open_nodes_per_level[level + 1]:
         child.set_a_father(current_node)
     return current_node
-
-
-
-

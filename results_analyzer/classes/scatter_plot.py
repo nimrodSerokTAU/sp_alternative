@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class ScatterPlot:
     x: np.array
     y: list[list[float]]
@@ -40,8 +41,8 @@ class ScatterPlot:
         self.legend_loc = legend_loc
 
     def set_data(self, y: list[list[float]], names: list[str], color: list[str], label: list[str],
-                        r_val: list[float], xlim_min: float, xlim_max: float, ylim_min: float, ylim_max: float,
-                        horizontal_line: float | None, data_count: int):
+                 r_val: list[float], xlim_min: float, xlim_max: float, ylim_min: float, ylim_max: float,
+                 horizontal_line: float | None, data_count: int):
         self.y = y
         self.names = names
         self.color = color
@@ -54,4 +55,3 @@ class ScatterPlot:
         self.ylim_max = ylim_max
         self.data_count = data_count
         self.horizontal_line = horizontal_line
-

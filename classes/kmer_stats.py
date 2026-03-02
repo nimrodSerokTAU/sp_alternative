@@ -50,4 +50,3 @@ def calc_kmer_histo(aln: list[str], k: int) -> list[int]:
                 histo[k_mer] = 0
             histo[k_mer] += 1
     return list(histo.values())
-

@@ -52,14 +52,20 @@ class PDFAnalyzer:
 
     def get_scores(self, df: pd.DataFrame, code: str) -> dict:
         return {
-            'model1': df.loc[df[self.measures['model1'].external_name].idxmin()][self.measures['true_min'].external_name],
-            'model2': df.loc[df[self.measures['model2'].external_name].idxmin()][self.measures['true_min'].external_name],
+            'model1': df.loc[df[self.measures['model1'].external_name].idxmin()][
+                self.measures['true_min'].external_name],
+            'model2': df.loc[df[self.measures['model2'].external_name].idxmin()][
+                self.measures['true_min'].external_name],
             'sop': df.loc[df[self.measures['sop'].external_name].idxmax()][self.measures['true_min'].external_name],
             'true_min': df[self.measures['true_min'].external_name].min(),
-            'mafft': df.loc[df['code'] == self.measures['mafft'].external_name][self.measures['true_min'].external_name].values[0],
-            'prank': df.loc[df['code'] == self.measures['prank'].external_name][self.measures['true_min'].external_name].values[0],
-            'baliphy': df.loc[df['code'] == f'{self.measures["baliphy"].external_name}.{code}.fas'][self.measures['true_min'].external_name].values[0],
-            'muscle': df.loc[df['code'] == f'{self.measures["muscle"].external_name}.{code}.fas'][self.measures['true_min'].external_name].values[0]
+            'mafft': df.loc[df['code'] == self.measures['mafft'].external_name][
+                self.measures['true_min'].external_name].values[0],
+            'prank': df.loc[df['code'] == self.measures['prank'].external_name][
+                self.measures['true_min'].external_name].values[0],
+            'baliphy': df.loc[df['code'] == f'{self.measures["baliphy"].external_name}.{code}.fas'][
+                self.measures['true_min'].external_name].values[0],
+            'muscle': df.loc[df['code'] == f'{self.measures["muscle"].external_name}.{code}.fas'][
+                self.measures['true_min'].external_name].values[0]
         }
 
     def plot_kde_with_annotations(self, scores: dict, true_scores: pd.Series, code: str) -> None:
@@ -68,7 +74,6 @@ class PDFAnalyzer:
 
         sns.kdeplot(true_scores, color='black', label=f'True Scores ({code})', linewidth=1.5, clip=(0, None))
         number_of_seq = len(true_scores)
-
 
         x: list[float] = []
         y: list[float] = []
@@ -84,7 +89,6 @@ class PDFAnalyzer:
 
         self.pdf_plot = PDFPlot(true_scores, x, y, markers, colors, labels, 100, '$d_{seq}$ from "true" MSA', 'Density')
 
-
     def plot_single_code_results(self, code: str) -> bool:
         try:
             code_df = self.filter_code_data(code)
@@ -95,7 +99,6 @@ class PDFAnalyzer:
         except Exception as e:
             print(f"Failed to process code '{code}': {e}\n")
             return False
-
 
     def analyze_results_per_code(self) -> None:
         unique_codes = self.data['code1'].unique()

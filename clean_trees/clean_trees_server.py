@@ -7,6 +7,7 @@ from ete3 import Tree, TreeNode
 from Bio import AlignIO
 from Bio.Align import MultipleSeqAlignment
 
+
 # from clean_trees import clean_nodes, read_file_and_get_names, remove_some_leaves, \
 #     get_length_from_root_from_newick_and_name
 
@@ -20,6 +21,7 @@ def read_file_and_get_names(fila_name) -> tuple[str, list[str]]:
     leaf_names: list[str] = t.get_leaf_names()
     return t.write(), leaf_names
 
+
 def clean_nodes(newick_str: str, leaf_names_to_keep: list[str]) -> tuple[str, list[str]]:
     t = Tree(newick_str)
     t.prune(leaf_names_to_keep, preserve_branch_length=True)
@@ -30,9 +32,11 @@ def clean_nodes(newick_str: str, leaf_names_to_keep: list[str]) -> tuple[str, li
 
     return t.write(format=5), t.get_leaf_names()
 
+
 def save_tree(newick_str: str, output_tree_path: str) -> None:
     with open(output_tree_path, "w") as f:
         f.write(newick_str)
+
 
 # def msa_with_chosen_species(final_leaves, input_msa, output_msa):
 #     marker = 0
@@ -74,6 +78,7 @@ def filter_msa_by_species_and_remove_gaps(final_leaves: list[str], input_msa: st
         cleaned.append(record)
 
     AlignIO.write(cleaned, output_msa, "fasta")
+
 
 def remove_gap_columns(msa_path):
     alignment = AlignIO.read(msa_path, "fasta")

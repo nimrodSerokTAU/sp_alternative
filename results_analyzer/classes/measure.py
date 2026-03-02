@@ -17,8 +17,6 @@ class Measure:
         self.data_per_dataset = []
         self.correlation_direction = correlation_direction
 
-
     def append_dataset_data(self, dataset_data: MeasurementDataPerCode):
         self.data_per_dataset.append(dataset_data)
         self.r_values.append(dataset_data.r_value)
-

@@ -8,6 +8,7 @@ from results_analyzer.constants import COLORS, NAMING, HATCHS
 DIRECTIONAL_THRESHOLDS = [-1, 0.5, 0.7, 0.85, 0.95, 1]
 NAMES = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent']
 
+
 class DataGroupCorr:
     name: str
     samples: dict[str, list[MeasurementDataPerCode]]
@@ -26,6 +27,7 @@ class DataGroupCorr:
     def append_one_sample(self, sample: MeasurementDataPerCode):
         self.samples[sample.measure_key].append(sample)
 
+
 class DataGroupMgr:
     data_groups: list[DataGroupCorr]
     names: list[str]
@@ -39,7 +41,6 @@ class DataGroupMgr:
         self.data_groups = []
         self.create_data_groups([x.key for x in measures])
         self.measures_directions = {}
-
 
     def create_data_groups(self, measure_keys: list[str]):
         for i in range(len(NAMES)):
@@ -81,4 +82,3 @@ class DataGroupMgr:
         cl = ColPlot(df, 0.8, colors, hatches, [NAMING[key] for key in m_keys], multi_dataset_title,
                      'Datasets Density', self.dataset_counter)
         return cl
-

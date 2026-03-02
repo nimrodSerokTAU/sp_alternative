@@ -15,7 +15,3 @@ class AlternativeLabelFile:
         self.code_inx = code_inx
         self.feature_file_dataset_inx = feature_file_dataset_inx
         self.feature_file_code_inx = feature_file_code_inx
-
-
-
-

@@ -24,11 +24,12 @@ class SopStats(BasicStats):
 
     def __init__(self, code: str, taxa_num: int, msa_length: int):
         super().__init__(code, taxa_num, msa_length,
-            [
-                'code',
-                'sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm', 'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm',
-                'sp_match', 'sp_match_norm', 'sp_mismatch', 'sp_mismatch_norm', 'sp', 'sp_norm',
-            ])
+                         [
+                             'code',
+                             'sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm',
+                             'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm',
+                             'sp_match', 'sp_match_norm', 'sp_mismatch', 'sp_mismatch_norm', 'sp', 'sp_norm',
+                         ])
         self.sp_match_count = -1
         self.sp_match_count_norm = -1
         self.sp_mismatch_count = -1
@@ -45,11 +46,13 @@ class SopStats(BasicStats):
         self.sp = -1
         self.sp_norm = -1
 
-        self.model_agnostic_col_names = ['sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count', 'sp_mismatch_count_norm', 'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm']
+        self.model_agnostic_col_names = ['sp_match_count', 'sp_match_count_norm', 'sp_mismatch_count',
+                                         'sp_mismatch_count_norm', 'sp_go', 'sp_go_norm', 'sp_ge', 'sp_ge_norm']
         self.gaps_agnostic_col_names = ['sp_match', 'sp_match_norm', 'sp_mismatch', 'sp_mismatch_norm']
 
-    def set_my_sop_score_parts(self, sp:SPScore, sequences: list[str]):
-        sp_match_score, sp_mismatch_score, go_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, sp_go_count, sp_ge_count = sp.compute_efficient_sp_parts(sequences)
+    def set_my_sop_score_parts(self, sp: SPScore, sequences: list[str]):
+        sp_match_score, sp_mismatch_score, go_score, sp_score_gap_e, sp_match_count, sp_mismatch_count, sp_go_count, sp_ge_count = sp.compute_efficient_sp_parts(
+            sequences)
         number_of_pairs_with_msa_length = self.taxa_num * (self.taxa_num - 1) / 2 * self.msa_length
 
         self.sp_match_count = sp_match_count
@@ -67,9 +70,6 @@ class SopStats(BasicStats):
 
         self.sp = sp_match_score + sp_mismatch_score + go_score + sp_score_gap_e
         self.sp_norm = self.sp / number_of_pairs_with_msa_length
-
-
-
 
     def set_my_sop_score(self, sop_score: float):
         self.sp = sop_score

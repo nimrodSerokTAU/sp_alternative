@@ -26,4 +26,3 @@ class GapInterval:
         new_one.set_start(self.start)
         new_one.set_end(self.end)
         return new_one
-

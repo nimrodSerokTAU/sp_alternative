@@ -46,11 +46,13 @@ class EntropyStats(BasicStats):
         self.entropy_25_pct = calc_percentile(entropy, 25)
         self.entropy_75_pct = calc_percentile(entropy, 75)
 
+
 def get_alignment_df(data: list[str]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     original_alignment_df = alignment_list_to_df(data)
     alignment_df_fixed = original_alignment_df.replace('-', np.nan)
     alignment_df_unique = original_alignment_df.T.drop_duplicates().T
     return original_alignment_df, alignment_df_fixed, alignment_df_unique
+
 
 def alignment_list_to_df(alignment_data: list[str]) -> pd.DataFrame:
     alignment_list = [list(alignment_data[i]) for i in range(len(alignment_data))]
@@ -58,4 +60,3 @@ def alignment_list_to_df(alignment_data: list[str]) -> pd.DataFrame:
     columns = list(range(0, loci_num))
     original_alignment_df = pd.DataFrame(alignment_list, columns=columns)
     return original_alignment_df
-
