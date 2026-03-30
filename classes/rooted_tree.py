@@ -26,7 +26,7 @@ class RootedTree:
         else:
             rooting_points = calc_min_differential_sum(unrooted, all_nodes)
             rooting_point = find_shallowest_tree(all_nodes, rooting_points)
-        new_root, all_nodes = create_root(all_nodes, unrooted.anchor, rooting_point)
+        new_root, all_nodes = create_root(all_nodes, rooting_point)
         return cls(root=new_root, all_nodes=all_nodes, keys=keys)
 
     def calc_clustal_w(self):
@@ -40,6 +40,7 @@ class RootedTree:
         for node in self.all_nodes:
             if len(node.children) == 0:
                 self.seq_weight_dict[list(node.keys)[0]] = node.weight
+
 
 
 def calc_mid_point(unrooted: UnrootedTree) -> dict:
@@ -77,6 +78,7 @@ def calc_min_differential_sum(unrooted: UnrootedTree, all_nodes: list[Node]) -> 
                                              min_bl)]
     return res
 
+
 def recalc_tree_down(node: Node, father: Node, broke_id: int, nodes_to_recalc: list[dict], all_nodes: list[Node]):
     node.set_rank_from_root(father.rank_from_root + 1)
     if father in node.children:
@@ -90,6 +92,7 @@ def recalc_tree_down(node: Node, father: Node, broke_id: int, nodes_to_recalc: l
         nodes_to_recalc.append({'node': children[0], 'father': node, 'broke': broke_id})
         nodes_to_recalc.append({'node': children[1], 'father': node, 'broke': broke_id})
     node.father = father
+
 
 def fill_nodes_w(node: Node, nodes_to_recalc: list[Node]):
     node.set_w_from_root((node.father.w_from_root.copy() if node.father is not None else []) + [node.branch_length])
@@ -124,31 +127,37 @@ def calc_potential_root_on_branch(b: dict, min_bl: float) -> dict:
             'dist_from_end': b['bl'] - dist_from_start}
 
 
-def create_root(all_nodes: list[Node], anchor: Node, rooting_point: dict) -> tuple[Node, list[Node]]:
-    #  TODO: continue from here
-    new_root_id: int = len(all_nodes) + 1
-    start_id: int = rooting_point['start_id']
-    end_id: int = rooting_point['end_id']
-    start_node: Node = all_nodes[start_id] if start_id < len(all_nodes) else anchor
-    end_node: Node = all_nodes[end_id] if end_id < len(all_nodes) else anchor
+def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[Node]]:
+    start: Node = all_nodes[rooting_point['start_id']]
+    end: Node = all_nodes[rooting_point['end_id']]
 
-    new_root = Node(node_id=new_root_id, keys=set(),
-                    children=[start_node, end_node],
-                    children_bl_sum=0)
-    new_root.set_rank_from_root(0)
+    new_root = Node(node_id=len(all_nodes), keys=set(), children=[], children_bl_sum=0, branch_length=0)
     all_nodes.append(new_root)
-    nodes_to_recalc: list[dict] = [{'node': start_node, 'father': new_root, 'broke': end_id},
-                                   {'node': end_node, 'father': new_root, 'broke': start_id}]
-    while len(nodes_to_recalc):
-        data = nodes_to_recalc.pop()
-        recalc_tree_down(data['node'], data['father'], data['broke'], nodes_to_recalc, all_nodes)
-    start_node.set_branch_length(rooting_point['dist_from_start'])
-    end_node.set_branch_length(rooting_point['dist_from_end'])
 
-    nodes_sorted_by_rank: list[Node] = sorted(all_nodes, key=lambda x: x.rank_from_root)
-    while len(nodes_sorted_by_rank):
-        node_to_update = nodes_sorted_by_rank.pop()
-        node_to_update.update_data_from_children()
+    if end in start.children:
+        start.children.remove(end)
+        if start.father:
+            start.children.append(start.father)
+            start.father.father = start
+            start.father.branch_length = start.branch_length
+    elif start in end.children:
+        end.children.remove(start)
+        if end.father:
+            end.children.append(end.father)
+            end.father.father = end
+            end.father.branch_length = end.branch_length
+    else:
+        raise ValueError("Nodes are not directly connected")
+
+    start.branch_length = rooting_point['dist_from_start']
+    end.branch_length = rooting_point['dist_from_end']
+    new_root.children = [start, end]
+    start.father = new_root
+    end.father = new_root
+
+    reroot_recursive(start, new_root)
+    reroot_recursive(end, new_root)
+
     return new_root, all_nodes
 
 
@@ -170,6 +179,7 @@ def find_shallowest_tree(all_nodes: list[Node], rooting_points: list[dict]) -> d
     rooting_points.sort(key=lambda x: x['longest_dist'])
     return rooting_points[0]
 
+
 def add_node_between(my_nodes: list[Node], child: Node, father: Node, dist_from_child: float,
                      dist_to_father: float):
     new_node = Node.create_from_children([child], len(my_nodes))
@@ -181,6 +191,19 @@ def add_node_between(my_nodes: list[Node], child: Node, father: Node, dist_from_
     my_nodes.append(new_node)
 
 
+def reroot_recursive(node, parent):
+    neighbors = list(node.children)
+    if node.father:
+        neighbors.append(node.father)
 
+    node.children = []
+    node.father = parent
 
+    for neigh in neighbors:
+        if neigh == parent:
+            continue
 
+        length = neigh.branch_length if neigh.father == node else node.branch_length
+        reroot_recursive(neigh, node)
+        neigh.branch_length = length
+        node.children.append(neigh)

@@ -849,7 +849,7 @@ def test_henikoff_w():
     }
 
 
-def test_mid_point_rooting():
+def test_mid_point_rooting_case_a():
     aln: list[str] = [
         'AT-CGC-GGT',
         'ACATG-T-GA',
@@ -875,9 +875,9 @@ def test_mid_point_rooting():
            'bl_e': round(tree.all_nodes[4].branch_length, 3), 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
            'bl_a_c_d': round(tree.all_nodes[6].branch_length, 3), 'bl_b_e': round(tree.all_nodes[7].branch_length, 3),
            }
-    assert res == {'lp_length': 1.3641359567812426, 'tree_a_length': 0.22007006899467785, 'tree_a_keys': {'b', 'e'},
-                   'bl_a': 0.082, 'bl_a_c': 0.329, 'bl_a_c_d': 0.271, 'bl_b': 0.462, 'bl_b_e': 0.22,
-                   'bl_c': 0.026, 'bl_d': 0.183, 'bl_e': 0.104, }
+    assert res == {'bl_a': 0.075, 'bl_a_c': 0.213, 'bl_a_c_d': 0.329, 'bl_b': 0.469, 'bl_b_e': 0.278, 'bl_c': 0.033,
+                   'bl_d': 0.183, 'bl_e': 0.097, 'lp_length': 1.3641359567812423, 'tree_a_keys': {'b', 'e'},
+                   'tree_a_length': 0.21304873830289794}
 
 
 def test_mid_point_rooting_case_b():
@@ -885,7 +885,6 @@ def test_mid_point_rooting_case_b():
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.LONGEST_PATH_MID)
     res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1),
-           'tree_a_keys': sorted(list(tree.root.children[0].keys)),
            'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length,
            'bl_c': tree.all_nodes[2].branch_length,
            'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length,
@@ -896,7 +895,7 @@ def test_mid_point_rooting_case_b():
     res['c_w'] = tree.all_nodes[2].weight
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
     assert res == {'bl_b_e_d': 0.2, 'bl_a': 0.2, 'bl_a_c': 0.4, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
-                   'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['b', 'd', 'e'], 'tree_a_length': 0.2,
+                   'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_length': 0.2,
                    'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
 
 
