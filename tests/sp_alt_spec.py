@@ -21,7 +21,7 @@ from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
 from classes.w_sop_stats import WSopStats
 from enums import SopCalcTypes, RootingMethods, WeightMethods, DistanceType, StatsOutput
 from multi_msa_service import multiple_msa_calc_features_and_labels
-from distance_calc import translate_profile_naming, get_column, get_place_h, compute_distance
+from distance_calc import translate_profile_naming, get_column, get_place_h, compute_distance, compute_eff_d_seq
 from ete3 import Tree, TreeNode
 
 from utils import calc_percentile
@@ -142,10 +142,13 @@ def test_compute_sp_s_and_sp_ge():  # our function
     # 15 + 1 + (-6 -6) + (8 -5 -6) + 39 + (7 -6 -6) + (-6 -5) + (-5, -5) + 6 + 15
     sp_score_subs: int
     sp_score_gap_e: int
-    sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(profile)
+    sp_match_score, sp_mismatch_score, sp_score_gap_e, sp_match_count, sp_missmatch_count, ge_count = sp.compute_sp_s_and_sp_ge(
+        profile)
     naive_score = sp.compute_naive_sp_score(profile)
-    res = {'sp_score_subs': sp_match_score + sp_mismatch_score, 'sp_score_gap_e': sp_score_gap_e, 'total': sp_match_score + sp_mismatch_score + sp_score_gap_e}
-    assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -50, 'total':naive_score[0]}  # this is correct without gs cost
+    res = {'sp_score_subs': sp_match_score + sp_mismatch_score, 'sp_score_gap_e': sp_score_gap_e,
+           'total': sp_match_score + sp_mismatch_score + sp_score_gap_e}
+    assert res == {'sp_score_subs': 91, 'sp_score_gap_e': -50,
+                   'total': naive_score[0]}  # this is correct without gs cost
 
 
 def test_only_gap_open_and_ext_cost_same():
@@ -167,7 +170,7 @@ def test_only_gap_open_and_ext_cost_same():
     # AA--CQEGHI
     # ----> 2
 
-    res: tuple [int, int] = sp.compute_sp_gap_open(profile)
+    res: tuple[int, int] = sp.compute_sp_gap_open(profile)
     assert res == (-6, 6)
 
 
@@ -278,23 +281,6 @@ def test_compute_dpos_distance_for_diff():
     assert round(res, 3) == 0.417
 
 
-def compute_dpos_distance_for_diff_case_b():
-    profile_a: list[str] = [
-        'ABCDEFGH',
-        'A-CDEFGH',
-        'AB-DEFGH',
-        'AB-DEFGH'
-    ]
-    profile_b: list[str] = [
-        'ABCDEFGH',
-        'A-CDEFGH',
-        'AB-DEFGH',
-        'AB-DEFGH'
-    ]
-    res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
-    assert round(res, 3) == 0.417
-
-
 def test_dpos_for_diff_length_case_a():
     profile_a: list[str] = [
         'AATATTG-',
@@ -306,33 +292,13 @@ def test_dpos_for_diff_length_case_a():
         'A-A--TTAG',
         'A--A-T-AG'
     ]
+    res = compute_distance(profile_a, profile_b, DistanceType.D_SEQ)
+    assert round(res, 3) == 0.611
     res = compute_distance(profile_a, profile_b, DistanceType.D_POS)
     assert round(res, 3) == 0.639
 
 
-def test_dpos_for_diff_length_case_qu_a():
-    profile_a: list[str] = [
-        'GCATCATT-G',
-        'GC---ATTAG',
-        'GC---AT-AG'
-    ]
-    profile_b: list[str] = [
-        'GCATCATT-G',
-        'GCA---TTAG',
-        'GCA----TAG'
-    ]
-    profile_c: list[str] = [
-        'GCATCATT-G-',
-        'GC---ATT-AG',
-        'GC---A-TA-G'
-    ]
-    res_ab = compute_distance(profile_a, profile_b, DistanceType.D_POS)
-    res_ac = compute_distance(profile_a, profile_c, DistanceType.D_POS)
-    assert round(res_ab, 3) == 0.364
-    assert round(res_ac, 3) == 0.295
-
-
-def test_dseq_for_diff_length_case_qu_a():
+def test_distances_for_diff_length_case_qu_a():
     profile_a: list[str] = [
         'GCATCATT-G',
         'GC---ATTAG',
@@ -351,32 +317,20 @@ def test_dseq_for_diff_length_case_qu_a():
     res_ab = compute_distance(profile_a, profile_b, DistanceType.D_SEQ)
     res_ac = compute_distance(profile_a, profile_c, DistanceType.D_SEQ)
     assert round(res_ab, 3) == 0.273
-    assert round(res_ac, 3) == 0.265
+    assert round(res_ac, 3) == 0.295 # 0.265
 
+    res_ab = compute_distance(profile_a, profile_b, DistanceType.D_POS)
+    res_ac = compute_distance(profile_a, profile_c, DistanceType.D_POS)
+    assert round(res_ab, 3) == 0.364
+    assert round(res_ac, 3) == 0.295
 
-def test_dssp_for_diff_length_case_qu_a():
-    profile_a: list[str] = [
-        'GCATCATT-G',
-        'GC---ATTAG',
-        'GC---AT-AG'
-    ]
-    profile_b: list[str] = [
-        'GCATCATT-G',
-        'GCA---TTAG',
-        'GCA----TAG'
-    ]
-    profile_c: list[str] = [
-        'GCATCATT-G-',
-        'GC---ATT-AG',
-        'GC---A-TA-G'
-    ]
     res_ab = compute_distance(profile_a, profile_b, DistanceType.D_SSP)
     res_ac = compute_distance(profile_a, profile_c, DistanceType.D_SSP)
     assert round(res_ab, 3) == 0.381
     assert round(res_ac, 3) == 0.4
 
 
-def test_dpos_for_diff_length_case_qu_b():
+def test_distances_for_diff_length_case_qu_b():
     true_profile: list[str] = [
         'GAAGTTAGACATC',
         'GA--------ATC',
@@ -413,74 +367,12 @@ def test_dpos_for_diff_length_case_qu_b():
     assert round(res_b, 3) == 0.182
     assert round(res_c, 3) == 0.121
 
-
-def test_d_seq_for_diff_length_case_qu_b():
-    true_profile: list[str] = [
-        'GAAGTTAGACATC',
-        'GA--------ATC',
-        'GA--------ATG',
-        'GT--------ATG',
-        'GT--------ATC',
-    ]
-    profile_a: list[str] = [
-        'GAAGTTAGACATC',
-        'GAA--------TC',
-        'GAA--------TG',
-        'GTA--------TG',
-        'GTA--------TC',
-    ]
-    profile_b: list[str] = [
-        'GAAGTTAGACATC',
-        'GA----A----TC',
-        'GA----A----TG',
-        'GT----A----TG',
-        'GT----A----TC',
-    ]
-    profile_c: list[str] = [
-        'GAAGTTAGACATC',
-        'GA------A--TC',
-        'GA------A--TG',
-        'GT------A--TG',
-        'GT------A--TC',
-    ]
-
     res_a = compute_distance(true_profile, profile_a, DistanceType.D_SEQ)
     res_b = compute_distance(true_profile, profile_b, DistanceType.D_SEQ)
     res_c = compute_distance(true_profile, profile_c, DistanceType.D_SEQ)
     assert round(res_a, 3) == 0.091
     assert round(res_b, 3) == 0.091
     assert round(res_c, 3) == 0.091
-
-
-def test_d_ssp_for_diff_length_case_qu_b():
-    true_profile: list[str] = [
-        'GAAGTTAGACATC',
-        'GA--------ATC',
-        'GA--------ATG',
-        'GT--------ATG',
-        'GT--------ATC',
-    ]
-    profile_a: list[str] = [
-        'GAAGTTAGACATC',
-        'GAA--------TC',
-        'GAA--------TG',
-        'GTA--------TG',
-        'GTA--------TC',
-    ]
-    profile_b: list[str] = [
-        'GAAGTTAGACATC',
-        'GA----A----TC',
-        'GA----A----TG',
-        'GT----A----TG',
-        'GT----A----TC',
-    ]
-    profile_c: list[str] = [
-        'GAAGTTAGACATC',
-        'GA------A--TC',
-        'GA------A--TG',
-        'GT------A--TG',
-        'GT------A--TC',
-    ]
 
     res_a = compute_distance(true_profile, profile_a, DistanceType.D_SSP)
     res_b = compute_distance(true_profile, profile_b, DistanceType.D_SSP)
@@ -489,12 +381,14 @@ def test_d_ssp_for_diff_length_case_qu_b():
     assert round(res_b, 3) == 0.148
     assert round(res_c, 3) == 0.148
 
+
 def test_dpos_for_diff_length_case_c():
     profile_a: list[str] = [
         'AAT',
         '--T',
         '-CG'
     ]
+
     profile_b: list[str] = [
         'AAT-',
         '---T',
@@ -739,31 +633,34 @@ def test_neighbor_joining():
     for key in keys_case_nj:
         nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1, children_bl_sum=0))
     tree_calculation: UnrootedTree = NeighborJoining(matrix_case_nj, nodes).tree_res
+
     bl_list: list[float] = tree_calculation.get_branches_lengths_list()
     bl_list.sort()
     assert bl_list == [1.0, 2.0, 2.0, 2.0, 3.0, 3.0, 4.0]
+    newick_tree = tree_calculation.print_newick()
+    assert newick_tree == '(((a:2.000000,b:3.000000):3.000000,c:4.000000):2.000000,d:2.000000,e:1.000000):0.000000'
 
 
-def test_parsimony():
-    n_a: Node = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0)
-    n_b: Node = Node(node_id=1, keys={'b'}, children=[], children_bl_sum=0)
-    n_c: Node = Node(node_id=2, keys={'c'}, children=[], children_bl_sum=0)
-    n_d: Node = Node(node_id=3, keys={'d'}, children=[], children_bl_sum=0)
-    n_e: Node = Node(node_id=4, keys={'e'}, children=[], children_bl_sum=0)
-    n_a_b: Node = Node.create_from_children([n_a, n_b], 5)
-    n_a_b_c: Node = Node.create_from_children([n_a_b, n_c], 6)
-    anchor: Node = Node.create_from_children([n_a_b_c, n_d, n_e], 7)
-    all_nodes: list[Node] = [n_a, n_b, n_c, n_d, n_e, n_a_b, n_a_b_c, anchor]
-    aln: list[str] = [
-        'AYCDDDW',
-        'AVVDDDW',
-        'AYCDDDW',
-        'AVVDDDW',
-        'APVDDDW'
+def test_neighbor_joining_case_b():
+    matrix_nj_case_b: list[list[float]] = [
+        [0.000, 0.385, 0.385, 0.385, 0.692, 0.615, 0.769, 0.538, 0.615],
+        [0.385, 0.000, 0.231, 0.000, 0.538, 0.462, 0.692, 0.385, 0.538],
+        [0.385, 0.231, 0.000, 0.231, 0.308, 0.231, 0.538, 0.231, 0.308],
+        [0.385, 0.000, 0.231, 0.000, 0.538, 0.462, 0.692, 0.385, 0.538],
+        [0.692, 0.538, 0.308, 0.538, 0.000, 0.385, 0.231, 0.462, 0.462],
+        [0.615, 0.462, 0.231, 0.462, 0.385, 0.000, 0.615, 0.385, 0.077],
+        [0.769, 0.692, 0.538, 0.692, 0.231, 0.615, 0.000, 0.462, 0.615],
+        [0.538, 0.385, 0.231, 0.385, 0.462, 0.385, 0.462, 0.000, 0.462],
+        [0.615, 0.538, 0.308, 0.538, 0.462, 0.077, 0.615, 0.462, 0.000]
     ]
-    names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    res = calc_parsimony(UnrootedTree(anchor=anchor, all_nodes=all_nodes), aln, names)
-    assert res == [0, 3, 2, 0, 0, 0, 0]
+    keys_nj_case_b: list[str] = ["rayfinfish", "frog", "turtle", "salamander", "crocodile", "lizard", "bird", "mammal", "snake"]
+    nodes: list[Node] = []
+    for key in keys_nj_case_b:
+        nodes.append(Node(node_id=len(nodes), keys={key}, children=[], branch_length=1, children_bl_sum=0))
+    tree_calculation: UnrootedTree = NeighborJoining(matrix_nj_case_b, nodes).tree_res
+
+    newick_tree = tree_calculation.print_newick()
+    assert newick_tree == "(((((frog:0.000000,salamander:0.000000):0.125313,rayfinfish:0.259687):0.089542,turtle:0.025958):0.038094,mammal:0.154156):0.028969,(bird:0.186786,crocodile:0.044214):0.187344,(lizard:0.009792,snake:0.067208):0.177906):0.000000"
 
 
 def test_msa_stats():
@@ -795,9 +692,10 @@ def test_msa_stats():
     basic_stats = BasicStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),
                              ['code', 'taxa_num', 'msa_length'])
     assert basic_stats.get_my_features_as_list() == ['inferred', 5, 10]
-    dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
+    dist_labels_stats = DistanceLabelsStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(),
+                                            inferred_msa.get_msa_len())
     dist_labels_stats.set_my_distance_from_true(true_msa.sequences, inferred_msa.sequences)
-    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.182, 0.132, 0.134]
+    assert dist_labels_stats.get_my_features_as_list() == ['inferred', 0.182, 0.134, 0.134]
 
     entropy_stats = EntropyStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     entropy_stats.calc_entropy(inferred_msa.sequences)
@@ -805,26 +703,31 @@ def test_msa_stats():
 
     gaps_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gaps_stats.calc_gaps_values(inferred_msa.sequences)
-    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.6, 1.125, 1.4, 0.2, 0.0, 0.0, 4, 0.8, 1.25, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
-    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(),5)
+    assert gaps_stats.get_my_features_as_list() == ['inferred', 1.6, 1.125, 1.4, 0.2, 0.0, 0.0, 4, 0.8, 1.25, 3, 2, 1,
+                                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 2, 2, 0, 1, 5, 10, 7]
+    k_mer_stats = KMerStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len(), 5)
     k_mer_stats.set_k_mer_features(inferred_msa.sequences)
     assert k_mer_stats.get_my_features_as_list() == ['inferred', 2, 1.034, 1, 1, 11]
 
     inferred_msa.build_nj_tree()
     true_msa.build_nj_tree()
     tree_stats = TreeStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
-    tree_stats.set_tree_stats(inferred_msa.tree.get_branches_lengths_list(), inferred_msa.tree, inferred_msa.sequences, inferred_msa.seq_names)
-    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.239, 0.093, 0.396, 0.491, 0.026, 1.2, 12.0, 3, 0, 1.0, 1.75]
+    tree_stats.set_tree_stats(inferred_msa.tree.get_branches_lengths_list(), inferred_msa.tree, inferred_msa.sequences,
+                              inferred_msa.seq_names)
+    assert tree_stats.get_my_features_as_list() == ['inferred', 1.676, 0.239, 0.093, 0.396, 0.491, 0.026, 1.2, 12.0, 3,
+                                                    0, 1.0, 1.75]
     dist_labels_stats.set_rf_from_true(inferred_msa.tree, true_msa.tree)
     data_to_print, col_names = dist_labels_stats.get_print_rf()
     assert data_to_print == ['inferred', 0]
-    assert col_names == ['code','rf_from_true']
+    assert col_names == ['code', 'rf_from_true']
 
     sop_stats = SopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     sop_stats.set_my_sop_score_parts(sp, inferred_msa.sequences)
-    assert sop_stats.get_my_features_as_list() == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 259.0, 2.59, -8, -0.08, -12.0, -0.12]
+    assert sop_stats.get_my_features_as_list() == ['inferred', 47.0, 0.47, 22, 0.22, 25, 0.25, 26, 0.26, 259.0, 2.59,
+                                                   -8, -0.08, -12.0, -0.12]
     w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
-    w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
+    w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names,
+                                 inferred_msa.tree)
     w_sop_stats.calc_w_sp(inferred_msa.sequences, sp)
     assert w_sop_stats.get_my_features_as_list() == ['inferred', -1.135, -0.586, -7.131, -6.979]
 
@@ -839,10 +742,11 @@ def test_msa_stats_two_models():
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
     config: Configuration = Configuration([
-            EvoModel(-10, -0.5, 'BLOSUM62'),
-            EvoModel(-3, -1, 'BLOSUM50')
-        ], SopCalcTypes.EFFICIENT, 'comparison_files',
-        {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT, WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+        EvoModel(-10, -0.5, 'BLOSUM62'),
+        EvoModel(-3, -1, 'BLOSUM50')
+    ], SopCalcTypes.EFFICIENT, 'comparison_files',
+        {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG, WeightMethods.CLUSTAL_MID_ROOT,
+         WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
     inferred_msa: MSA = create_msa_from_seqs_and_names('inferred', aln, names)
 
     sp_models: list[SPScore] = [SPScore(i) for i in config.models]
@@ -929,20 +833,21 @@ def test_henikoff_w():
     res = {'seq_weights_with_gap': seq_weights_with_gap, 'seq_weights_no_gap': seq_weights_no_gap}
     assert res == {
         'seq_weights_no_gap': [
-             0.15454545454545454,
-             0.22272727272727275,
-             0.10909090909090909,
-             0.24545454545454548,
-             0.2681818181818182,
+            0.15454545454545454,
+            0.22272727272727275,
+            0.10909090909090909,
+            0.24545454545454548,
+            0.2681818181818182,
         ],
         'seq_weights_with_gap': [
-             0.15714285714285717,
-             0.21071428571428572,
-             0.15714285714285717,
-             0.2642857142857143,
-             0.21071428571428572,
+            0.15714285714285717,
+            0.21071428571428572,
+            0.15714285714285717,
+            0.2642857142857143,
+            0.21071428571428572,
         ],
     }
+
 
 def test_mid_point_rooting():
     aln: list[str] = [
@@ -963,49 +868,57 @@ def test_mid_point_rooting():
     inferred_msa.build_nj_tree()
     path, max_dist = inferred_msa.tree.longest_path()
     tree = RootedTree.root_tree(inferred_msa.tree, RootingMethods.LONGEST_PATH_MID)
-    res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length, 'tree_a_keys': tree.root.children[0].keys,
+    res = {'lp_length': max_dist, 'tree_a_length': tree.root.children[0].branch_length,
+           'tree_a_keys': tree.root.children[0].keys,
            'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': round(tree.all_nodes[1].branch_length, 3),
            'bl_c': round(tree.all_nodes[2].branch_length, 3), 'bl_d': round(tree.all_nodes[3].branch_length, 3),
            'bl_e': round(tree.all_nodes[4].branch_length, 3), 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
            'bl_a_c_d': round(tree.all_nodes[6].branch_length, 3), 'bl_b_e': round(tree.all_nodes[7].branch_length, 3),
-    }
+           }
     assert res == {'lp_length': 1.3641359567812426, 'tree_a_length': 0.22007006899467785, 'tree_a_keys': {'b', 'e'},
                    'bl_a': 0.082, 'bl_a_c': 0.329, 'bl_a_c_d': 0.271, 'bl_b': 0.462, 'bl_b_e': 0.22,
-                   'bl_c': 0.026, 'bl_d': 0.183, 'bl_e': 0.104,}
+                   'bl_c': 0.026, 'bl_d': 0.183, 'bl_e': 0.104, }
 
 
 def test_mid_point_rooting_case_b():
     unrooted = create_unrooted_tree_for_test()
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.LONGEST_PATH_MID)
-    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
-           'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
-           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': tree.all_nodes[5].branch_length,
+    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1),
+           'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length,
+           'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length,
+           'bl_a_c': tree.all_nodes[5].branch_length,
            'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 1)}
     tree.calc_clustal_w()
     res['a_w'] = tree.all_nodes[0].weight
     res['c_w'] = tree.all_nodes[2].weight
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
     assert res == {'bl_b_e_d': 0.2, 'bl_a': 0.2, 'bl_a_c': 0.4, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
-                    'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['b', 'd', 'e'], 'tree_a_length': 0.2,
-                    'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
+                   'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['b', 'd', 'e'], 'tree_a_length': 0.2,
+                   'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
 
 
 def test_differential_sum_rooting():
     unrooted = create_unrooted_tree_for_test()
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
-    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 3), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
-           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
-           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 3),
+           'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length,
+           'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length,
+           'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
            'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 1)}
     tree.calc_clustal_w()
     res['a_w'] = round(tree.all_nodes[0].weight, 3)
     res['c_w'] = round(tree.all_nodes[2].weight, 3)
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
-    assert res == {'bl_b_e_d': 0.1, 'bl_a': 0.2, 'bl_a_c': 0.475, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
-                    'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.475,
-                    'a_w': 0.438, 'c_w': 0.387, 'e_w': 0.242}
+    assert res == {'bl_b_e_d': 0.1, 'bl_a': 0.2, 'bl_a_c': 0.475, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15,
+                   'bl_d': 0.25,
+                   'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.475,
+                   'a_w': 0.438, 'c_w': 0.387, 'e_w': 0.242}
 
 
 def test_differential_sum_rooting_case_of_no_solution():
@@ -1020,17 +933,21 @@ def test_differential_sum_rooting_case_of_no_solution():
 
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.MIN_DIFFERENTIAL_SUM)
-    res = {'lp_length': round(max_dist, 2), 'tree_a_length': round(tree.root.children[0].branch_length, 3), 'tree_a_keys': sorted(list(tree.root.children[0].keys)),
-           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length, 'bl_c': tree.all_nodes[2].branch_length,
-           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
+    res = {'lp_length': round(max_dist, 2), 'tree_a_length': round(tree.root.children[0].branch_length, 3),
+           'tree_a_keys': sorted(list(tree.root.children[0].keys)),
+           'bl_a': round(tree.all_nodes[0].branch_length, 3), 'bl_b': tree.all_nodes[1].branch_length,
+           'bl_c': tree.all_nodes[2].branch_length,
+           'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length,
+           'bl_a_c': round(tree.all_nodes[5].branch_length, 3),
            'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': round(tree.all_nodes[6].branch_length, 3)}
     tree.calc_clustal_w()
     res['a_w'] = round(tree.all_nodes[0].weight, 3)
     res['c_w'] = round(tree.all_nodes[2].weight, 3)
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
     assert res == {'bl_b_e_d': 0.01, 'bl_a': 0.6, 'bl_a_c': 0.29, 'bl_b': 0.7, 'bl_b_e': 0.1, 'bl_c': 0.2, 'bl_d': 0.9,
-                    'bl_e': 0.2, 'lp_length': 1.8, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.29,
-                    'a_w': 0.745, 'c_w': 0.345, 'e_w': 0.253}
+                   'bl_e': 0.2, 'lp_length': 1.8, 'tree_a_keys': ['a', 'c'], 'tree_a_length': 0.29,
+                   'a_w': 0.745, 'c_w': 0.345, 'e_w': 0.253}
+
 
 def create_unrooted_tree_for_test() -> UnrootedTree:
     node_a = Node(node_id=0, keys={'a'}, children=[], children_bl_sum=0, branch_length=0.2)
@@ -1051,15 +968,15 @@ def create_unrooted_tree_for_test() -> UnrootedTree:
     node_b.set_a_father(anchor)
     node_e.set_a_father(anchor)
     return UnrootedTree(anchor=anchor,
-                            all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
+                        all_nodes=[node_a, node_b, node_c, node_d, node_e, node_a_c, node_a_c_d, anchor])
 
 
 def test_single_msas():
     config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
-                                                 SopCalcTypes.EFFICIENT, 'tests/comparison_files',
-                                                 {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
-                                                  WeightMethods.CLUSTAL_MID_ROOT,
-                                                  WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
+                                          SopCalcTypes.EFFICIENT, 'tests/comparison_files',
+                                          {WeightMethods.HENIKOFF_WG, WeightMethods.HENIKOFF_WOG,
+                                           WeightMethods.CLUSTAL_MID_ROOT,
+                                           WeightMethods.CLUSTAL_DIFFERENTIAL_SUM})
 
     all_msa_ws = calc_single_msas(config)
     assert all_msa_ws == [
@@ -1067,6 +984,7 @@ def test_single_msas():
         ['MUSCLE_diversified_replicate.none.216.afa', 401.042, 399.857, 2136.42, 1578.571],
         ['PRANK_b1#0003_hhT_tree_3_OP_0.38975399874169636_Split_3.fasta', 400.989, 402.289, 2314.664, 1444.722],
         ['PRANK_b1#0024_hhT_tree_21_OP_0.2963379796789501_Split_24.fasta', 403.128, 405.134, 2286.363, 1451.505]]
+
 
 def test_global_alignment_BLOSUM_affine_gap_case_a():
     config: Configuration = Configuration([EvoModel(-4, -0.5, 'BLOSUM62')],
@@ -1088,6 +1006,7 @@ def test_global_alignment_BLOSUM_affine_gap_case_a():
         {'seq_a': ['P', '-', '-', '-', 'A', 'W', '-', 'H', 'E', 'A', 'E'],
          'seq_b': ['H', 'E', 'A', 'G', 'A', 'W', 'G', 'H', 'E', '-', 'E']}
     ]
+
 
 def test_create_alternative_msas_by_realign():
     aln: list[str] = [
@@ -1116,12 +1035,13 @@ def test_create_alternative_msas_by_realign():
     msa_list: list[MSA] = []
     msa_list_stats: list[DistanceLabelsStats] = []
     for msa_data in res:
-        alt_msa:MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
+        alt_msa: MSA = create_msa_from_seqs_and_names('alt', msa_data, names)
         alt_dops_stats = DistanceLabelsStats(alt_msa.dataset_name, len(alt_msa.sequences), len(alt_msa.sequences[0]))
         alt_dops_stats.set_my_distance_from_true(alt_msa.sequences, true_msa.sequences)
         msa_list.append(alt_msa)
         msa_list_stats.append(alt_dops_stats)
-    dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences), len(inferred_msa.sequences[0]))
+    dpos_stats = DistanceLabelsStats(inferred_msa.dataset_name, len(inferred_msa.sequences),
+                                     len(inferred_msa.sequences[0]))
     dpos_stats.set_my_distance_from_true(inferred_msa.sequences, true_msa.sequences)
     dpos_ratio = abs(dpos_stats.dpos_from_true - msa_list_stats[0].dpos_from_true) / dpos_stats.dpos_from_true
     assert dpos_ratio <= 3
@@ -1140,10 +1060,12 @@ def calc_single_msas(config: Configuration):
         inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
         inferred_msa.build_nj_tree()
         w_sop_stats = WSopStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
-        w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names, inferred_msa.tree)
+        w_sop_stats.calc_seq_weights(config.additional_weights, inferred_msa.sequences, inferred_msa.seq_names,
+                                     inferred_msa.tree)
         w_sop_stats.calc_w_sp(inferred_msa.sequences, sp)
         all_msa_ws.append(w_sop_stats.get_my_features_as_list())
     return all_msa_ws
+
 
 def test_henikoff_with_gaps_value():
     # Create a simple test alignment with known gap patterns
@@ -1155,34 +1077,75 @@ def test_henikoff_with_gaps_value():
         'TTATGC'
     ]
     names: list[str] = ['a', 'b', 'c', 'd', 'e']
-    
+
     # Create MSA and configuration
     msa = MSA('test')
     msa.sequences = aln
     msa.seq_names = names
-    
+
     config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
-                                        SopCalcTypes.EFFICIENT, 'comparison_files',
-                                        {WeightMethods.HENIKOFF_WG})
-    
+                                          SopCalcTypes.EFFICIENT, 'comparison_files',
+                                          {WeightMethods.HENIKOFF_WG})
+
     # Calculate sequence weights
     msa.build_nj_tree()
     w_sop_stats = WSopStats(msa.dataset_name, msa.get_taxa_num(), msa.get_msa_len())
     w_sop_stats.calc_seq_weights(config.additional_weights, msa.sequences, msa.seq_names, msa.tree)
-    
+
     # Compute SP score with weights
     sp = SPScore(config.models[0])
     sop_w_options = w_sop_stats.calc_w_sp(msa.sequences, sp)
-    
+
     # Set the weights in stats
     henikoff_with_gaps = w_sop_stats.sp_HENIKOFF_with_gaps
-    
+
     # The expected value is the actual calculated SP score with Henikoff weights
     expected_value = -1.682110969387752
-    
+
     # Check if the henikoff_with_gaps value is set correctly
     assert abs(henikoff_with_gaps - expected_value) < 1e-10, \
         f"Expected henikoff_with_gaps to be {expected_value}, but got {henikoff_with_gaps}"
+
+
+def test_clustalw_for_a_tree():
+    aln: list[str] = [
+        'AT-CGC',
+        'ACATG-',
+        'AT-CG-',
+        'ATC-GA',
+        'TTATGC'
+    ]
+    names: list[str] = ['a', 'b', 'c', 'd', 'e']
+    newick = "(((a:1,b:2):3,c:4):5,d:6,e:7);"
+
+    # Create MSA and configuration
+    msa = MSA('test')
+    msa.sequences = aln
+    msa.seq_names = names
+
+    config: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62')],
+                                          SopCalcTypes.EFFICIENT, 'comparison_files',
+                                          {WeightMethods.CLUSTAL_MID_ROOT})
+
+    # Calculate sequence weights
+    ut = UnrootedTree.create_from_newick_str(newick)
+    w_sop_stats = WSopStats(msa.dataset_name, msa.get_taxa_num(), msa.get_msa_len())
+    w_sop_stats.calc_seq_weights(config.additional_weights, msa.sequences, msa.seq_names, ut)
+
+    # Compute SP score with weights
+    sp = SPScore(config.models[0])
+    sop_w_options = w_sop_stats.calc_w_sp(msa.sequences, sp)
+
+    # Set the weights in stats
+    clustal_mid_root = w_sop_stats.sp_CLUSTAL_WEIGHTS_mid_root
+
+    # The expected value is the actual calculated SP score with Henikoff weights
+    expected_value = -1267.7152777777774
+
+    # Check if the henikoff_with_gaps value is set correctly
+    assert abs(clustal_mid_root - expected_value) < 1e-10, \
+        f"Expected henikoff_with_gaps to be {expected_value}, but got {clustal_mid_root}"
+
 
 def test_percentile():
     values: list[int] = [23, 5, 3, 6, 9, 14, 1, 43]
@@ -1282,7 +1245,7 @@ def test_features_doc_num_gap_segments_norm():
     gap_stats = GapStats(inferred_msa.dataset_name, inferred_msa.get_taxa_num(), inferred_msa.get_msa_len())
     gap_stats.calc_gaps_values(inferred_msa.sequences)
     assert gap_stats.num_gap_segments_norm == 1.5
-    assert round(gap_stats.av_gap_segment_length,3) == 2.667
+    assert round(gap_stats.av_gap_segment_length, 3) == 2.667
 
 
 def test_features_doc_gaps_len_one():
@@ -1367,6 +1330,24 @@ def test_col_score():
     entropy_stats = EntropyStats(msa_a.dataset_name, msa_a.get_taxa_num(), msa_a.get_msa_len())
     entropy_stats.calc_entropy(msa_seq_a)
     assert entropy_stats.constant_sites_pct == 0.4
+
+
+def test_eff_dseq():
+    true_profile_path: str = "D:/code/sp_alternative/sp_alternative_cpp/UnitTest1/test_data/true_msa.fas"
+    profile_a_path: str = "D:/code/sp_alternative/sp_alternative_cpp/UnitTest1/test_data/test_msa.fas"
+
+    true_msa = MSA("trueMSA")
+    true_msa.read_me_from_fasta(Path(true_profile_path))
+
+    test_msa = MSA("testMSA")
+    test_msa.read_me_from_fasta(Path(profile_a_path))
+
+    ef_res_t_1: float = compute_eff_d_seq(true_msa.sequences, test_msa.sequences)
+    assert round(ef_res_t_1, 3) == 0.044
+
+    res_t_1: float = compute_distance(true_msa.sequences, test_msa.sequences, DistanceType.D_SEQ)
+    assert round(res_t_1, 3) == 0.044
+
 
 def test_calc_all_features():
     configuration: Configuration = Configuration(

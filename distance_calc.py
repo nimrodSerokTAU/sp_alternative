@@ -12,7 +12,7 @@ def translate_seq_h(sequence: str, seq_index: int, distance_type: DistanceType) 
             if distance_type == DistanceType.D_POS:
                 res.append(f'G^{seq_index}_{s_count - 1}')
             elif distance_type == DistanceType.D_SEQ:
-                res.append('G')
+                res.append(f'G^{seq_index}')
             elif distance_type == DistanceType.D_SSP:
                 res.append('-')
     return res
@@ -94,3 +94,54 @@ def compute_distance(profile_a: list[str], profile_b: list[str], distance_type: 
     elif len(d_list) > 0:
         return sum(d_list) / len(d_list)
     return -1
+
+
+def compute_eff_d_seq(profile_a: list[str], profile_b: list[str]) -> float:
+    rows_num: int = len(profile_a)
+    cols_a_num: int = len(profile_a[0])
+    cols_b_num: int = len(profile_b[0])
+    a_vectors: list[list[int]] = []
+    for _ in range(cols_a_num):
+        a_vectors.append([0] * rows_num)
+    b_vectors: list[list[int]] = []
+    for _ in range(cols_b_num):
+        b_vectors.append([0] * rows_num)
+
+    map_a: list[int] = []
+    map_b: list[int] = []
+
+    fill_d_seq_vectors(profile_a, a_vectors, map_a, rows_num, cols_a_num)
+    fill_d_seq_vectors(profile_b, b_vectors, map_b, rows_num, cols_b_num)
+
+    counts: list[int] = [0] * (cols_a_num * cols_b_num)
+    total_count: int = len(map_a)
+    for i in range(total_count):
+        counts[map_a[i] * cols_b_num + map_b[i]] += 1
+
+    total_distance: float = 0.0
+    for  i in range(cols_a_num):
+        for j in range(cols_b_num):
+            if counts[i * cols_b_num + j] > 0:
+                distance: float = vectors_distance(a_vectors[i], b_vectors[j])
+                total_distance += distance * counts[i * cols_b_num + j]
+    return total_distance / total_count
+
+
+def fill_d_seq_vectors(msa: list[str], vectors_list: list[list[int]], v_map: list[int], rows_num: int, cols_num: int):
+    for i in range(rows_num):
+        char_count: int = 0
+        for j in range(cols_num):
+            if msa[i][j] == '-':
+                vectors_list[j][i] = -1
+            else:
+                char_count += 1
+                vectors_list[j][i] = char_count
+                v_map.append(j)
+
+
+def vectors_distance(a: list[int], b: list[int]) -> float:
+    intersection_count: int = 0
+    for i in range(len(a)):
+        if a[i] != b[i]:
+            intersection_count += 1
+    return intersection_count / (len(a) - 1)

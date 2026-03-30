@@ -229,6 +229,7 @@ class MSA:
         if len({StatsOutput.ALL, StatsOutput.TREE}.intersection(config.stats_output)) > 0:
             start_time = time.time()
             self.build_nj_tree()
+            self.tree.print_newick()
             tree_stats = TreeStats(self.dataset_name, self.get_taxa_num(), self.get_msa_len())
             tree_stats.set_tree_stats(self.tree.get_branches_lengths_list(), self.tree, self.sequences, self.seq_names)
             self.print_stats_file(tree_stats.get_my_features_as_list(), output_dir_path, StatsOutput.TREE.value,

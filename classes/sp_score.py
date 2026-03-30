@@ -180,7 +180,7 @@ class SPScore:
     def get_pair_score(self, i: int, j: int):
         min_i = min(i, j)
         max_j = max(i, j)
-        if j < len(self.w_matrix):
+        if max_j < len(self.w_matrix):
             return self.w_matrix[min_i][max_j]
         return self.ge_cost
 

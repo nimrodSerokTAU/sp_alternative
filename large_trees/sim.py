@@ -55,8 +55,12 @@ def create_trees(trees_num: int, taxa_num: int, min_death_rate: float, max_death
             file.write(newick_str)
 
 
-create_trees(70, 40, 0.3, 0.5, '../output/trees_40.txt')
-create_trees(70, 50, 0.3, 0.5, '../output/trees_50.txt')
-create_trees(70, 60, 0.3, 0.5, '../output/trees_60.txt')
-create_trees(70, 70, 0.3, 0.5, '../output/trees_70.txt')
-create_trees(70, 80, 0.3, 0.5, '../output/trees_80.txt')
+# create_trees(70, 40, 0.3, 0.5, '../output/trees_40.txt')
+# create_trees(70, 50, 0.3, 0.5, '../output/trees_50.txt')
+# create_trees(70, 60, 0.3, 0.5, '../output/trees_60.txt')
+# create_trees(70, 70, 0.3, 0.5, '../output/trees_70.txt')
+# create_trees(70, 80, 0.3, 0.5, '../output/trees_80.txt')
+
+create_trees(1, 1000, 0.3, 0.5, '../output/trees_1000.txt')
+create_trees(1, 5000, 0.3, 0.5, '../output/trees_5000.txt')
+create_trees(1, 25000, 0.3, 0.5, '../output/trees_25000.txt')

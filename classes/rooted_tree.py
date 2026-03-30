@@ -26,7 +26,7 @@ class RootedTree:
         else:
             rooting_points = calc_min_differential_sum(unrooted, all_nodes)
             rooting_point = find_shallowest_tree(all_nodes, rooting_points)
-        new_root, all_nodes = create_root(all_nodes, rooting_point)
+        new_root, all_nodes = create_root(all_nodes, unrooted.anchor, rooting_point)
         return cls(root=new_root, all_nodes=all_nodes, keys=keys)
 
     def calc_clustal_w(self):
@@ -123,22 +123,27 @@ def calc_potential_root_on_branch(b: dict, min_bl: float) -> dict:
     return {'start_id': b['origin'], 'end_id': b['dest'], 'dist_from_start': dist_from_start,
             'dist_from_end': b['bl'] - dist_from_start}
 
-def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[Node]]:
-    new_root_id: int = len(all_nodes)
+
+def create_root(all_nodes: list[Node], anchor: Node, rooting_point: dict) -> tuple[Node, list[Node]]:
+    #  TODO: continue from here
+    new_root_id: int = len(all_nodes) + 1
     start_id: int = rooting_point['start_id']
     end_id: int = rooting_point['end_id']
+    start_node: Node = all_nodes[start_id] if start_id < len(all_nodes) else anchor
+    end_node: Node = all_nodes[end_id] if end_id < len(all_nodes) else anchor
+
     new_root = Node(node_id=new_root_id, keys=set(),
-                    children=[all_nodes[start_id], all_nodes[end_id]],
+                    children=[start_node, end_node],
                     children_bl_sum=0)
     new_root.set_rank_from_root(0)
     all_nodes.append(new_root)
-    nodes_to_recalc: list[dict] = [{'node': all_nodes[start_id], 'father': new_root, 'broke': end_id},
-                                   {'node': all_nodes[end_id], 'father': new_root, 'broke': start_id}]
+    nodes_to_recalc: list[dict] = [{'node': start_node, 'father': new_root, 'broke': end_id},
+                                   {'node': end_node, 'father': new_root, 'broke': start_id}]
     while len(nodes_to_recalc):
         data = nodes_to_recalc.pop()
         recalc_tree_down(data['node'], data['father'], data['broke'], nodes_to_recalc, all_nodes)
-    all_nodes[start_id].set_branch_length(rooting_point['dist_from_start'])
-    all_nodes[end_id].set_branch_length(rooting_point['dist_from_end'])
+    start_node.set_branch_length(rooting_point['dist_from_start'])
+    end_node.set_branch_length(rooting_point['dist_from_end'])
 
     nodes_sorted_by_rank: list[Node] = sorted(all_nodes, key=lambda x: x.rank_from_root)
     while len(nodes_sorted_by_rank):
