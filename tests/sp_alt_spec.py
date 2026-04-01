@@ -884,7 +884,7 @@ def test_mid_point_rooting_case_b():
     unrooted = create_unrooted_tree_for_test()
     path, max_dist = unrooted.longest_path()
     tree = RootedTree.root_tree(unrooted, RootingMethods.LONGEST_PATH_MID)
-    res = {'lp_length': max_dist, 'tree_a_length': round(tree.root.children[0].branch_length, 1),
+    res = {'lp_length': max_dist,
            'bl_a': round(tree.all_nodes[0].branch_length, 1), 'bl_b': tree.all_nodes[1].branch_length,
            'bl_c': tree.all_nodes[2].branch_length,
            'bl_d': tree.all_nodes[3].branch_length, 'bl_e': tree.all_nodes[4].branch_length,
@@ -895,8 +895,20 @@ def test_mid_point_rooting_case_b():
     res['c_w'] = tree.all_nodes[2].weight
     res['e_w'] = round(tree.all_nodes[4].weight, 3)
     assert res == {'bl_b_e_d': 0.2, 'bl_a': 0.2, 'bl_a_c': 0.4, 'bl_b': 0.1, 'bl_b_e': 0.3, 'bl_c': 0.15, 'bl_d': 0.25,
-                   'bl_e': 0.05, 'lp_length': 1.2, 'tree_a_length': 0.2,
-                   'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
+                   'bl_e': 0.05, 'lp_length': 1.2, 'a_w': 0.4, 'c_w': 0.35, 'e_w': 0.267}
+
+
+def test_mid_point_rooting_case_c():
+    unrooted = create_unrooted_tree_for_test()
+    path, max_dist = unrooted.longest_path()
+    tree = RootedTree.root_tree_with_rp(unrooted, {'start_id': 0, 'end_id': 5, 'dist_from_start': 0.07,
+                                                   'dist_from_end': 0.13})
+    res = {'bl_a': tree.all_nodes[0].branch_length, 'bl_b': tree.all_nodes[1].branch_length,
+           'bl_c': tree.all_nodes[2].branch_length, 'bl_d': tree.all_nodes[3].branch_length,
+           'bl_e': tree.all_nodes[4].branch_length, 'bl_a_c_d_e': tree.all_nodes[5].branch_length,
+           'bl_b_e': tree.all_nodes[7].branch_length, 'bl_b_e_d': tree.all_nodes[6].branch_length}
+    assert res == {'bl_a': 0.07, 'bl_b': 0.1, 'bl_c': 0.15, 'bl_d': 0.25, 'bl_e': 0.05,
+                   'bl_b_e': 0.3, 'bl_a_c_d_e': 0.13, 'bl_b_e_d': 0.6, }
 
 
 def test_differential_sum_rooting():

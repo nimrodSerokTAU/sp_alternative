@@ -29,6 +29,14 @@ class RootedTree:
         new_root, all_nodes = create_root(all_nodes, rooting_point)
         return cls(root=new_root, all_nodes=all_nodes, keys=keys)
 
+    @classmethod
+    def root_tree_with_rp(cls, unrooted: UnrootedTree, rooting_point: dict):
+        all_nodes: list[Node] = copy.deepcopy(unrooted.all_nodes)
+        keys: set[str] = copy.copy(unrooted.keys)
+        new_root: Node
+        new_root, all_nodes = create_root(all_nodes, rooting_point)
+        return cls(root=new_root, all_nodes=all_nodes, keys=keys)
+
     def calc_clustal_w(self):
         nodes_to_recalc: list[Node] = [self.root]
         while len(nodes_to_recalc) > 0:
@@ -134,29 +142,39 @@ def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[
     new_root = Node(node_id=len(all_nodes), keys=set(), children=[], children_bl_sum=0, branch_length=0)
     all_nodes.append(new_root)
 
+    lower_node = start
+    higher_node = end
+    lower_node_bl = rooting_point['dist_from_start']
+    higher_node_bl = rooting_point['dist_from_end']
+
     if end in start.children:
-        start.children.remove(end)
-        if start.father:
-            start.children.append(start.father)
-            start.father.father = start
-            start.father.branch_length = start.branch_length
-    elif start in end.children:
-        end.children.remove(start)
-        if end.father:
-            end.children.append(end.father)
-            end.father.father = end
-            end.father.branch_length = end.branch_length
-    else:
-        raise ValueError("Nodes are not directly connected")
+        lower_node = end
+        higher_node = start
+        lower_node_bl = rooting_point['dist_from_end']
+        higher_node_bl = rooting_point['dist_from_start']
 
-    start.branch_length = rooting_point['dist_from_start']
-    end.branch_length = rooting_point['dist_from_end']
-    new_root.children = [start, end]
-    start.father = new_root
-    end.father = new_root
+    lower_node.father = new_root
+    lower_node.branch_length = lower_node_bl
+    higher_node.children.remove(lower_node)
+    prev_father = higher_node.father
+    prev_dist_to_father = higher_node.branch_length
+    if higher_node.father is not None:
+        higher_node.children.append(higher_node.father)
+    higher_node.father = new_root
+    higher_node.branch_length = higher_node_bl
+    new_root.children = [lower_node, higher_node]
 
-    reroot_recursive(start, new_root)
-    reroot_recursive(end, new_root)
+    while prev_father is not None:
+        working_node = prev_father
+        working_node_to_father_bl = working_node.branch_length
+        prev_father = working_node.father
+        working_node.father = higher_node
+        working_node.branch_length = prev_dist_to_father
+        working_node.children.remove(higher_node)
+        if prev_father is not None:
+            working_node.children.append(prev_father)
+        prev_dist_to_father = working_node_to_father_bl
+        higher_node = working_node
 
     return new_root, all_nodes
 
@@ -189,21 +207,3 @@ def add_node_between(my_nodes: list[Node], child: Node, father: Node, dist_from_
     child.set_a_father(new_node)
     child.set_branch_length(dist_from_child)
     my_nodes.append(new_node)
-
-
-def reroot_recursive(node, parent):
-    neighbors = list(node.children)
-    if node.father:
-        neighbors.append(node.father)
-
-    node.children = []
-    node.father = parent
-
-    for neigh in neighbors:
-        if neigh == parent:
-            continue
-
-        length = neigh.branch_length if neigh.father == node else node.branch_length
-        reroot_recursive(neigh, node)
-        neigh.branch_length = length
-        node.children.append(neigh)

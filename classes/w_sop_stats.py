@@ -3,7 +3,7 @@ import time
 from classes.msa_basic_stats import BasicStats
 from classes.rooted_tree import RootedTree
 from classes.sp_score import SPScore
-from classes.unrooted_tree import UnrootedTree
+from classes.unrooted_tree import UnrootedTree, get_sorted_newick, get_ordered_newick
 from enums import WeightMethods, RootingMethods
 
 
@@ -56,8 +56,12 @@ class WSopStats(BasicStats):
         return seq_weights_with_gap, seq_weights_no_gap
 
     def get_weight_list(self, tree: UnrootedTree, rooting_method: RootingMethods, seq_names: list[str]) -> list[float]:
+        # before = get_ordered_newick(tree.anchor)
         self.root_tree(tree, rooting_method)
         self.rooted_trees[rooting_method.value].calc_seq_w()
+
+        # x = get_sorted_newick(self.rooted_trees[rooting_method.value].root)
+        # y = get_ordered_newick(self.rooted_trees[rooting_method.value].root)
         return [self.rooted_trees[rooting_method.value].seq_weight_dict[s_name] for s_name in seq_names]
 
     def root_tree(self, tree: UnrootedTree, rooting_method: RootingMethods):

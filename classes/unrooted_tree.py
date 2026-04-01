@@ -116,8 +116,8 @@ class UnrootedTree:
         return max(distance)
 
     def print_newick(self) -> str:
-        n: str = get_newick(self.anchor)
-        print(n)
+        n: str = get_sorted_newick(self.anchor)
+        # print(n)
         return n
 
 
@@ -201,18 +201,35 @@ def create_node_from_children(open_nodes_per_level: dict[int, list[Node]], level
     return current_node
 
 
-def get_newick(node: Node) -> str:
+def get_sorted_newick(node: Node) -> str:
     if len(node.children) == 0:
         return f'{list(node.keys)[0]}:{node.branch_length:.6f}'
     else:
         newick_str = f'('
         strings: list[str] = []
         for i, c in enumerate(node.children):
-            strings.append(get_newick(c))
+            strings.append(get_sorted_newick(c))
         sorted_string = sorted(strings)
         for i, c_str in enumerate(sorted_string):
             newick_str += c_str
             if i < len(sorted_string) - 1:
+                newick_str += f','
+        else:
+            newick_str += f'):{node.branch_length:.6f}'
+        return newick_str
+
+
+def get_ordered_newick(node: Node) -> str:
+    if len(node.children) == 0:
+        return f'{list(node.keys)[0]}:{node.branch_length:.6f}'
+    else:
+        newick_str = f'('
+        strings: list[str] = []
+        for i, c in enumerate(node.children):
+            strings.append(get_ordered_newick(c))
+        for i, c_str in enumerate(strings):
+            newick_str += c_str
+            if i < len(strings) - 1:
                 newick_str += f','
         else:
             newick_str += f'):{node.branch_length:.6f}'
