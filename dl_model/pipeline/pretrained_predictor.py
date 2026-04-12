@@ -81,6 +81,8 @@ class PretrainedPredictor:
             features_file=cfg.features_file,
             true_score_name=cfg.true_score_name,
             test_size=0.0,
+            # number_of_msas_threshold_simulated=1,
+            # number_of_msas_threshold_empirical=1
         )
 
         self.feat_cfg = FeatureConfig(

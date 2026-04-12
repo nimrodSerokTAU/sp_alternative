@@ -129,6 +129,6 @@ class RegressionExperiment:
         if self.explain_cfg.enabled:
             X_test_named = pd.DataFrame(X_test, columns=self.scaler.feature_names_out or list(X_test_df.columns))
             run_shap_keras(results["model"], X_test_named, out_dir=self.out_cfg.out_dir,
-                           sample_n=self.explain_cfg.sample_n, run_id=rid)
+                           sample_n=self.explain_cfg.sample_n, run_id=rid, test_df=test_df)
 
         return {"metrics": metrics, "results": results}

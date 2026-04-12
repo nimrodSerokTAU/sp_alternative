@@ -6,37 +6,42 @@ from dl_model.pipeline.experiment import RegressionExperiment
 logging.basicConfig(level=logging.INFO)
 
 data_cfg = DataConfig(
-    features_file="../input/ortho12_distant_features_121125.csv", #replace with your features file
+    features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/nucleotide_features_110426.csv", #replace with your features file
     true_score_name="dseq_from_true",
     test_size=0.2,
     deduplicated=False,
-    empirical=False,
+    empirical=False, #change for empirical
+    min_rows_per_code_after_dedup=1,
+    number_of_msas_threshold_simulated=1,
+    number_of_msas_threshold_empirical=1,
+    random_state=12345
 )
 
 feat_cfg = FeatureConfig(
     mode=1,
     remove_correlated_features=False,
-    scaler_type_features="rank",
-    scaler_type_labels="rank",
+    scaler_type_features="standard",
+    scaler_type_labels="standard",
 )
 
 train_cfg = TrainConfig(
     epochs=50,
-    batch_size=32,
+    batch_size=64,
     learning_rate=0.0022,
-    neurons=(64, 128, 64, 512),
-    dropout_rate=0.24,
-    regularizer_name="l2",
-    l2=1.65e-5,
+    neurons=(190, 180, 256, 0),
+    dropout_rate=0.32,
+    regularizer_name="l1_l2",
+    l1=2.83e-5,
+    l2=4.16e-7,
 
-    loss_fn="custom_mse",
+    loss_fn="mse",
     alpha=0,
     eps=0,
     top_k=8,
-    ranking_weight=1.33,
+    ranking_weight=0.28,
     margin=0.0,
 
-    batch_generation="custom",   # or "standard"
+    batch_generation="standard",   # "custom" (for model2) or "standard" (for model1)
     repeats=1,
     mixed_portion=0.0,
     per_aligner=False,

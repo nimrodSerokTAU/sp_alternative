@@ -24,6 +24,7 @@ COLUMNS_TO_CHOOSE_MODE3 = [
 ]
 
 SOP_SCORE_NAME = 'sp_BLOSUM62_GO_-10_GE_-0.5'
+# SOP_SCORE_NAME = 'sp_Nucleotides_GO_-5_GE_-1'
 PREDICTED_SCORE_NAME = 'predicted_score'
 PREDICTED_CLASS_PROB = 'predicted_class_prob'
 

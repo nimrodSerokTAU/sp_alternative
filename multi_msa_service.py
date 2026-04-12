@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+import pandas as pd
+import scipy.stats
 
 from classes.msa import MSA
 from classes.config import Configuration
@@ -14,10 +16,14 @@ def get_file_names_ordered(file_names: list[str]) -> tuple[str | None, str | Non
     other_file_names: list[str] = []
     for file_name in file_names:
         ext: str = file_name.split('.')[-1]
-        if ext == 'fas':  # TODO: define identification
+        if "_TRUE.fas" in file_name:
             true_file_name = file_name
+        # if ext == 'fas':  # TODO: define identification
+        #     true_file_name = file_name
         elif ext == 'txt':  # TODO: define identification
             true_tree_file_name = file_name
+        # elif "true_tree.txt" in file_name:
+        #     true_tree_file_name = file_name
         else:
             other_file_names.append(file_name)
     return true_file_name, true_tree_file_name, other_file_names  # TODO: can protect
@@ -33,6 +39,10 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
     sp_models: list[SPScore] = [SPScore(i) for i in config.models]
     output_dir_path = Path(os.path.join(str(project_path), 'output/'))
     for dir_name in os.listdir(comparison_dir):
+        if ".DS_Store" in dir_name:
+            continue
+        if os.path.exists(f"output/comparison_results_{dir_name}.csv"):
+            continue
         dir_path: Path = Path(os.path.join(str(comparison_dir), dir_name))
         true_file_name, true_tree_file_name, inferred_file_names = get_file_names_ordered(os.listdir(dir_path))
         true_msa = MSA(dir_name)
@@ -42,17 +52,35 @@ def multiple_msa_calc_features_and_labels(config: Configuration):
             if true_tree_file_name:
                 true_msa.set_tree(UnrootedTree.create_from_newick_file(Path(os.path.join(str(dir_path), true_tree_file_name))))
             else:
-                true_msa.build_nj_tree()
+                print("No true tree provided \n")
+                continue
+                # true_msa.build_nj_tree()
 
+        # alternative_true: list[list[str]] = true_msa.create_alternative_msas_by_moving_smallest()
+        # for i, m in enumerate(alternative_true):
+        #     inf_alt_msa = MSA(f'true_alt_{i}')
+        #     inf_alt_msa.set_sequences_to_me(m, true_msa.seq_names)
+        #     add_msa_to_stats(all_msa_stats, true_msa, true_msa, config, sp)
         is_init_files: bool = True
         for inferred_file_name in inferred_file_names:
-            msa_name = inferred_file_name # if config.is_analyze_per_dir else dir_name
-            print(msa_name)
-            inferred_msa = MSA(msa_name)
-            inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
-            inferred_msa.order_sequences(true_msa.seq_names)
-            inferred_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
-            is_init_files = False
+            try:
+                if ".DS_Store" in inferred_file_name:
+                    continue
+                msa_name = inferred_file_name # if config.is_analyze_per_dir else dir_name
+                print(msa_name)
+                inferred_msa = MSA(msa_name)
+                inferred_msa.read_me_from_fasta(Path(os.path.join(str(dir_path), inferred_file_name)))
+                inferred_msa.order_sequences(true_msa.seq_names)
+                # alternative_inferred: list[list[str]] = inferred_msa.create_alternative_msas_by_moving_one_part()
+                inferred_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
+                is_init_files = False
+                # for i, m in enumerate(alternative_inferred):
+                #     inf_alt_msa = MSA(f'{msa_name}_alt_{i}')
+                #     inf_alt_msa.set_sequences_to_me(m, inferred_msa.seq_names)
+                #     add_msa_to_stats(all_msa_stats, inferred_msa, true_msa, config, sp)
+
+            except Exception as e:
+                    print(f"error in {inferred_file_name}: {e}\n")
         if true_msa is not None:
             true_msa.calc_and_print_stats(true_msa, config, sp_models, output_dir_path, true_msa.tree, is_init_files)
     print('done')
