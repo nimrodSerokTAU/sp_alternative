@@ -6,8 +6,9 @@ from classes.evo_model import EvoModel
 from enums import SopCalcTypes, WeightMethods, StatsOutput
 from multi_msa_service import multiple_msa_calc_features_and_labels
 
-code = sys.argv[1]
-print("Code:", code)
+# code = sys.argv[1]
+# print("Code:", code)
+code = "1000L1_0.5"
 folder = f'/Users/kpolonsky/Documents/sp_alternative/comparison_files/{code}/'
 # folder = f'/groups/pupko/kseniap/BaliBase4/RV11-50/ALL_MSAs_BaliBase11-50/{code}/'
 #folder = f'/groups/pupko/kseniap/BaliBase4/ALL_MSAs_BaliBase/{code}/'
@@ -43,13 +44,13 @@ configuration: Configuration = Configuration([EvoModel(-10, -0.5, 'BLOSUM62'), E
 
 
 if __name__ == '__main__':
-    # if not os.path.exists(f'/groups/pupko/kseniap/sp_alternative2/output/comparison_results_{code}.csv'):
-    #     multiple_msa_calc_features_and_labels(configuration)
+    if not os.path.exists(f'/Users/kpolonsky/Documents/sp_alternative/output/comparison_results_{code}.csv'):
+        multiple_msa_calc_features_and_labels(configuration)
 
 
-    multiple_msa_calc_features_and_labels(configuration)
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time:.4f} seconds")
+    # multiple_msa_calc_features_and_labels(configuration)
+    # end_time = time.time()
+    # elapsed_time = end_time - start_time
+    # print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
 # TODO: consider alternatives creation.
