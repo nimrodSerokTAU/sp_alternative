@@ -119,7 +119,7 @@ def compute_eff_d_seq(profile_a: list[str], profile_b: list[str]) -> float:
         counts[map_a[i] * cols_b_num + map_b[i]] += 1
 
     total_distance: float = 0.0
-    for  i in range(cols_a_num):
+    for i in range(cols_a_num):
         for j in range(cols_b_num):
             if counts[i * cols_b_num + j] > 0:
                 distance: float = vectors_distance(a_vectors[i], b_vectors[j])

@@ -1,6 +1,9 @@
 import numpy as np
 import math
 
+from classes.node import Node
+from enums import NEWICK_DIGITS
+
 
 def read_matching_matrix(file_path: str) -> tuple[list[list[int]], dict[str, int]]:
     codes_dict_to_inx: dict[str, int] = {}
@@ -57,6 +60,31 @@ def calc_kimura_distance_from_other(aligned_seq: str, other_aligned_seq: str) ->
     if kimura_exponent < 0:
         return 2
     return -math.log(kimura_exponent)
+
+
+def to_newick(node: Node) -> str:
+    if not node.children:  # Leaf node
+        newick_string = list(node.keys)[0]
+    else:  # Internal node
+        child_strings = [to_newick(child) for child in node.children]
+        newick_string = "(" + ",".join(sorted(child_strings)) + ")"
+
+    if node.branch_length is not None:
+        newick_string += f":{node.branch_length:.{NEWICK_DIGITS}f}"
+
+    # # Add internal node name if present (optional)
+    # if node.name and node.children:
+    #     newick_string += node.name
+
+    return newick_string
+
+
+def find_node_by_keys(all_nodes: list[Node], wanted_keys: set[str]) -> Node | None:
+    for n in all_nodes:
+        if n.keys == wanted_keys:
+            return n
+    return None
+
 
 def calc_percentile(values, percentile: int) -> float:
     values.sort()

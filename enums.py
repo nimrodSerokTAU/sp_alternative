@@ -1,5 +1,7 @@
 from enum import Enum
 
+NEWICK_DIGITS = 6
+
 
 class SopCalcTypes:
     NAIVE = 0

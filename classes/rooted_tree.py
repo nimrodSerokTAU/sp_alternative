@@ -1,7 +1,8 @@
 import copy
 from classes.node import Node
 from classes.unrooted_tree import UnrootedTree
-from enums import RootingMethods
+from enums import RootingMethods, NEWICK_DIGITS
+from utils import to_newick
 
 
 class RootedTree:
@@ -49,6 +50,9 @@ class RootedTree:
             if len(node.children) == 0:
                 self.seq_weight_dict[list(node.keys)[0]] = node.weight
 
+    def get_newick_str(self) -> str:
+        res = to_newick(self.root)
+        return res[0:-(NEWICK_DIGITS + 3)] + ';'
 
 
 def calc_mid_point(unrooted: UnrootedTree) -> dict:
@@ -63,6 +67,7 @@ def calc_mid_point(unrooted: UnrootedTree) -> dict:
                     'dist_from_end':  b['dist'] - dist_from_start}
         else:
             half_length += b['dist']
+
 
 def calc_min_differential_sum(unrooted: UnrootedTree, all_nodes: list[Node]) -> list[dict]:
     all_branches: dict[str, dict] = {}
@@ -122,6 +127,7 @@ def sum_bl_up_to_node_id(origin: Node, dest_id: int) -> float:
             visited_node_ids.add(next_node['node'].id)
             queue += [data for data in next_node['node'].get_adj() if data['node'].id not in visited_node_ids]
     return w_to_orig
+
 
 def calc_potential_root_on_branch(b: dict, min_bl: float) -> dict:
     min_bl /= 10
