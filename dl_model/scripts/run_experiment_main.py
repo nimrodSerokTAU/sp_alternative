@@ -6,7 +6,7 @@ from dl_model.pipeline.experiment import RegressionExperiment
 logging.basicConfig(level=logging.INFO)
 
 data_cfg = DataConfig(
-    features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/nucleotide_features_200426.csv", #replace with your features file
+    features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/clean_data/nucleotide_features_200426.csv", #replace with your features file
     true_score_name="dseq_from_true",
     test_size=0.2,
     deduplicated=False,
@@ -20,8 +20,8 @@ data_cfg = DataConfig(
 feat_cfg = FeatureConfig(
     mode=1,
     remove_correlated_features=False,
-    scaler_type_features="rank",
-    scaler_type_labels="rank",
+    scaler_type_features="standard",
+    scaler_type_labels="standard",
 )
 
 train_cfg = TrainConfig(
@@ -34,14 +34,14 @@ train_cfg = TrainConfig(
     l1=2.83e-5,
     l2=4.16e-7,
 
-    loss_fn="custom_mse",
+    loss_fn="mse",
     alpha=0,
     eps=0,
     top_k=8,
     ranking_weight=0.1,
     margin=0.0,
 
-    batch_generation="custom",   # "custom" (for model2) or "standard" (for model1)
+    batch_generation="standard",   # "custom" (for model2) or "standard" (for model1)
     repeats=1,
     mixed_portion=0.0,
     per_aligner=False,

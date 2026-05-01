@@ -2,10 +2,10 @@ from dl_model.evaluation.pick_best import PickBest
 from dl_model.config.config import PickBestConfig
 
 pickbest_cfg = PickBestConfig(
-    features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/nucleotide_features_200426.csv", #replace with your features file
+    features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/clean_data/nucleotide_features_200426.csv", #replace with your features file
     # features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/large_trees_5000S1_0.5_features.csv",
     true_score_name="dseq_from_true",
-    prediction_file=f"/Users/kpolonsky/Documents/sp_alternative/dl_model/out/prediction_DL_0_mode1_dseq_from_true.csv", #replace with your prediction file
+    prediction_file=f"/Users/kpolonsky/Documents/sp_alternative/dl_model/out/NUCLEOTIDES/model1_PAM200_SoP/prediction_DL_0_mode1_dseq_from_true.csv", #replace with your prediction file
     # prediction_file=f"/Users/kpolonsky/Documents/sp_alternative/dl_model/out/new_model2_3_340/pretrained_5000/prediction_pretrained_5000_0.5_mode1_dseq_from_true.csv", #replace with your prediction file
     error=0.0,
     subset=None,
