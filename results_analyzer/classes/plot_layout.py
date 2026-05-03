@@ -216,7 +216,7 @@ class PlotLayout:
             f'{self.dir_path}/{self.identifier}_{data_count_string}.tiff')
         plt.savefig(
             f'{self.dir_path}/{self.identifier}_{data_count_string}.pdf')
-        plt.show()
+        # plt.show()
         plt.clf()
         plt.close()
 
