@@ -10,32 +10,32 @@ sim_example: str = '203069'  # '126014'
 data_dir = 'D:/PhDB/papers/first/figures_data'  # use your own path
 output_path = f'{data_dir}/output'
 
-# # fig 1 a, c:
-fig1Emp = CorrelationAnalyzer(data_dir,
-                              ['input/BAliBASE/features_w_aligner_1_dseq_from_true.csv'],
-                              'dseq_from_true',
-                              [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
-                                       correlation_direction=-1),
-                               Measure(key='entropy_sum', external_name='entropy_sum', presentation_name='Entropy Sum',
-                                       correlation_direction=1)],
-                              empirical_example, False, 'Correlation with Distance from True',
-                              0, 0.75, None, True,
-                              'test_original.fasta')
-
-# # # fig 1 b, d:
-fig1Sim = CorrelationAnalyzer(data_dir,
-                              ['input/OrthoMaM/orthomam_features_w_aligner_090426.csv'],
-                              'dseq_from_true',
-                              [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
-                                       correlation_direction=-1),
-                               Measure(key='entropy_sum', external_name='entropy_sum', presentation_name='Entropy Sum',
-                                       correlation_direction=1)],
-                              sim_example, False, 'Correlation with Distance from True',
-                              0, 0.75, None, True, '')
+# # # fig 1 a, c:
+# fig1Emp = CorrelationAnalyzer(data_dir,
+#                               ['input/BAliBASE/features_w_aligner_1_dseq_from_true.csv'],
+#                               'dseq_from_true',
+#                               [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                        correlation_direction=-1),
+#                                Measure(key='entropy_sum', external_name='entropy_sum', presentation_name='Entropy Sum',
+#                                        correlation_direction=1)],
+#                               empirical_example, False, 'Correlation with Distance from True',
+#                               0, 0.75, None, True,
+#                               'test_original.fasta')
 #
-pl1 = PlotLayout(14, 12, 2, 2, output_path, 'Fig1')
-pl1.double_col_plot([fig1Emp.get_example_scatter(), fig1Emp.get_r(), fig1Sim.get_example_scatter(), fig1Sim.get_r()],
-                    ['a', 'c', 'b', 'd'], {})
+# # # # fig 1 b, d:
+# fig1Sim = CorrelationAnalyzer(data_dir,
+#                               ['input/OrthoMaM/orthomam_features_w_aligner_090426.csv'],
+#                               'dseq_from_true',
+#                               [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                        correlation_direction=-1),
+#                                Measure(key='entropy_sum', external_name='entropy_sum', presentation_name='Entropy Sum',
+#                                        correlation_direction=1)],
+#                               sim_example, False, 'Correlation with Distance from True',
+#                               0, 0.75, None, True, '')
+# #
+# pl1 = PlotLayout(14, 12, 2, 2, output_path, 'Fig1')
+# pl1.double_col_plot([fig1Emp.get_example_scatter(), fig1Emp.get_r(), fig1Sim.get_example_scatter(), fig1Sim.get_r()],
+#                     ['a', 'c', 'b', 'd'], {})
 
 # # fig 2 a, c, fig 3 b, c:
 # fig2Emp = CorrelationAnalyzer(data_dir,
@@ -92,12 +92,91 @@ pl1.double_col_plot([fig1Emp.get_example_scatter(), fig1Emp.get_r(), fig1Sim.get
 # pl3 = PlotLayout(14, 7, 1, 1, output_path, 'Fig3')
 # pl3.plot_with_inset(empirical_example, fig3a.pdf_plot, fig2Emp.zoom_in)
 
-# fig 4 a:
-sc4a = StackedColGraph(data_dir,
-                       [{'relative_file_path': 'input/BAliBASE/model_2/pick_me_trio_overall_v0.csv',
-                         'series_name': 'Empirical'},
-                        {'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_overall_v0.csv',
-                         'series_name': 'Simulated'}],
+# # fig 4 a:
+# sc4a = StackedColGraph(data_dir,
+#                        [{'relative_file_path': 'input/BAliBASE/model_2/pick_me_trio_overall_v0.csv',
+#                          'series_name': 'Empirical'},
+#                         {'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_overall_v0.csv',
+#                          'series_name': 'Simulated'}],
+#                        [Measure(key='', external_name='', presentation_name=None, correlation_direction=0)],
+#                        [Measure(key='sop', external_name='SoP', presentation_name='SoP', correlation_direction=0),
+#                         Measure(key='model2', external_name='Predicted', presentation_name='Model2',
+#                                 correlation_direction=0),
+#                         Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and SoP)',
+#                                 correlation_direction=0)],
+#                        True, ['sop', 'model2'])
+#
+# fig4b = StackedColGraph(data_dir,
+#                         [{'relative_file_path': 'input/BAliBASE/model_2/pick_me_trio_v0.csv', 'series_name': None}],
+#                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
+#                          Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
+#                          Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
+#                          Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
+#                                  correlation_direction=0)],
+#                         [Measure(key='default', external_name='Default', presentation_name='Default',
+#                                  correlation_direction=0),
+#                          Measure(key='model2', external_name='Predicted', presentation_name='Model2',
+#                                  correlation_direction=0),
+#                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
+#                                  correlation_direction=0)],
+#                         False, [])
+#
+# #
+# # # fig 4 c:
+# fig4c = StackedColGraph(data_dir,
+#                         [{'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_v0.csv', 'series_name': None}],
+#                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
+#                          Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
+#                          Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
+#                          Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
+#                                  correlation_direction=0)],
+#                         [Measure(key='default', external_name='Default', presentation_name='Default',
+#                                  correlation_direction=0),
+#                          Measure(key='model2', external_name='Predicted', presentation_name='Model2',
+#                                  correlation_direction=0),
+#                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
+#                                  correlation_direction=0)],
+#                         False, [])
+#
+# pl4 = PlotLayout(16, 7, 1, 1, output_path, 'Fig4')
+# pl4.triple_plot(sc4a.subplot, [fig4b.subplot, fig4c.subplot], ['Empirical Data', 'Simulated Data'])
+
+# # fig 5 a, c
+# fig5Emp = CorrelationAnalyzer(data_dir,
+#                               ['input/Nuc_PAM/model_1/features_w_predictions.csv'],
+#                               'dseq_from_true',
+#                               [Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+#                                        correlation_direction=1),
+#                                Measure(key='sop', external_name='sp_NucleotidesPAM250_GO_-1.5_GE_0', presentation_name='SoP',
+#                                        correlation_direction=-1)],
+#                               '40_S39', False, 'Correlation with Distance from True', 401, 0.75)  # BBA0150
+#
+# # fig 5 b, d:
+# fig5Sim = CorrelationAnalyzer(data_dir,
+#                               ['input/Nuc/model_1/features_w_predictions.csv'],
+#                               'dseq_from_true',
+#                               [Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+#                                        correlation_direction=1),
+#                                Measure(key='sop', external_name='sp_Nucleotides_GO_-2_GE_-1', presentation_name='SoP',
+#                                        correlation_direction=-1)],
+#                               '40_S39', False, 'Correlation with Distance from True', 401, 0.75)
+#
+# pl2 = PlotLayout(14, 12, 1, 2, output_path, 'Fig5')
+# pl2.double_col_plot([fig5Emp.get_r(), fig5Sim.get_r()],
+#                     ['a', 'b'],
+#                     {0: [{"center": (0.31, 0.96), "width": 0.15, "height": 0.1, "angle": 35, "color": "#1fad1a"},
+#                          {"center": (0.3, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
+#                      2: [{"center": (0.055, 0.985), "width": 0.08, "height": 0.05, "angle": 35, "color": "#1fad1a"},
+#                          {"center": (0.035, 0.05), "width": 0.04, "height": 0.12, "angle": 0, "color": "#1fad1a"}]})
+
+
+
+# fig 6 a:
+sc6a = StackedColGraph(data_dir,
+                       [{'relative_file_path': 'input/Nuc_PAM/model_2/pick_me_trio_overall_v0.csv',
+                         'series_name': 'Nuc_PAM'},
+                        {'relative_file_path': 'input/Nuc/model_2/pick_me_trio_overall_v0.csv',
+                         'series_name': 'Nuc'}],
                        [Measure(key='', external_name='', presentation_name=None, correlation_direction=0)],
                        [Measure(key='sop', external_name='SoP', presentation_name='SoP', correlation_direction=0),
                         Measure(key='model2', external_name='Predicted', presentation_name='Model2',
@@ -106,40 +185,45 @@ sc4a = StackedColGraph(data_dir,
                                 correlation_direction=0)],
                        True, ['sop', 'model2'])
 
-fig4b = StackedColGraph(data_dir,
-                        [{'relative_file_path': 'input/BAliBASE/model_2/pick_me_trio_v0.csv', 'series_name': None}],
-                        [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
-                         Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
-                         Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
-                         Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
-                                 correlation_direction=0)],
-                        [Measure(key='default', external_name='Default', presentation_name='Default',
-                                 correlation_direction=0),
-                         Measure(key='model2', external_name='Predicted', presentation_name='Model2',
-                                 correlation_direction=0),
-                         Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
-                                 correlation_direction=0)],
-                        False, [])
-
+# fig6b = StackedColGraph(data_dir,
+#                         [{'relative_file_path': 'input/BAliBASE/model_2/pick_me_trio_v0.csv', 'series_name': None}],
+#                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
+#                          Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
+#                          Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
+#                          Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
+#                                  correlation_direction=0)],
+#                         [Measure(key='default', external_name='Default', presentation_name='Default',
+#                                  correlation_direction=0),
+#                          Measure(key='model2', external_name='Predicted', presentation_name='Model2',
+#                                  correlation_direction=0),
+#                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
+#                                  correlation_direction=0)],
+#                         False, [])
 #
-# # fig 4 c:
-fig4c = StackedColGraph(data_dir,
-                        [{'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_v0.csv', 'series_name': None}],
-                        [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
-                         Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
-                         Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
-                         Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
-                                 correlation_direction=0)],
-                        [Measure(key='default', external_name='Default', presentation_name='Default',
-                                 correlation_direction=0),
-                         Measure(key='model2', external_name='Predicted', presentation_name='Model2',
-                                 correlation_direction=0),
-                         Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
-                                 correlation_direction=0)],
-                        False, [])
+# #
+# # # fig 6 c:
+# fig6c = StackedColGraph(data_dir,
+#                         [{'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_v0.csv', 'series_name': None}],
+#                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
+#                          Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
+#                          Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
+#                          Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
+#                                  correlation_direction=0)],
+#                         [Measure(key='default', external_name='Default', presentation_name='Default',
+#                                  correlation_direction=0),
+#                          Measure(key='model2', external_name='Predicted', presentation_name='Model2',
+#                                  correlation_direction=0),
+#                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
+#                                  correlation_direction=0)],
+#                         False, [])
 
-pl4 = PlotLayout(16, 7, 1, 1, output_path, 'Fig4')
-pl4.triple_plot(sc4a.subplot, [fig4b.subplot, fig4c.subplot], ['Empirical Data', 'Simulated Data'])
+pl6 = PlotLayout(16, 7, 1, 2, output_path, 'Fig6')
+pl6.triple_plot(sc6a.subplot, [sc6a.subplot, sc6a.subplot], ['Empirical Data', 'Simulated Data'])
+
+
+
+
+
 
 # ######## Supplementary
 # # fig S2 a:

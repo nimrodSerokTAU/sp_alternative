@@ -211,7 +211,7 @@ class PlotLayout:
 
         fig.tight_layout(rect=[0, 0, 1, 1])
 
-        data_count_string = '_'.join([str(data.data_count) for data in all_data])
+        data_count_string = '_'.join([str(data.data_count) if hasattr(data, 'data_count') else '' for data in all_data])
         plt.savefig(
             f'{self.dir_path}/{self.identifier}_{data_count_string}.tiff')
         plt.savefig(
