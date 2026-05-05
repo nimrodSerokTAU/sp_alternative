@@ -53,9 +53,9 @@ class PlotLayout:
         ax0.text(-title_nudge, 0.98 + title_nudge, names[0], transform=ax0.transAxes, fontsize=14, fontweight='bold',
                  va='top')
         h, l = ax0.get_legend_handles_labels()
-        handles_m, handles_m = [], []
+        handles_m, labels_m = [], []
         handles_m.extend(h)
-        handles_m.extend(l)
+        labels_m.extend(l)
 
         handles, labels = [], []
         h, l = None, None
@@ -79,8 +79,8 @@ class PlotLayout:
         handles.extend(h)
         labels.extend(l)
 
-        fig.legend(handles_m, handles_m, ncol=2, loc='upper left', fontsize=11,
-                   bbox_to_anchor=(0.01, 0.1), frameon=False)
+        fig.legend(handles_m, labels_m, ncol=2, loc='upper left',
+                   fontsize=11, bbox_to_anchor=(0.01, 0.1), frameon=False)
         fig.legend(handles, labels, ncol=3, loc='upper center', fontsize=11,
                    bbox_to_anchor=(0.65, 0.1), frameon=False)
         fig.tight_layout(rect=[0, 0.1, 1, 1], w_pad=4)
@@ -91,7 +91,7 @@ class PlotLayout:
             f'{self.dir_path}/{self.identifier}_counts_{data_by_labels[0].samples_num}-{data_by_labels[1].samples_num}_millPVal_{p_val:.2f}.tiff')
         plt.savefig(
             f'{self.dir_path}/{self.identifier}_counts_{data_by_labels[0].samples_num}-{data_by_labels[1].samples_num}_millPVal_{p_val:.2f}.pdf')
-        plt.show()
+        # plt.show()
         # axs.clf()
         plt.close()
 
@@ -145,7 +145,7 @@ class PlotLayout:
         fig.tight_layout(rect=[0, 0, 1, 1])
         plt.savefig(f'{self.dir_path}/{self.identifier}_{code}_seq_num_{number_of_seq}.tiff')
         plt.savefig(f'{self.dir_path}/{self.identifier}_{code}_seq_num_{number_of_seq}.pdf')
-        plt.show()
+        # plt.show()
         fig.clf()
         plt.close()
 
