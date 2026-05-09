@@ -8,7 +8,7 @@ from results_analyzer.classes.pdf_plot import PDFPlot
 from results_analyzer.classes.scatter_plot import ScatterPlot
 import matplotlib.patches as patches
 
-from results_analyzer.classes.stacked_col_graphs import StackedColSubPlot, StackedColGraphData
+from results_analyzer.classes.stacked_col_graphs import StackedColSubPlot, StackedColGraphData, StackedColGraph
 
 
 class PlotLayout:
@@ -28,10 +28,10 @@ class PlotLayout:
         self.dir_path = dir_path
         self.identifier = identifier
 
-    def triple_plot(self, single_data: StackedColSubPlot, data_by_labels: list[StackedColSubPlot], titles: list[str]):
+    def triple_plot(self, single_data: StackedColSubPlot, data_by_labels: list[StackedColSubPlot], titles: list[str],
+                    width_ratios: list[int]):
         fig = plt.figure(figsize=(self.size_x, self.size_y))  # len(data_by_labels)
-        gs = GridSpec(1, 3, figure=fig, width_ratios=[1, 2, 2],
-                      )
+        gs = GridSpec(1, len(width_ratios), figure=fig, width_ratios=width_ratios)
         plt.rcParams['hatch.linewidth'] = 0.5
         plt.rcParams['hatch.color'] = '#404245'
 
@@ -87,10 +87,12 @@ class PlotLayout:
 
         p_val = max(single_data.p_value_per_ds) * 1000
 
+        counts: str = f'{data_by_labels[1].samples_num if len(data_by_labels) > 1 else ''}'
+
         plt.savefig(
-            f'{self.dir_path}/{self.identifier}_counts_{data_by_labels[0].samples_num}-{data_by_labels[1].samples_num}_millPVal_{p_val:.2f}.tiff')
+            f'{self.dir_path}/{self.identifier}_counts_{counts}_millPVal_{p_val:.2f}.tiff')
         plt.savefig(
-            f'{self.dir_path}/{self.identifier}_counts_{data_by_labels[0].samples_num}-{data_by_labels[1].samples_num}_millPVal_{p_val:.2f}.pdf')
+            f'{self.dir_path}/{self.identifier}_counts_{counts}_millPVal_{p_val:.2f}.pdf')
         # plt.show()
         # axs.clf()
         plt.close()
@@ -149,7 +151,7 @@ class PlotLayout:
         fig.clf()
         plt.close()
 
-    def double_col_plot(self, all_data: list, titles: list[str], patches_dict: dict[int, list[dict]]):
+    def double_col_plot(self, all_data: list, titles: list[str]):
         fig = plt.figure(figsize=(self.size_x, self.size_y))
 
         gs = GridSpec(len(titles) // 2, 2, figure=fig)
@@ -188,11 +190,6 @@ class PlotLayout:
                     ax.legend()
                 ax.text(-title_nudge, 0.98 + title_nudge, titles[j], transform=ax.transAxes, fontsize=14,
                         fontweight='bold', va='top')
-                if j in patches_dict:
-                    for patch in patches_dict[j]:
-                        ellipse = patches.Ellipse(xy=patch['center'], width=patch['width'], height=patch['height'],
-                                                  angle=patch['angle'], edgecolor=patch['color'], facecolor='none')
-                        ax.add_patch(ellipse)
 
             if isinstance(data, ColPlot):
                 hatches = []
@@ -212,6 +209,90 @@ class PlotLayout:
         fig.tight_layout(rect=[0, 0, 1, 1])
 
         data_count_string = '_'.join([str(data.data_count) if hasattr(data, 'data_count') else '' for data in all_data])
+        plt.savefig(
+            f'{self.dir_path}/{self.identifier}_{data_count_string}.tiff')
+        plt.savefig(
+            f'{self.dir_path}/{self.identifier}_{data_count_string}.pdf')
+        # plt.show()
+        plt.clf()
+        plt.close()
+
+    def single_plot(self, data, title: str):
+        fig = plt.figure(figsize=(self.size_x, self.size_y))
+
+        gs = GridSpec(1, 1, figure=fig)
+        plt.rcParams['hatch.linewidth'] = 0.5
+        plt.rcParams['hatch.color'] = 'white'  #,'#404245'
+        custom_linestyle = (0, (8, 4))
+        title_nudge = 0.06
+
+        ax = fig.add_subplot(gs[0, 0])
+
+        if isinstance(data, ScatterPlot):
+            for i in range(len(data.names)):
+                ax.scatter(data.x, data.y[i], marker=data.markers[i], linewidths=data.line_widths,
+                           color=data.color[i], label=f'{data.names[i]} (r={data.r_val[i]:.2f})',
+                           alpha=data.alpha, facecolor='None', edgecolor=data.color[i], s=data.s)
+                m, b = np.polyfit(data.x, data.y[i], 1)
+                x_line = np.linspace(0, 1, 100)  # 100 points for a smooth line
+                y_line = m * x_line + b
+                ax.plot(x_line, y_line, color=data.color[i], linewidth=0.5, linestyle=custom_linestyle)
+
+            ax.axvline(min(data.x), color=data.ds_line_color, linestyle=custom_linestyle,
+                       linewidth=data.ds_line_linewidth)
+            if data.horizontal_line:
+                ax.axhline(data.horizontal_line, color=data.ds_line_color, linestyle=custom_linestyle,
+                           linewidth=data.ds_line_linewidth)
+            ax.set_xlim(data.xlim_min, data.xlim_max)
+            ax.set_ylim(data.ylim_min, data.ylim_max)
+            ax.set_xlabel(data.xlabel, fontsize=11)
+            ax.set_ylabel(data.ylabel, fontsize=11)
+            if data.legend_loc:
+                ax.legend(loc=data.legend_loc)
+            else:
+                ax.legend()
+            ax.text(-title_nudge, 0.98 + title_nudge, title, transform=ax.transAxes, fontsize=14,
+                    fontweight='bold', va='top')
+
+        if isinstance(data, ColPlot):
+            hatches = []
+            for h in data.hatch:
+                for col_i in range(data.df.shape[0]):
+                    hatches.append(h)
+            data.df.plot(kind='bar', ax=ax, color=data.color, alpha=data.alpha, fontsize=10, width=0.7)
+            for i, patch in enumerate(ax.patches):
+                patch.set_hatch(hatches[i % len(hatches)])  # Assign hatches cyclically
+            plt.xticks(rotation='horizontal')
+            ax.set_xlabel(data.xlabel, fontsize=11)
+            ax.set_ylabel(data.ylabel, fontsize=11)
+            ax.legend(labels=data.names, fontsize=12)
+            ax.text(-title_nudge, 0.98 + title_nudge, title, transform=ax.transAxes, fontsize=14,
+                    fontweight='bold', va='top')
+
+        if isinstance(data, StackedColSubPlot):
+            ax0 = fig.add_subplot(gs[0])
+            for i in range(len(data.data)):
+                stacked_col_data: StackedColGraphData = data.data[i]
+                label = stacked_col_data.label
+                ax0.bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.8,
+                        bottom=list(stacked_col_data.bottom),
+                        label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
+                self.add_comp_labels(ax0, data.labels_list[i]['x'], data.labels_list[i]['bottom'],
+                                     data.labels_list[i]['val'])
+                ax0.set_ylabel(data.ylabel, fontsize=12)
+                ax0.set_xticks(stacked_col_data.x, data.categories, fontsize=12)
+                ax0.grid(False)
+            ax0.text(-title_nudge, 0.98 + title_nudge, title, transform=ax0.transAxes, fontsize=14,
+                     fontweight='bold',
+                     va='top')
+            h, l = ax0.get_legend_handles_labels()
+            handles_m, labels_m = [], []
+            handles_m.extend(h)
+            labels_m.extend(l)
+
+        fig.tight_layout(rect=[0, 0, 1, 1])
+
+        data_count_string = '_'.join(str(data.data_count) if hasattr(data, 'data_count') else '')
         plt.savefig(
             f'{self.dir_path}/{self.identifier}_{data_count_string}.tiff')
         plt.savefig(

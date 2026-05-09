@@ -1,6 +1,7 @@
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 from results_analyzer.classes.measure import Measure
@@ -110,8 +111,7 @@ class StackedColGraph:
     subplot: StackedColSubPlot
 
     def __init__(self, dir_path: str, files_data: list[dict], input_data_sources: list[Measure],
-                 measures: list[Measure],
-                 is_calc_chi_square: bool, keys: [str, str]):
+                 measures: list[Measure], is_calc_chi_square: bool, keys: [str, str], is_summary_table: bool):
         self.data_sources = []
         self.categories = []
         self.measures = measures
@@ -127,8 +127,10 @@ class StackedColGraph:
                 data_source = DataSource(ds_name, file_path, override_key, i + 1, measures)
                 self.data_sources.append(data_source)
                 data_sources_per_file[file_data['series_name']].append(data_source)
-
-        self.read_files(data_sources_per_file)
+        if is_summary_table:
+            self.read_summary_files(data_sources_per_file)
+        else:
+            self.read_files(data_sources_per_file)
         for ds in self.data_sources:
             ds.calc_results()
         p_value_per_ds: list[float] | None = self.calc_chi_square_for_two(is_calc_chi_square, keys)
@@ -137,6 +139,10 @@ class StackedColGraph:
     def read_files(self, data_sources_per_file: dict[str, list[DataSource]]):
         for data_sources in data_sources_per_file.values():
             self.read_file(data_sources)
+
+    def read_summary_files(self, data_sources_per_file: dict[str, list[DataSource]]):
+        for data_sources in data_sources_per_file.values():
+            self.read_summary_file(data_sources)
 
     @staticmethod
     def read_file(data_sources: list[DataSource]):
@@ -152,6 +158,26 @@ class StackedColGraph:
                         dataset_result = PBDataSet(dataset_key, res_key)
                         ds.data_groups[res_key].append_one_sample(dataset_result)
                         ds.total_count += 1
+
+    @staticmethod
+    def read_summary_file(data_sources: list[DataSource]):
+        with open(data_sources[0].file_path, 'r') as file:
+            csv_reader = csv.reader(file)
+            header = next(csv_reader)
+            print(f"Header: {header}")
+            for i, row in enumerate(csv_reader):
+                dataset_key = row[0]
+                ds = next((x for x in data_sources if x.index_in_file == i + 1), None)
+                if ds:
+                    for external_key in ds.external_to_key_dict.keys():
+                        data_inx = header.index(external_key)
+                        res_key = ds.external_to_key_dict[external_key]
+                        if data_inx > 0:
+                            count = int(row[data_inx])
+                            for _ in range(count):
+                                dataset_result = PBDataSet(dataset_key, res_key)
+                                ds.data_groups[res_key].append_one_sample(dataset_result)
+                                ds.total_count += 1
 
     def calc_chi_square_for_two(self, is_calc_chi_square: bool, keys: [str, str]) -> list[float] | None:
         if not is_calc_chi_square:

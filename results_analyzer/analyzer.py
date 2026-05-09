@@ -139,7 +139,7 @@ output_path = f'{data_dir}/output'
 #                         False, [])
 #
 # pl4 = PlotLayout(16, 7, 1, 1, output_path, 'Fig4')
-# pl4.triple_plot(sc4a.subplot, [fig4b.subplot, fig4c.subplot], ['Empirical Data', 'Simulated Data'])
+# pl4.triple_plot(sc4a.subplot, [fig4b.subplot, fig4c.subplot], ['Empirical Data', 'Simulated Data'], [1, 2, 2])
 
 # # fig 5 a, c
 # fig5Emp = CorrelationAnalyzer(data_dir,
@@ -172,55 +172,37 @@ output_path = f'{data_dir}/output'
 
 
 # fig 6 a:
-sc6a = StackedColGraph(data_dir,
-                       [{'relative_file_path': 'input/Nuc_PAM/model_2/pick_me_trio_overall_v0.csv',
-                         'series_name': 'Nuc_PAM'},
-                        {'relative_file_path': 'input/Nuc/model_2/pick_me_trio_overall_v0.csv',
-                         'series_name': 'Nuc'}],
+fig6a = StackedColGraph(data_dir,
+                       [{'relative_file_path': 'input/Nuc_PAM/model_2/pick_me_trio_overall_v0.csv', 'series_name': 'Nuc_PAM'}],
                        [Measure(key='', external_name='', presentation_name=None, correlation_direction=0)],
                        [Measure(key='sop', external_name='SoP', presentation_name='SoP', correlation_direction=0),
                         Measure(key='model2', external_name='Predicted', presentation_name='Model2',
                                 correlation_direction=0),
                         Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and SoP)',
                                 correlation_direction=0)],
-                       True, ['sop', 'model2'])
+                       True, ['sop', 'model2'], False)
 
-# fig6b = StackedColGraph(data_dir,
-#                         [{'relative_file_path': 'input/BAliBASE/model_2/pick_me_trio_v0.csv', 'series_name': None}],
-#                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
-#                          Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
-#                          Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
-#                          Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
-#                                  correlation_direction=0)],
-#                         [Measure(key='default', external_name='Default', presentation_name='Default',
-#                                  correlation_direction=0),
-#                          Measure(key='model2', external_name='Predicted', presentation_name='Model2',
-#                                  correlation_direction=0),
-#                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
-#                                  correlation_direction=0)],
-#                         False, [])
+# fig 6 b"
+fig6b = StackedColGraph(data_dir,
+                        [{'relative_file_path': 'input/OrthoMaM/subsampling_summary.csv', 'series_name': 'Samples'}],
+                        [Measure(key='20', external_name='', presentation_name='20 Samples', correlation_direction=0),
+                                         Measure(key='50', external_name='', presentation_name='50 Samples', correlation_direction=0),
+                                         Measure(key='100', external_name='', presentation_name='100 Samples', correlation_direction=0),
+                                         Measure(key='200', external_name='', presentation_name='200 Samples', correlation_direction=0),
+                                         Measure(key='400', external_name='', presentation_name='400 Samples', correlation_direction=0),
+                                         Measure(key='800', external_name='', presentation_name='800 Samples', correlation_direction=0),
+                                         Measure(key='1600', external_name='', presentation_name='1600 Samples', correlation_direction=0)],
+                        [Measure(key='sop', external_name='SoP', presentation_name='SoP', correlation_direction=0),
+                                  Measure(key='model2', external_name='Predicted', presentation_name='Model2',
+                                          correlation_direction=0),
+                                  Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and SoP)',
+                                          correlation_direction=0)],
+                        True, ['sop', 'model2'], True)
 #
-# #
-# # # fig 6 c:
-# fig6c = StackedColGraph(data_dir,
-#                         [{'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_v0.csv', 'series_name': None}],
-#                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
-#                          Measure(key='prank', external_name='', presentation_name='PRANK', correlation_direction=0),
-#                          Measure(key='muscle', external_name='', presentation_name='Muscle', correlation_direction=0),
-#                          Measure(key='baliphy', external_name='', presentation_name='BAli-Phy',
-#                                  correlation_direction=0)],
-#                         [Measure(key='default', external_name='Default', presentation_name='Default',
-#                                  correlation_direction=0),
-#                          Measure(key='model2', external_name='Predicted', presentation_name='Model2',
-#                                  correlation_direction=0),
-#                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
-#                                  correlation_direction=0)],
-#                         False, [])
+#
 
 pl6 = PlotLayout(16, 7, 1, 2, output_path, 'Fig6')
-pl6.triple_plot(sc6a.subplot, [sc6a.subplot, sc6a.subplot], ['Empirical Data', 'Simulated Data'])
-
-
+pl6.triple_plot(fig6a.subplot, [fig6b.subplot], ['Different Samples Size'], [1, 4])
 
 
 
