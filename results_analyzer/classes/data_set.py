@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 
 from results_analyzer.classes.scatter_plot import ScatterPlot
@@ -59,7 +61,9 @@ class DataSet:
             r_vals.append(measures[i].r_value)
             colors.append(COLORS[measures[i].measure_key])
             labels.append(f'{names[i]} (r={r_vals[i]:.2f})')
-        sp.set_data(y, names, colors, labels, r_vals, 0, 1, -0.1, 1.1, None, len(measures[0].ordered_scores))
+
+        sp.set_data(y, names, colors, labels, r_vals, (math.floor(min(sp.x) * 20)) * 0.05, (math.ceil(max(sp.x) * 20)) * 0.05,
+                    -0.1, 1.1, None, len(measures[0].ordered_scores))
 
         return sp
 

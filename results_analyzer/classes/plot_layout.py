@@ -151,7 +151,7 @@ class PlotLayout:
         fig.clf()
         plt.close()
 
-    def double_col_plot(self, all_data: list, titles: list[str]):
+    def double_col_plot(self, all_data: list, titles: list[str], patches_dict: dict[int, list[dict]]):
         fig = plt.figure(figsize=(self.size_x, self.size_y))
 
         gs = GridSpec(len(titles) // 2, 2, figure=fig)
@@ -190,6 +190,12 @@ class PlotLayout:
                     ax.legend()
                 ax.text(-title_nudge, 0.98 + title_nudge, titles[j], transform=ax.transAxes, fontsize=14,
                         fontweight='bold', va='top')
+
+                if j in patches_dict:
+                    for patch in patches_dict[j]:
+                        ellipse = patches.Ellipse(xy=patch['center'], width=patch['width'], height=patch['height'],
+                                                  angle=patch['angle'], edgecolor=patch['color'], facecolor='none')
+                        ax.add_patch(ellipse)
 
             if isinstance(data, ColPlot):
                 hatches = []
