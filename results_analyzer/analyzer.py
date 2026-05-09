@@ -179,6 +179,11 @@ pl5.double_col_plot([fig5_nuc.get_example_scatter(), fig5_1k.get_example_scatter
                     ['a', 'c', 'b', 'd'],
                     {})
 
+pl5b = PlotLayout(14, 12, 2, 2, output_path, 'Fig5b')
+pl5b.double_col_plot([fig5_nuc.get_example_scatter(), fig5_1k.get_example_scatter(), fig5_nuc.get_r_curve(), fig5_5k.get_example_scatter()],
+                    ['a', 'c', 'b', 'd'],
+                    {})
+
 
 # # fig 6 a:
 # fig6a = StackedColGraph(data_dir,

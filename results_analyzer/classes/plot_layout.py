@@ -4,6 +4,7 @@ import numpy as np
 import seaborn as sns
 
 from results_analyzer.classes.col_plot import ColPlot
+from results_analyzer.classes.kdes_plot import KdesPlot
 from results_analyzer.classes.pdf_plot import PDFPlot
 from results_analyzer.classes.scatter_plot import ScatterPlot
 import matplotlib.patches as patches
@@ -211,6 +212,15 @@ class PlotLayout:
                 ax.legend(labels=data.names, fontsize=12)
                 ax.text(-title_nudge, 0.98 + title_nudge, titles[j], transform=ax.transAxes, fontsize=14,
                         fontweight='bold', va='top')
+
+            if isinstance(data, KdesPlot):
+                for index in range(len(data.names)):
+                    sns.kdeplot(data.values[index], color=data.colors[index], label=f'True Scores ({data.names[index]})',
+                                linewidth=1, clip=(0, None))
+                ax.legend(labels=data.names, fontsize=12)
+                ax.text(0.3, -0.085, "Corrected Pearson's r Value", transform=ax.transAxes, fontsize=11,
+                        va='bottom')
+                # plt.show()
 
         fig.tight_layout(rect=[0, 0, 1, 1])
 

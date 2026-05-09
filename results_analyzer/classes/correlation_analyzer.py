@@ -2,9 +2,10 @@ import csv
 
 from results_analyzer.classes.alternative_labels import AlternativeLabelFile
 from results_analyzer.classes.col_plot import ColPlot
+from results_analyzer.classes.kdes_plot import KdesPlot
 from results_analyzer.classes.scatter_plot import ScatterPlot
 from results_analyzer.classes.col_graphs import DataGroupCorr, DataGroupMgr
-from results_analyzer.constants import NAMING
+from results_analyzer.constants import NAMING, COLORS
 from results_analyzer.classes.data_set import DataSet, Point
 from results_analyzer.classes.measure import Measure
 from results_analyzer.utils import is_float
@@ -166,11 +167,22 @@ class CorrelationAnalyzer:
     def get_r(self):
         return self.accum_r
 
+    def get_r_curve(self) -> KdesPlot:
+        data: dict[str, list[float]] = {}
+        for dg in self.data_group_mgr.data_groups:
+            for series_name, series_values in dg.samples.items():
+                if series_name not in data:
+                    data[series_name] = []
+                corr_direction = 1
+                if series_name in self.data_group_mgr.measures_directions and self.data_group_mgr.measures_directions[series_name] is False:
+                    corr_direction = -1
+                for v in series_values:
+                    data[series_name].append(v.r_value * corr_direction)
+        return KdesPlot(values=list(data.values()), names=list(data.keys()), colors=[COLORS[key] for key in data.keys()])
+
     @staticmethod
-    def calc_external_labels_dict(potential_labels_path: str, alternative_label_file: AlternativeLabelFile) -> dict[
-                                                                                                               dict:[
-                                                                                                                   str,
-                                                                                                                   float]]:
+    def calc_external_labels_dict(potential_labels_path: str,
+                                  alternative_label_file: AlternativeLabelFile) -> dict[dict:[str, float]]:
         ext_labels_dict: dict[dict:[str, float]] = {}
         with open(potential_labels_path, 'r') as file:
             csv_reader = csv.reader(file)

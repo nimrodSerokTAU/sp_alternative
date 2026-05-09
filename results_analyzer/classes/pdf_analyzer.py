@@ -89,6 +89,14 @@ class PDFAnalyzer:
 
         self.pdf_plot = PDFPlot(true_scores, x, y, markers, colors, labels, 100, '$d_{seq}$ from "true" MSA', 'Density')
 
+    def print_r_kde(self, r_values: list[float], m_keys: list[str], multi_dataset_title: str) -> None:
+        # kde = gaussian_kde(r_values)
+        # score_densities = {k: kde([v])[0] for k, v in r_values}
+
+        sns.kdeplot(r_values, color='black', label=f'True Scores ()', linewidth=1.5, clip=(0, None))
+
+        self.pdf_plot = PDFPlot(r_values, [], [], [], [], [], 100, '$d_{seq}$ from "true" MSA', 'Density')
+
     def plot_single_code_results(self, code: str) -> bool:
         try:
             code_df = self.filter_code_data(code)
