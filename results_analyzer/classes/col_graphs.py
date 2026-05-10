@@ -6,7 +6,7 @@ from results_analyzer.classes.measurement_data import MeasurementDataPerCode
 from results_analyzer.constants import COLORS, NAMING, HATCHS
 
 DIRECTIONAL_THRESHOLDS = [-1, 0.5, 0.7, 0.85, 0.95, 1]
-NAMES = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent']
+NAMES = ['Poor\n r ≤ 0.5', 'Fair\n 0.5 < r ≤ 0.7', 'Good\n 0.7 < r ≤ 0.85', 'Very Good\n 0.85 < r ≤ 0.95', 'Excellent\n 0.95 < r']
 
 
 class DataGroupCorr:
