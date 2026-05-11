@@ -24,10 +24,14 @@ class ScatterPlot:
     ylabel: str
     horizontal_line: float
     data_count: int
+    is_diagonal_line: bool
+    is_vertical_line: bool
+    is_trend_line: bool
 
     def __init__(self, x: np.array, markers: list[str],
                  line_widths: float, alpha: float, s: float, axvline_color: str, axvline_linestyle: str,
-                 axvline_linewidth: float, xlabel: str, ylabel: str, legend_loc: str):
+                 axvline_linewidth: float, xlabel: str, ylabel: str, legend_loc: str, is_diagonal_line: bool,
+                 is_vertical_line: bool, is_trend_line: bool):
         self.x = x
         self.markers = markers
         self.line_widths = line_widths
@@ -39,9 +43,12 @@ class ScatterPlot:
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.legend_loc = legend_loc
+        self.is_diagonal_line = is_diagonal_line
+        self.is_vertical_line = is_vertical_line
+        self.is_trend_line = is_trend_line
 
-    def set_data(self, y: list[list[float]], names: list[str], color: list[str], label: list[str],
-                 r_val: list[float], xlim_min: float, xlim_max: float, ylim_min: float, ylim_max: float,
+    def set_data(self, y: list[list[float]], names: list[str], color: list[str], label: list[str] | None,
+                 r_val: list[float] | None, xlim_min: float, xlim_max: float, ylim_min: float, ylim_max: float,
                  horizontal_line: float | None, data_count: int):
         self.y = y
         self.names = names

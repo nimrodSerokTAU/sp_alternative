@@ -49,7 +49,8 @@ class DataSet:
         x = np.array(self.dist)
         markers = ['o', '^', 's']
         sp = ScatterPlot(x, markers, 0.3, 0.7, 10, 'black', '--',
-                         0.6, r'$d_{seq}$', "Score", 'lower right')
+                         0.6, r'$d_{seq}$', "Score", 'lower right',
+                         False, True, True)
         y = []
         names = []
         colors = []
@@ -84,7 +85,8 @@ class DataSet:
         name: str = NAMING[measure.measure_key]
 
         sp = ScatterPlot(x, ['x'], 0.3, 0.7, 10, 'black', '--',
-                         0.6, r'$d_{seq}$', "Score", None)
+                         0.6, r'$d_{seq}$', "Score", None,
+                         False, True, True)
         sp.set_data([y], [name], [COLORS[measure.measure_key]], [f'{name} (r={measure.r_value:.2f})'],
                     [measure.r_value], x_min, x_max, y_min, y_max, min_dist_score, len(x))
         return sp

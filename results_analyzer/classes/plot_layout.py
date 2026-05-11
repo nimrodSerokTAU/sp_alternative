@@ -167,20 +167,24 @@ class PlotLayout:
             ax = fig.add_subplot(gs[row, col])
 
             if isinstance(data, ScatterPlot):
-                for i in range(len(data.names)):
+                for i in range(len(data.y)):
+                    label = data.label[i] if data.label is not None else None
                     ax.scatter(data.x, data.y[i], marker=data.markers[i], linewidths=data.line_widths,
-                               color=data.color[i], label=f'{data.names[i]} (r={data.r_val[i]:.2f})',
+                               color=data.color[i], label=label,
                                alpha=data.alpha, facecolor='None', edgecolor=data.color[i], s=data.s)
-                    m, b = np.polyfit(data.x, data.y[i], 1)
-                    x_line = np.linspace(0, 1, 100)  # 100 points for a smooth line
-                    y_line = m * x_line + b
-                    ax.plot(x_line, y_line, color=data.color[i], linewidth=0.5, linestyle=custom_linestyle)
-
-                ax.axvline(min(data.x), color=data.ds_line_color, linestyle=custom_linestyle,
+                    if data.is_trend_line:
+                        m, b = np.polyfit(data.x, data.y[i], 1)
+                        x_line = np.linspace(0, 1, 100)  # 100 points for a smooth line
+                        y_line = m * x_line + b
+                        ax.plot(x_line, y_line, color=data.color[i], linewidth=0.5, linestyle=custom_linestyle)
+                if data.is_vertical_line:
+                    ax.axvline(min(data.x), color=data.ds_line_color, linestyle=custom_linestyle,
                            linewidth=data.ds_line_linewidth)
                 if data.horizontal_line:
                     ax.axhline(data.horizontal_line, color=data.ds_line_color, linestyle=custom_linestyle,
                                linewidth=data.ds_line_linewidth)
+                if data.is_diagonal_line:
+                    ax.axline((0, 0), (1, 1), color='black', linewidth=0.7, linestyle='--')
                 ax.set_xlim(data.xlim_min, data.xlim_max)
                 ax.set_ylim(data.ylim_min, data.ylim_max)
                 ax.set_xlabel(data.xlabel, fontsize=11)

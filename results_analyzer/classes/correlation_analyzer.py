@@ -3,6 +3,7 @@ import csv
 from results_analyzer.classes.alternative_labels import AlternativeLabelFile
 from results_analyzer.classes.col_plot import ColPlot
 from results_analyzer.classes.kdes_plot import KdesPlot
+from results_analyzer.classes.pair_data_set import PairDataSet, CorrCompareTwo
 from results_analyzer.classes.scatter_plot import ScatterPlot
 from results_analyzer.classes.col_graphs import DataGroupCorr, DataGroupMgr
 from results_analyzer.constants import NAMING, COLORS
@@ -16,6 +17,7 @@ class CorrelationAnalyzer:
     measures: list[Measure]
     r_groups: list[DataGroupCorr]
     data_group_mgr: DataGroupMgr
+    pairs_data: CorrCompareTwo
     example_res: ScatterPlot
     accum_r: ColPlot
     zoom_in: list[ScatterPlot]
@@ -29,6 +31,7 @@ class CorrelationAnalyzer:
         self.measures = measures
         self.data_group_mgr = DataGroupMgr(self.measures)
         self.zoom_in = []
+        self.pairs_data = CorrCompareTwo([x.key for x in measures])
         is_multi_file = len(relative_file_paths) > 1
         data_from_files: list[list[DataSet]] = []
         ext_labels_dict = None
@@ -44,6 +47,7 @@ class CorrelationAnalyzer:
                                            dist_threshold, ext_labels_dict, feature_file_dataset_inx,
                                            feature_file_code_inx, ignore_code)
             data_from_files.append(datasets_list)
+
         if is_multi_file:
             self.arrange_multi_file_data(data_from_files)
         else:
@@ -113,6 +117,11 @@ class CorrelationAnalyzer:
         self.datasets_list = datasets_list
         for rd in self.datasets_list:
             rd.calc_pearson(continue_missing_code)
+            pair_ds = PairDataSet(rd.code)
+            for i in range(2):
+                pair_ds.append_sample(rd.measurementsData[i].measure_key,
+                                      rd.measurementsData[i].r_value * self.measures[i].correlation_direction)
+            self.pairs_data.append_sample(pair_ds)
             for measure_i in range(len(self.measures)):
                 self.measures[measure_i].append_dataset_data(rd.measurementsData[measure_i])
         for measure_i in range(len(self.measures)):
@@ -166,6 +175,9 @@ class CorrelationAnalyzer:
 
     def get_r(self):
         return self.accum_r
+
+    def get_r_scatter(self):
+        return self.pairs_data.create_scatter()
 
     def get_r_curve(self) -> KdesPlot:
         data: dict[str, list[float]] = {}
