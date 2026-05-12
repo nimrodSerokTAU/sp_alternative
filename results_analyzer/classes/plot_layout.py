@@ -167,8 +167,13 @@ class PlotLayout:
             ax = fig.add_subplot(gs[row, col])
 
             if isinstance(data, ScatterPlot):
+                under_count = 0
                 for i in range(len(data.y)):
                     label = data.label[i] if data.label is not None else None
+                    if data.is_diagonal_line:
+                        for p_inx in range(len(data.x)):
+                            if data.x[p_inx] >= data.y[0][p_inx]:
+                                under_count += 1
                     ax.scatter(data.x, data.y[i], marker=data.markers[i], linewidths=data.line_widths,
                                color=data.color[i], label=label,
                                alpha=data.alpha, facecolor='None', edgecolor=data.color[i], s=data.s)
@@ -185,6 +190,13 @@ class PlotLayout:
                                linewidth=data.ds_line_linewidth)
                 if data.is_diagonal_line:
                     ax.axline((0, 0), (1, 1), color='black', linewidth=0.7, linestyle='--')
+                    t_vertical_alignment = 'top'
+                    t_fontsize = 24
+                    ax.text(0.5, 0.3, f'{under_count} Points', transform=ax.transAxes, fontsize=t_fontsize,
+                            verticalalignment=t_vertical_alignment, alpha=0.3)
+                    ax.text(0.2, 0.7, f'{len(data.y[0]) - under_count} Points', transform=ax.transAxes, fontsize=t_fontsize,
+                            verticalalignment=t_vertical_alignment, alpha=0.3)
+
                 ax.set_xlim(data.xlim_min, data.xlim_max)
                 ax.set_ylim(data.ylim_min, data.ylim_max)
                 ax.set_xlabel(data.xlabel, fontsize=11)

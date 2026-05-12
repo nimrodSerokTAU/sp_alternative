@@ -70,13 +70,13 @@ pl2.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_scatter(), f
                          {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
 
 
-pl2b = PlotLayout(14, 12, 2, 2, output_path, 'Fig2b')
-pl2b.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_curve(), fig2_sim.get_example_scatter(), fig2_sim.get_r_curve()],
-                    ['a', 'c', 'b', 'd'],
-                     {0: [{"center": (0.21, 0.97), "width": 0.13, "height": 0.1, "angle": 35, "color": "#1fad1a"},
-                          {"center": (0.2, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
-                      2: [{"center": (0.05, 0.99), "width": 0.08, "height": 0.09, "angle": 35, "color": "#1fad1a"},
-                          {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
+# pl2b = PlotLayout(14, 12, 2, 2, output_path, 'Fig2b')
+# pl2b.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_curve(), fig2_sim.get_example_scatter(), fig2_sim.get_r_curve()],
+#                     ['a', 'c', 'b', 'd'],
+#                      {0: [{"center": (0.21, 0.97), "width": 0.13, "height": 0.1, "angle": 35, "color": "#1fad1a"},
+#                           {"center": (0.2, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
+#                       2: [{"center": (0.05, 0.99), "width": 0.08, "height": 0.09, "angle": 35, "color": "#1fad1a"},
+#                           {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
 
 # # # # fig 3:
 # fig3a = PDFAnalyzer(data_dir=data_dir,
