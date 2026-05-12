@@ -174,7 +174,7 @@ class PlotLayout:
                                alpha=data.alpha, facecolor='None', edgecolor=data.color[i], s=data.s)
                     if data.is_trend_line:
                         m, b = np.polyfit(data.x, data.y[i], 1)
-                        x_line = np.linspace(0, 1, 100)  # 100 points for a smooth line
+                        x_line = np.linspace(data.xlim_min, data.xlim_max, 100)  # 100 points for a smooth line
                         y_line = m * x_line + b
                         ax.plot(x_line, y_line, color=data.color[i], linewidth=0.5, linestyle=custom_linestyle)
                 if data.is_vertical_line:

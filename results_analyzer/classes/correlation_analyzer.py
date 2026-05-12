@@ -1,4 +1,8 @@
+import math
 import csv
+from scipy.stats import spearmanr
+import numpy as np
+
 
 from results_analyzer.classes.alternative_labels import AlternativeLabelFile
 from results_analyzer.classes.col_plot import ColPlot
@@ -134,7 +138,7 @@ class CorrelationAnalyzer:
     @staticmethod
     def get_dataset_scatter(example: DataSet):
         example.normalize()
-        return example.create_scatter(example.measurementsData)
+        return example.create_scatter(example.measurementsData, False)
 
     def print_zoom_in(self, example: DataSet, points_count: int):
         results: list[tuple[DataSet, float]] = get_top(example, points_count, self.measures)
@@ -191,6 +195,17 @@ class CorrelationAnalyzer:
                 for v in series_values:
                     data[series_name].append(v.r_value * corr_direction)
         return KdesPlot(values=list(data.values()), names=list(data.keys()), colors=[COLORS[key] for key in data.keys()])
+
+    def get_example_rank_scatter(self) -> ScatterPlot:
+        ds = DataSet(self.datasets_list[0].code, self.measures)
+        ranks = [sorted(self.datasets_list[0].dist).index(x) + 1 for x in self.datasets_list[0].dist]
+        ds.dist = ranks
+        for i, md in enumerate(self.datasets_list[0].measurementsData):
+            corr, p_value = spearmanr(self.datasets_list[0].dist, md.ordered_scores)
+            ds.measurementsData[i].ordered_scores = md.ordered_scores
+            ds.measurementsData[i].r_value = corr
+        return ds.create_scatter(ds.measurementsData, True)
+
 
     @staticmethod
     def calc_external_labels_dict(potential_labels_path: str,

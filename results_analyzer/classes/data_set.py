@@ -45,12 +45,14 @@ class DataSet:
         for val in self.measurementsData:
             val.fill_correlation(x, continue_missing_code)
 
-    def create_scatter(self, measures: list[MeasurementDataPerCode]) -> ScatterPlot:
+    def create_scatter(self, measures: list[MeasurementDataPerCode], isRank: bool) -> ScatterPlot:
         x = np.array(self.dist)
         markers = ['o', '^', 's']
+        x_axis_title = r'$d_{seq}$ Rank' if isRank else r'$d_{seq}$'
+
         sp = ScatterPlot(x, markers, 0.3, 0.7, 10, 'black', '--',
-                         0.6, r'$d_{seq}$', "Score", 'lower right',
-                         False, True, True)
+                         0.6, x_axis_title, "Score", 'lower right',
+                         False, False if isRank else True, True)
         y = []
         names = []
         colors = []
@@ -63,8 +65,11 @@ class DataSet:
             colors.append(COLORS[measures[i].measure_key])
             labels.append(f'{names[i]} (r={r_vals[i]:.2f})')
 
-        sp.set_data(y, names, colors, labels, r_vals, (math.floor(min(sp.x) * 20)) * 0.05, (math.ceil(max(sp.x) * 20)) * 0.05,
-                    -0.1, 1.1, None, len(measures[0].ordered_scores))
+        x_min = -10 if isRank else (math.floor(min(sp.x) * 20)) * 0.05
+        x_max = (math.ceil(max(sp.x) * 0.1 + 1) * 10) if isRank else (math.ceil(max(sp.x) * 20)) * 0.05
+
+        sp.set_data(y, names, colors, labels, r_vals, x_min, x_max, -0.1, 1.1, None,
+                    len(measures[0].ordered_scores))
 
         return sp
 
