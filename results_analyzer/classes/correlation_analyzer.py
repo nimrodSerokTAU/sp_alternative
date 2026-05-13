@@ -164,9 +164,15 @@ class CorrelationAnalyzer:
         self.datasets_list = self.merge_data_from_files(data_from_files)
         for rd in self.datasets_list:
             rd.calc_pearson(True)
+            pair_ds = PairDataSet(rd.code)
+            for i in range(2):
+                pair_ds.append_sample(rd.measurementsData[i].measure_key,
+                                      rd.measurementsData[i].r_value * self.measures[i].correlation_direction)
+            self.pairs_data.append_sample(pair_ds)
             for m in rd.measurementsData:
                 measure_index = measures_by_key.index(m.measure_key)
                 self.measures[measure_index].append_dataset_data(m)
+
         for measure_i in range(len(self.measures)):
             is_m_direction_positive: bool = sum(self.measures[measure_i].r_values) >= 0
             self.data_group_mgr.set_measure_direction(self.measures[measure_i].key, is_m_direction_positive)

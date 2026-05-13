@@ -115,7 +115,7 @@ class PlotLayout:
         axs.text(-0.04, 1.04, 'a', transform=axs.transAxes, fontsize=14,
                  fontweight='bold', va='top')
 
-        insets_loc = [[0.44, 0.35, 0.25, 0.55], [0.74, 0.35, 0.25, 0.55]]
+        insets_loc = [[0.41, 0.35, 0.25, 0.55], [0.73, 0.35, 0.25, 0.55]]
         inset_titles = ['b', 'c']
         for i in range(len(insets)):
             ax_inset = axs.inset_axes(insets_loc[i])

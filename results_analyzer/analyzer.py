@@ -10,74 +10,74 @@ sim_example: str = '23410'
 data_dir = 'D:/PhDB/papers/first/figures_data'  # use your own path
 output_path = f'{data_dir}/output'
 
-# # # fig 1 a, c:
-# fig1Emp = CorrelationAnalyzer(data_dir,
-#                               ['input/BAliBASE/features_w_aligner_1_dseq_from_true.csv'],
+# # fig 1 a, c:
+# fig1_emp = CorrelationAnalyzer(data_dir,
+#                                ['input/BAliBASE/features_w_aligner_1_dseq_from_true.csv'],
 #                               'dseq_from_true',
-#                               [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
 #                                        correlation_direction=-1),
 #                                         Measure(key='entropy_sum', external_name='entropy_sum', presentation_name='Entropy Sum',
 #                                        correlation_direction=1)],
-#                               empirical_example, False, 'Correlation with Distance from True',
-#                               0, 0.75, None, True,
+#                                empirical_example, False, 'Correlation with Distance from True',
+#                                0, 0.75, None, True,
 #                               'test_original.fasta')
 #
 # # # # fig 1 b, d:
-# fig1Sim = CorrelationAnalyzer(data_dir,
-#                               ['input/OrthoMaM/orthomam_features_w_aligner_090426.csv'],
+# fig1_sim = CorrelationAnalyzer(data_dir,
+#                                ['input/OrthoMaM/orthomam_features_w_aligner_090426.csv'],
 #                               'dseq_from_true',
-#                               [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                [Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
 #                                        correlation_direction=-1),
 #                                         Measure(key='entropy_sum', external_name='entropy_sum', presentation_name='Entropy Sum',
 #                                        correlation_direction=1)],
-#                               sim_example, False, 'Correlation with Distance from True',
-#                               0, 0.75, None, True, '')
+#                                sim_example, False, 'Correlation with Distance from True',
+#                                0, 0.75, None, True, '')
 # #
 # pl1 = PlotLayout(14, 12, 2, 2, output_path, 'Fig1')
-# pl1.double_col_plot([fig1Emp.get_example_scatter(), fig1Emp.get_r_scatter(), fig1Sim.get_example_scatter(), fig1Sim.get_r_scatter()],
+# pl1.double_col_plot([fig1_emp.get_example_scatter(), fig1_emp.get_r_scatter(), fig1_sim.get_example_scatter(), fig1_sim.get_r_scatter()],
 #                     ['a', 'c', 'b', 'd'], {})
 
-# fig 2 a, c, fig 3 b, c:
-fig2_emp = CorrelationAnalyzer(data_dir,
-                               ['input/BAliBASE/model_1/features_w_predictions.csv'],
-                              'dseq_from_true',
-                               [
-                                    Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
-                                            correlation_direction=-1),
-                                    Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
-                                            correlation_direction=1)
-                               ],
-                               empirical_example, True, 'Correlation with Distance from True', 401, 0.75)  # BBA0150
-
-# fig 2 b, d:
-fig2_sim = CorrelationAnalyzer(data_dir,
-                               ['input/OrthoMaM/model_1/features_w_predictions.csv'],
-                              'dseq_from_true',
-                               [
-                                    Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
-                                            correlation_direction=-1),
-                                    Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
-                                            correlation_direction=1)
-                               ],
-                               sim_example, False, 'Correlation with Distance from True', 401, 0.5)
-
-pl2 = PlotLayout(14, 12, 2, 2, output_path, 'Fig2')
-pl2.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_scatter(), fig2_sim.get_example_scatter(), fig2_sim.get_r_scatter()],
-                    ['a', 'c', 'b', 'd'],
-                    {0: [{"center": (0.21, 0.97), "width": 0.13, "height": 0.1, "angle": 35, "color": "#1fad1a"},
-                         {"center": (0.2, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
-                     2: [{"center": (0.05, 0.99), "width": 0.08, "height": 0.09, "angle": 35, "color": "#1fad1a"},
-                         {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
-
-
-# pl2b = PlotLayout(14, 12, 2, 2, output_path, 'Fig2b')
-# pl2b.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_curve(), fig2_sim.get_example_scatter(), fig2_sim.get_r_curve()],
+# # fig 2 a, c, fig 3 b, c:
+# fig2_emp = CorrelationAnalyzer(data_dir,
+#                                ['input/BAliBASE/model_1/features_w_predictions.csv'],
+#                               'dseq_from_true',
+#                                [
+#                                     Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                             correlation_direction=-1),
+#                                     Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+#                                             correlation_direction=1)
+#                                ],
+#                                empirical_example, True, 'Correlation with Distance from True', 401, 0.75)  # BBA0150
+#
+# # fig 2 b, d:
+# fig2_sim = CorrelationAnalyzer(data_dir,
+#                                ['input/OrthoMaM/model_1/features_w_predictions.csv'],
+#                               'dseq_from_true',
+#                                [
+#                                     Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                             correlation_direction=-1),
+#                                     Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+#                                             correlation_direction=1)
+#                                ],
+#                                sim_example, False, 'Correlation with Distance from True', 401, 0.5)
+#
+# pl2 = PlotLayout(14, 12, 2, 2, output_path, 'Fig2')
+# pl2.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_scatter(), fig2_sim.get_example_scatter(), fig2_sim.get_r_scatter()],
 #                     ['a', 'c', 'b', 'd'],
-#                      {0: [{"center": (0.21, 0.97), "width": 0.13, "height": 0.1, "angle": 35, "color": "#1fad1a"},
-#                           {"center": (0.2, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
-#                       2: [{"center": (0.05, 0.99), "width": 0.08, "height": 0.09, "angle": 35, "color": "#1fad1a"},
-#                           {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
-
+#                     {0: [{"center": (0.21, 0.97), "width": 0.13, "height": 0.1, "angle": 35, "color": "#1fad1a"},
+#                          {"center": (0.2, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
+#                      2: [{"center": (0.05, 0.99), "width": 0.08, "height": 0.09, "angle": 35, "color": "#1fad1a"},
+#                          {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
+#
+#
+# # pl2b = PlotLayout(14, 12, 2, 2, output_path, 'Fig2b')
+# # pl2b.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_curve(), fig2_sim.get_example_scatter(), fig2_sim.get_r_curve()],
+# #                     ['a', 'c', 'b', 'd'],
+# #                      {0: [{"center": (0.21, 0.97), "width": 0.13, "height": 0.1, "angle": 35, "color": "#1fad1a"},
+# #                           {"center": (0.2, 0.04), "width": 0.11, "height": 0.08, "angle": 60, "color": "#1fad1a"}],
+# #                       2: [{"center": (0.05, 0.99), "width": 0.08, "height": 0.09, "angle": 35, "color": "#1fad1a"},
+# #                           {"center": (0.03, 0.06), "width": 0.04, "height": 0.18, "angle": 0, "color": "#1fad1a"}]})
+#
 # # # # fig 3:
 # fig3a = PDFAnalyzer(data_dir=data_dir,
 #                     features_file_name='input/BAliBASE/features_w_aligner_1_dseq_from_true.csv',
@@ -133,9 +133,9 @@ pl2.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_scatter(), f
 #                          Measure(key='tie', external_name='Tie', presentation_name='Tie (Model2 and Default)',
 #                                  correlation_direction=0)],
 #                         False, [], False)
+
 #
-# #
-# # # fig 4 c:
+# # fig 4 c:
 # fig4c = StackedColGraph(data_dir,
 #                         [{'relative_file_path': 'input/OrthoMaM/model_2/pick_me_trio_v0.csv', 'series_name': None}],
 #                         [Measure(key='mafft', external_name='', presentation_name='MAFFT', correlation_direction=0),
@@ -202,31 +202,31 @@ pl2.double_col_plot([fig2_emp.get_example_scatter(), fig2_emp.get_r_scatter(), f
 # plS2.double_col_plot([fig_s2a_emp.get_r(), fig_s2c_emp.get_r(), fig_s2b_sim.get_r(), fig_s2d_sim.get_r()],
 #                      ['a', 'c', 'b', 'd'], {})
 
-# # fig S3:
-# fig_s3a_emp = CorrelationAnalyzer(data_dir,
-#                                   ['input/BAliBASE/model_1/features_w_predictions.csv',
-#                                    'input/BAliBASE/model_2/features_w_predictions.csv'],
-#                                   'dseq_from_true',
-#                                   [Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
-#                                            correlation_direction=1),
-#                                    Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
-#                                            correlation_direction=1)],
-#                                   empirical_example, False, 'Correlation with Distance from True', 0, 0.75)
-#
-# fig_s3b_sim = CorrelationAnalyzer(data_dir,
-#                                   ['input/OrthoMaM/model_1/features_w_predictions.csv',
-#                                    'input/OrthoMaM/model_2/features_w_predictions.csv'],
-#                                   'dseq_from_true',
-#                                   [Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
-#                                            correlation_direction=1),
-#                                    Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
-#                                            correlation_direction=1)],
-#                                   sim_example, False, 'Correlation with Distance from True', 0, 0.75)
-#
-# pl_s_3 = PlotLayout(14, 12, 2, 2, output_path, 'FigS3')
-# pl_s_3.double_col_plot(
-#     [fig_s3a_emp.get_example_scatter(), fig_s3a_emp.get_r(), fig_s3b_sim.get_example_scatter(), fig_s3b_sim.get_r()],
-#     ['a', 'c', 'b', 'd'], {})
+# fig S3:
+fig_s3a_emp = CorrelationAnalyzer(data_dir,
+                                  ['input/BAliBASE/model_1/features_w_predictions.csv',
+                                   'input/BAliBASE/model_2/features_w_predictions.csv'],
+                                  'dseq_from_true',
+                                  [Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+                                           correlation_direction=1),
+                                   Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
+                                           correlation_direction=1)],
+                                  empirical_example, False, 'Correlation with Distance from True', 0, 0.75)
+
+fig_s3b_sim = CorrelationAnalyzer(data_dir,
+                                  ['input/OrthoMaM/model_1/features_w_predictions.csv',
+                                   'input/OrthoMaM/model_2/features_w_predictions.csv'],
+                                  'dseq_from_true',
+                                  [Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+                                           correlation_direction=1),
+                                   Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
+                                           correlation_direction=1)],
+                                  sim_example, False, 'Correlation with Distance from True', 0, 0.5)
+
+pl_s_3 = PlotLayout(14, 12, 2, 2, output_path, 'FigS3')
+pl_s_3.double_col_plot(
+    [fig_s3a_emp.get_example_scatter(), fig_s3a_emp.get_r_scatter(), fig_s3b_sim.get_example_scatter(), fig_s3b_sim.get_r_scatter()],
+    ['a', 'c', 'b', 'd'], {})
 
 
 # # fig 4 a, b
