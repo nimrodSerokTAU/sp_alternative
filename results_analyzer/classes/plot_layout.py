@@ -160,12 +160,13 @@ class PlotLayout:
         plt.rcParams['hatch.color'] = 'white'  #,'#404245'
         custom_linestyle = (0, (8, 4))
         title_nudge = 0.06
+        handles, labels = [], []
+        ordered_keys = []
 
         for j, data in enumerate(all_data):
             row = j // 2
             col = j % 2
             ax = fig.add_subplot(gs[row, col])
-
             if isinstance(data, ScatterPlot):
                 under_count = 0
                 for i in range(len(data.y)):
@@ -238,7 +239,44 @@ class PlotLayout:
                         va='bottom')
                 # plt.show()
 
-        fig.tight_layout(rect=[0, 0, 1, 1])
+            if isinstance(data, StackedColSubPlot):
+
+                for i in range(len(data.data)):
+                    stacked_col_data: StackedColGraphData = data.data[i]
+                    label = stacked_col_data.label
+                    ax.bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.8,
+                            bottom=list(stacked_col_data.bottom),
+                            label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
+                    self.add_comp_labels(ax, data.labels_list[i]['x'], data.labels_list[i]['bottom'],
+                                         data.labels_list[i]['val'])
+
+                    ax.set_ylabel(data.ylabel, fontsize=12)
+                    ax.set_xticks(stacked_col_data.x, data.categories, fontsize=12)
+                    ax.grid(False)
+                    if i == 0:
+                        ordered_keys.append(data.data[0].label)
+                ax.text(-title_nudge, 0.98 + title_nudge, titles[j], transform=ax.transAxes, fontsize=14,
+                         fontweight='bold',
+                         va='top')
+                h, l = ax.get_legend_handles_labels()
+                handles.extend(h)
+                labels.extend(l)
+
+        if isinstance(all_data[0], StackedColSubPlot):
+            ordered_keys.append(all_data[0].data[1].label)
+            ordered_keys.append(all_data[0].data[2].label)
+            unique = dict()
+            for handle, label in zip(handles, labels):
+                if label not in unique:
+                    unique[label] = handle
+            ordered_values = [unique[label] for label in ordered_keys]
+
+            fig.legend(ordered_values, ordered_keys, ncol=6, loc='upper center', fontsize=11,
+                       bbox_to_anchor=(0.3, 0.05), frameon=False)
+            fig.tight_layout(rect=[0, 0.05, 1, 1], w_pad=4)
+
+        else:
+            fig.tight_layout(rect=[0, 0, 1, 1])
 
         data_count_string = '_'.join([str(data.data_count) if hasattr(data, 'data_count') else '' for data in all_data])
         plt.savefig(
@@ -249,78 +287,81 @@ class PlotLayout:
         plt.clf()
         plt.close()
 
-    def single_plot(self, data, title: str):
+    def single_col_plot(self, data_list: list[StackedColSubPlot], titles: list[str],
+                        names: list[str]):
         fig = plt.figure(figsize=(self.size_x, self.size_y))
 
-        gs = GridSpec(1, 1, figure=fig)
+        gs = GridSpec(len(names), 1, figure=fig)
         plt.rcParams['hatch.linewidth'] = 0.5
         plt.rcParams['hatch.color'] = 'white'  #,'#404245'
         custom_linestyle = (0, (8, 4))
         title_nudge = 0.06
 
-        ax = fig.add_subplot(gs[0, 0])
+        for j, data in enumerate(data_list):
+            row = j
+            ax = fig.add_subplot(gs[row, 0])
+            if isinstance(data, ScatterPlot):
+                for i in range(len(data.names)):
+                    ax.scatter(data.x, data.y[i], marker=data.markers[i], linewidths=data.line_widths,
+                               color=data.color[i], label=f'{data.names[i]} (r={data.r_val[i]:.2f})',
+                               alpha=data.alpha, facecolor='None', edgecolor=data.color[i], s=data.s)
+                    m, b = np.polyfit(data.x, data.y[i], 1)
+                    x_line = np.linspace(0, 1, 100)  # 100 points for a smooth line
+                    y_line = m * x_line + b
+                    ax.plot(x_line, y_line, color=data.color[i], linewidth=0.5, linestyle=custom_linestyle)
 
-        if isinstance(data, ScatterPlot):
-            for i in range(len(data.names)):
-                ax.scatter(data.x, data.y[i], marker=data.markers[i], linewidths=data.line_widths,
-                           color=data.color[i], label=f'{data.names[i]} (r={data.r_val[i]:.2f})',
-                           alpha=data.alpha, facecolor='None', edgecolor=data.color[i], s=data.s)
-                m, b = np.polyfit(data.x, data.y[i], 1)
-                x_line = np.linspace(0, 1, 100)  # 100 points for a smooth line
-                y_line = m * x_line + b
-                ax.plot(x_line, y_line, color=data.color[i], linewidth=0.5, linestyle=custom_linestyle)
-
-            ax.axvline(min(data.x), color=data.ds_line_color, linestyle=custom_linestyle,
-                       linewidth=data.ds_line_linewidth)
-            if data.horizontal_line:
-                ax.axhline(data.horizontal_line, color=data.ds_line_color, linestyle=custom_linestyle,
+                ax.axvline(min(data.x), color=data.ds_line_color, linestyle=custom_linestyle,
                            linewidth=data.ds_line_linewidth)
-            ax.set_xlim(data.xlim_min, data.xlim_max)
-            ax.set_ylim(data.ylim_min, data.ylim_max)
-            ax.set_xlabel(data.xlabel, fontsize=11)
-            ax.set_ylabel(data.ylabel, fontsize=11)
-            if data.legend_loc:
-                ax.legend(loc=data.legend_loc)
-            else:
-                ax.legend()
-            ax.text(-title_nudge, 0.98 + title_nudge, title, transform=ax.transAxes, fontsize=14,
-                    fontweight='bold', va='top')
+                if data.horizontal_line:
+                    ax.axhline(data.horizontal_line, color=data.ds_line_color, linestyle=custom_linestyle,
+                               linewidth=data.ds_line_linewidth)
+                ax.set_xlim(data.xlim_min, data.xlim_max)
+                ax.set_ylim(data.ylim_min, data.ylim_max)
+                ax.set_xlabel(data.xlabel, fontsize=11)
+                ax.set_ylabel(data.ylabel, fontsize=11)
+                if data.legend_loc:
+                    ax.legend(loc=data.legend_loc)
+                else:
+                    ax.legend()
+                ax.text(-title_nudge, 0.98 + title_nudge, titles[0], transform=ax.transAxes, fontsize=14,
+                        fontweight='bold', va='top')
 
-        if isinstance(data, ColPlot):
-            hatches = []
-            for h in data.hatch:
-                for col_i in range(data.df.shape[0]):
-                    hatches.append(h)
-            data.df.plot(kind='bar', ax=ax, color=data.color, alpha=data.alpha, fontsize=10, width=0.7)
-            for i, patch in enumerate(ax.patches):
-                patch.set_hatch(hatches[i % len(hatches)])  # Assign hatches cyclically
-            plt.xticks(rotation='horizontal')
-            ax.set_xlabel(data.xlabel, fontsize=11)
-            ax.set_ylabel(data.ylabel, fontsize=11)
-            ax.legend(labels=data.names, fontsize=12)
-            ax.text(-title_nudge, 0.98 + title_nudge, title, transform=ax.transAxes, fontsize=14,
-                    fontweight='bold', va='top')
+            if isinstance(data, ColPlot):
+                hatches = []
+                for h in data.hatch:
+                    for col_i in range(data.df.shape[0]):
+                        hatches.append(h)
+                data.df.plot(kind='bar', ax=ax, color=data.color, alpha=data.alpha, fontsize=10, width=0.7)
+                for i, patch in enumerate(ax.patches):
+                    patch.set_hatch(hatches[i % len(hatches)])  # Assign hatches cyclically
+                plt.xticks(rotation='horizontal')
+                ax.set_xlabel(data.xlabel, fontsize=11)
+                ax.set_ylabel(data.ylabel, fontsize=11)
+                ax.legend(labels=data.names, fontsize=12)
+                ax.text(-title_nudge, 0.98 + title_nudge, titles[0], transform=ax.transAxes, fontsize=14,
+                        fontweight='bold', va='top')
 
-        if isinstance(data, StackedColSubPlot):
-            ax0 = fig.add_subplot(gs[0])
-            for i in range(len(data.data)):
-                stacked_col_data: StackedColGraphData = data.data[i]
-                label = stacked_col_data.label
-                ax0.bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.8,
-                        bottom=list(stacked_col_data.bottom),
-                        label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
-                self.add_comp_labels(ax0, data.labels_list[i]['x'], data.labels_list[i]['bottom'],
-                                     data.labels_list[i]['val'])
-                ax0.set_ylabel(data.ylabel, fontsize=12)
-                ax0.set_xticks(stacked_col_data.x, data.categories, fontsize=12)
-                ax0.grid(False)
-            ax0.text(-title_nudge, 0.98 + title_nudge, title, transform=ax0.transAxes, fontsize=14,
-                     fontweight='bold',
-                     va='top')
-            h, l = ax0.get_legend_handles_labels()
-            handles_m, labels_m = [], []
-            handles_m.extend(h)
-            labels_m.extend(l)
+            if isinstance(data, StackedColSubPlot):
+                for i in range(len(data.data)):
+                    stacked_col_data: StackedColGraphData = data.data[i]
+                    label = stacked_col_data.label
+                    ax.bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.8,
+                            bottom=list(stacked_col_data.bottom),
+                            label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
+                    self.add_comp_labels(ax, data.labels_list[i]['x'], data.labels_list[i]['bottom'],
+                                         data.labels_list[i]['val'])
+                    ax.set_ylabel(data.ylabel, fontsize=12)
+                    ax.set_xticks(stacked_col_data.x, data.categories, fontsize=12)
+                    ax.grid(False)
+                ax.text(-title_nudge, 0.98 + title_nudge, titles[0], transform=ax.transAxes, fontsize=14,
+                         fontweight='bold',
+                         va='top')
+                h, l = ax.get_legend_handles_labels()
+                handles_m, labels_m = [], []
+                handles_m.extend(h)
+                labels_m.extend(l)
+
+            # p_val = max(single_data.p_value_per_ds) * 1000
 
         fig.tight_layout(rect=[0, 0, 1, 1])
 
@@ -336,5 +377,6 @@ class PlotLayout:
     @staticmethod
     def add_comp_labels(fig, x, h: list[float], values: list[float]):
         for i in range(len(x)):
-            this_h = h[i] + values[i] * 0.75
-            fig.text(i, this_h, f'{values[i]:.1f}%', ha='center', va='top', fontsize=12)
+            this_h = h[i] + values[i] * 0.75 if values[i] > 2 else h[i] + 4
+            value = f'{values[i]:.1f}%' if values[i] > 0 else ''
+            fig.text(i, this_h, value, ha='center', va='top', fontsize=12)

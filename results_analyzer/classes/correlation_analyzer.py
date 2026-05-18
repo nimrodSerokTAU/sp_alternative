@@ -121,11 +121,12 @@ class CorrelationAnalyzer:
         self.datasets_list = datasets_list
         for rd in self.datasets_list:
             rd.calc_pearson(continue_missing_code)
-            pair_ds = PairDataSet(rd.code)
-            for i in range(2):
-                pair_ds.append_sample(rd.measurementsData[i].measure_key,
-                                      rd.measurementsData[i].r_value * self.measures[i].correlation_direction)
-            self.pairs_data.append_sample(pair_ds)
+            if len(rd.measurementsData) > 1:
+                pair_ds = PairDataSet(rd.code)
+                for i in range(2):
+                    pair_ds.append_sample(rd.measurementsData[i].measure_key,
+                                          rd.measurementsData[i].r_value * self.measures[i].correlation_direction)
+                self.pairs_data.append_sample(pair_ds)
             for measure_i in range(len(self.measures)):
                 self.measures[measure_i].append_dataset_data(rd.measurementsData[measure_i])
         for measure_i in range(len(self.measures)):
@@ -164,11 +165,12 @@ class CorrelationAnalyzer:
         self.datasets_list = self.merge_data_from_files(data_from_files)
         for rd in self.datasets_list:
             rd.calc_pearson(True)
-            pair_ds = PairDataSet(rd.code)
-            for i in range(2):
-                pair_ds.append_sample(rd.measurementsData[i].measure_key,
-                                      rd.measurementsData[i].r_value * self.measures[i].correlation_direction)
-            self.pairs_data.append_sample(pair_ds)
+            if len(rd.measurementsData) > 1:
+                pair_ds = PairDataSet(rd.code)
+                for i in range(2):
+                    pair_ds.append_sample(rd.measurementsData[i].measure_key,
+                                          rd.measurementsData[i].r_value * self.measures[i].correlation_direction)
+                self.pairs_data.append_sample(pair_ds)
             for m in rd.measurementsData:
                 measure_index = measures_by_key.index(m.measure_key)
                 self.measures[measure_index].append_dataset_data(m)
