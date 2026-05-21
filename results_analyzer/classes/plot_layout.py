@@ -297,9 +297,11 @@ class PlotLayout:
         custom_linestyle = (0, (8, 4))
         title_nudge = 0.06
 
+        handles_m, labels_m = [], []
         for j, data in enumerate(data_list):
             row = j
             ax = fig.add_subplot(gs[row, 0])
+
             if isinstance(data, ScatterPlot):
                 for i in range(len(data.names)):
                     ax.scatter(data.x, data.y[i], marker=data.markers[i], linewidths=data.line_widths,
@@ -357,15 +359,18 @@ class PlotLayout:
                          fontweight='bold',
                          va='top')
                 h, l = ax.get_legend_handles_labels()
-                handles_m, labels_m = [], []
                 handles_m.extend(h)
                 labels_m.extend(l)
 
-            # p_val = max(single_data.p_value_per_ds) * 1000
+            if isinstance(data, StackedColSubPlot):
+                fig.legend(handles_m, labels_m, ncol=3, loc='upper center', fontsize=11,
+                           bbox_to_anchor=(0.5, 0.07), frameon=False)
+                fig.tight_layout(rect=[0, 0.05, 1, 1], w_pad=4)
 
-        fig.tight_layout(rect=[0, 0, 1, 1])
+            else:
+                fig.tight_layout(rect=[0, 0, 1, 1])
 
-        data_count_string = '_'.join(str(data.data_count) if hasattr(data, 'data_count') else '')
+        data_count_string = f'_{data.samples_num if hasattr(data, "samples_num") else ""}'
         plt.savefig(
             f'{self.dir_path}/{self.identifier}_{data_count_string}.tiff')
         plt.savefig(

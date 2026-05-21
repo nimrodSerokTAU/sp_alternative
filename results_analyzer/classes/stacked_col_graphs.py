@@ -232,41 +232,6 @@ def add_labels(x, h: list[float], values: list[float]):
         plt.text(i, this_h, f'{values[i]:.1f}%', ha='center', va='top')
 
 
-def double_plot(data_by_labels: list[StackedColSubPlot], dir_path: str, identifier: str):
-    # plt.figure(figsize=(26, 7), layout='constrained')
-    fig, axs = plt.subplots(1, 2, figsize=(15, 7))  # len(data_by_labels)
-    plt.rcParams['hatch.linewidth'] = 0.5
-    plt.rcParams['hatch.color'] = '#404245'
-
-    for j in range(len(data_by_labels)):
-        plot_data = data_by_labels[j]
-        for i in range(len(plot_data.data)):
-            stacked_col_data: StackedColGraphData = plot_data.data[i]
-            label = stacked_col_data.label
-            if label == 'Model2':
-                label = 'DL-model'
-            if label == 'Tie (Model2 and Default)':
-                label = 'Tie (DL-model and Default)'
-            axs[j].bar(list(stacked_col_data.x), stacked_col_data.data_by_labels, width=0.6,
-                       bottom=list(stacked_col_data.bottom),
-                       label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
-            add_comp_labels(axs[j], plot_data.labels_list[i]['x'], plot_data.labels_list[i]['bottom'],
-                            plot_data.labels_list[i]['val'])
-            axs[j].set_ylabel(plot_data.ylabel, fontsize=12)
-            axs[j].set_xticks(stacked_col_data.x, plot_data.categories, fontsize=12)
-
-    handles, labels = [], []
-    h, l = axs[0].get_legend_handles_labels()
-    handles.extend(h)
-    labels.extend(l)
-
-    fig.legend(handles, labels, ncol=3, loc='upper center', fontsize=11, bbox_to_anchor=(0.5, 0.1))
-    fig.tight_layout(rect=[0, 0.1, 1, 1])
-    plt.savefig(
-        f'{dir_path}/{identifier}_pick_best_{data_by_labels[0].samples_num}_emp_{data_by_labels[1].samples_num}_sim_datasets.tiff')
-    plt.show()
-
-
 def add_comp_labels(fig, x, h: list[float], values: list[float]):
     for i in range(len(x)):
         this_h = h[i] + values[i] * 0.75

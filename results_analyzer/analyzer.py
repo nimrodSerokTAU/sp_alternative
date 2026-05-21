@@ -1,8 +1,9 @@
 from results_analyzer.classes.alternative_labels import AlternativeLabelFile
+from results_analyzer.classes.measure import Measure
 from results_analyzer.classes.plot_layout import PlotLayout
+from results_analyzer.classes.sampling import Sampling
 from results_analyzer.classes.stacked_col_graphs import StackedColGraph
 from results_analyzer.classes.correlation_analyzer import CorrelationAnalyzer
-from results_analyzer.classes.measure import Measure
 from results_analyzer.classes.pdf_analyzer import PDFAnalyzer
 
 empirical_example: str = 'BBA0169'
@@ -229,21 +230,20 @@ output_path = f'{data_dir}/output'
 
 # # fig 4 a, b
 # fig_s_4_nuc = CorrelationAnalyzer(data_dir,
-#                               ['input/Nuc_PAM/model_1/features_w_predictions.csv'],
-#                               'dseq_from_true',
-#                               [
-#                                         Measure(key='sop', external_name='sp_NucleotidesPAM250_GO_-1.5_GE_0', presentation_name='SoP',
-#                                                 correlation_direction=-1),
-#                                         Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
-#                                                 correlation_direction=1),
-#                                ],
-#                               '40_S39', False, 'Correlation with Distance from True', 401, 0.75)
-#
+#                                   ['input/Nuc_PAM/model_1/features_w_predictions.csv'],
+#                                   'dseq_from_true',
+#                                   [
+#                                       Measure(key='sop', external_name='sp_NucleotidesPAM250_GO_-1.5_GE_0',
+#                                               presentation_name='SoP',
+#                                               correlation_direction=-1),
+#                                       Measure(key='model1', external_name='predicted_score', presentation_name='Model1',
+#                                               correlation_direction=1),
+#                                   ],
+#                                   '40_S39', False, 'Correlation with Distance from True', 401, 1)
 #
 # pl5 = PlotLayout(14, 6, 1, 2, output_path, 'FigS4')
 # pl5.double_col_plot([fig_s_4_nuc.get_example_scatter(), fig_s_4_nuc.get_r_scatter()],
 #                     ['a', 'b'], {})
-
 
 # # fig S 5 a:
 # fig_s_5a = StackedColGraph(data_dir,
@@ -258,7 +258,7 @@ output_path = f'{data_dir}/output'
 #
 # # fig S 5 b"
 # fig_s_5b = StackedColGraph(data_dir,
-#                         [{'relative_file_path': 'input/OrthoMaM/subsampling_summary.csv', 'series_name': 'Samples'}],
+#                         [{'relative_file_path': 'input/OrthoMaM/subsampling/subsampling_summary.csv', 'series_name': 'Samples'}],
 #                         [Measure(key='20', external_name='', presentation_name='20 Samples', correlation_direction=0),
 #                                          Measure(key='50', external_name='', presentation_name='50 Samples', correlation_direction=0),
 #                                          Measure(key='100', external_name='', presentation_name='100 Samples', correlation_direction=0),
@@ -276,138 +276,153 @@ output_path = f'{data_dir}/output'
 # pl5 = PlotLayout(16, 7, 1, 2, output_path, 'FigS5')
 # pl5.triple_plot(fig_s_5a.subplot, [fig_s_5b.subplot], ['Different Samples Size'], [1, 4])
 
-# fig_s_6a = StackedColGraph(data_dir,
-#                            [{'relative_file_path': 'input/OrthoMaM/subsampling_summary.csv', 'series_name': 'Samples'}],
-#                            [Measure(key='20\n', external_name='', presentation_name='20 Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='50', external_name='', presentation_name='50\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='100', external_name='', presentation_name='100\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='200', external_name='', presentation_name='200\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='400', external_name='', presentation_name='400\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='800', external_name='', presentation_name='800\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='1600', external_name='', presentation_name='1600\n Samples',
-#                                     correlation_direction=0)],
-#                            [Measure(key='mafft', external_name='MAFFT_Default', presentation_name='MAFFT',
-#                                     correlation_direction=0),
-#                             Measure(key='model2', external_name='MAFFT_Predicted', presentation_name='Model2',
-#                                     correlation_direction=0),
-#                             Measure(key='tie', external_name='MAFFT_Tie', presentation_name='Tie (Model2 and Default)',
-#                                     correlation_direction=0)],
-#                            True, ['mafft', 'model2'], True)
-#
-# fig_s_6b = StackedColGraph(data_dir,
-#                            [{'relative_file_path': 'input/OrthoMaM/subsampling_summary.csv', 'series_name': 'Samples'}],
-#                            [Measure(key='20\n', external_name='', presentation_name='20 Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='50', external_name='', presentation_name='50\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='100', external_name='', presentation_name='100\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='200', external_name='', presentation_name='200\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='400', external_name='', presentation_name='400\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='800', external_name='', presentation_name='800\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='1600', external_name='', presentation_name='1600\n Samples',
-#                                     correlation_direction=0)],
-#                            [Measure(key='prank', external_name='PRANK_Default', presentation_name='PRANK',
-#                                     correlation_direction=0),
-#                             Measure(key='model2', external_name='PRANK_Predicted', presentation_name='Model2',
-#                                     correlation_direction=0),
-#                             Measure(key='tie', external_name='PRANK_Tie', presentation_name='Tie (Model2 and Default)',
-#                                     correlation_direction=0)],
-#                            True, ['prank', 'model2'], True)
-#
-# fig_s_6c = StackedColGraph(data_dir,
-#                            [{'relative_file_path': 'input/OrthoMaM/subsampling_summary.csv', 'series_name': 'Samples'}],
-#                            [Measure(key='20\n', external_name='', presentation_name='20 Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='50', external_name='', presentation_name='50\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='100', external_name='', presentation_name='100\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='200', external_name='', presentation_name='200\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='400', external_name='', presentation_name='400\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='800', external_name='', presentation_name='800\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='1600', external_name='', presentation_name='1600\n Samples',
-#                                     correlation_direction=0)],
-#                            [Measure(key='muscle', external_name='Muscle_Default', presentation_name='Muscle',
-#                                     correlation_direction=0),
-#                             Measure(key='model2', external_name='Muscle_Predicted', presentation_name='Model2',
-#                                     correlation_direction=0),
-#                             Measure(key='tie', external_name='Muscle_Tie', presentation_name='Tie (Model2 and Default)',
-#                                     correlation_direction=0)],
-#                            True, ['muscle', 'model2'], True)
-#
-# fig_s_6d = StackedColGraph(data_dir,
-#                            [{'relative_file_path': 'input/OrthoMaM/subsampling_summary.csv', 'series_name': 'Samples'}],
-#                            [Measure(key='20', external_name='', presentation_name='20\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='50', external_name='', presentation_name='50\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='100', external_name='', presentation_name='100\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='200', external_name='', presentation_name='200\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='400', external_name='', presentation_name='400\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='800', external_name='', presentation_name='800\n Samples',
-#                                     correlation_direction=0),
-#                             Measure(key='1600', external_name='', presentation_name='1600\n Samples',
-#                                     correlation_direction=0)],
-#                            [Measure(key='baliphy', external_name='BAli-Phy_Default', presentation_name='BAli-Phy',
-#                                     correlation_direction=0),
-#                             Measure(key='model2', external_name='BAli-Phy_Predicted', presentation_name='Model2',
-#                                     correlation_direction=0),
-#                             Measure(key='tie', external_name='BAli-Phy_Tie',
-#                                     presentation_name='Tie (Model2 and Default)',
-#                                     correlation_direction=0)],
-#                            True, ['baliphy', 'model2'], True)
-#
-# # pl_s_6 = PlotLayout(12, 20, 4, 1, output_path, 'FigS6')
-# # pl_s_6.single_col_plot([fig_s_6a.subplot, fig_s_6b.subplot, fig_s_6c.subplot, fig_s_6d.subplot],
-# #                        ['Different Samples Size'], ['a', 'b', 'c', 'd'])
-#
-# pl_s_6 = PlotLayout(18, 12, 2, 2, output_path, 'Figs6')
-# pl_s_6.double_col_plot([fig_s_6a.subplot, fig_s_6b.subplot, fig_s_6c.subplot, fig_s_6d.subplot],
-#                        ['a', 'c', 'b', 'd'], {})
+fig_s_6a = StackedColGraph(data_dir,
+                           [{'relative_file_path': 'input/OrthoMaM/subsampling/subsampling_summary.csv', 'series_name': 'Samples'}],
+                           [Measure(key='20\n', external_name='', presentation_name='20 Samples',
+                                    correlation_direction=0),
+                            Measure(key='50', external_name='', presentation_name='50\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='100', external_name='', presentation_name='100\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='200', external_name='', presentation_name='200\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='400', external_name='', presentation_name='400\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='800', external_name='', presentation_name='800\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='1600', external_name='', presentation_name='1600\n Samples',
+                                    correlation_direction=0)],
+                           [Measure(key='mafft', external_name='MAFFT_Default', presentation_name='MAFFT',
+                                    correlation_direction=0),
+                            Measure(key='model2', external_name='MAFFT_Predicted', presentation_name='Model2',
+                                    correlation_direction=0),
+                            Measure(key='tie', external_name='MAFFT_Tie', presentation_name='Tie (Model2 and Default)',
+                                    correlation_direction=0)],
+                           True, ['mafft', 'model2'], True)
+
+fig_s_6b = StackedColGraph(data_dir,
+                           [{'relative_file_path': 'input/OrthoMaM/subsampling/subsampling_summary.csv', 'series_name': 'Samples'}],
+                           [Measure(key='20\n', external_name='', presentation_name='20 Samples',
+                                    correlation_direction=0),
+                            Measure(key='50', external_name='', presentation_name='50\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='100', external_name='', presentation_name='100\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='200', external_name='', presentation_name='200\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='400', external_name='', presentation_name='400\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='800', external_name='', presentation_name='800\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='1600', external_name='', presentation_name='1600\n Samples',
+                                    correlation_direction=0)],
+                           [Measure(key='prank', external_name='PRANK_Default', presentation_name='PRANK',
+                                    correlation_direction=0),
+                            Measure(key='model2', external_name='PRANK_Predicted', presentation_name='Model2',
+                                    correlation_direction=0),
+                            Measure(key='tie', external_name='PRANK_Tie', presentation_name='Tie (Model2 and Default)',
+                                    correlation_direction=0)],
+                           True, ['prank', 'model2'], True)
+
+fig_s_6c = StackedColGraph(data_dir,
+                           [{'relative_file_path': 'input/OrthoMaM/subsampling/subsampling_summary.csv', 'series_name': 'Samples'}],
+                           [Measure(key='20\n', external_name='', presentation_name='20 Samples',
+                                    correlation_direction=0),
+                            Measure(key='50', external_name='', presentation_name='50\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='100', external_name='', presentation_name='100\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='200', external_name='', presentation_name='200\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='400', external_name='', presentation_name='400\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='800', external_name='', presentation_name='800\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='1600', external_name='', presentation_name='1600\n Samples',
+                                    correlation_direction=0)],
+                           [Measure(key='muscle', external_name='Muscle_Default', presentation_name='Muscle',
+                                    correlation_direction=0),
+                            Measure(key='model2', external_name='Muscle_Predicted', presentation_name='Model2',
+                                    correlation_direction=0),
+                            Measure(key='tie', external_name='Muscle_Tie', presentation_name='Tie (Model2 and Default)',
+                                    correlation_direction=0)],
+                           True, ['muscle', 'model2'], True)
+
+fig_s_6d = StackedColGraph(data_dir,
+                           [{'relative_file_path': 'input/OrthoMaM/subsampling/subsampling_summary.csv', 'series_name': 'Samples'}],
+                           [Measure(key='20', external_name='', presentation_name='20\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='50', external_name='', presentation_name='50\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='100', external_name='', presentation_name='100\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='200', external_name='', presentation_name='200\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='400', external_name='', presentation_name='400\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='800', external_name='', presentation_name='800\n Samples',
+                                    correlation_direction=0),
+                            Measure(key='1600', external_name='', presentation_name='1600\n Samples',
+                                    correlation_direction=0)],
+                           [Measure(key='baliphy', external_name='BAli-Phy_Default', presentation_name='BAli-Phy',
+                                    correlation_direction=0),
+                            Measure(key='model2', external_name='BAli-Phy_Predicted', presentation_name='Model2',
+                                    correlation_direction=0),
+                            Measure(key='tie', external_name='BAli-Phy_Tie',
+                                    presentation_name='Tie (Model2 and Default)',
+                                    correlation_direction=0)],
+                           True, ['baliphy', 'model2'], True)
+
+pl_s_6 = PlotLayout(18, 12, 2, 2, output_path, 'Figs6')
+pl_s_6.double_col_plot([fig_s_6a.subplot, fig_s_6b.subplot, fig_s_6c.subplot, fig_s_6d.subplot],
+                       ['a', 'c', 'b', 'd'], {})
 
 # fig s 7:
-fig_s_7_1k = CorrelationAnalyzer(data_dir,
-                              ['input/OrthoMaM/model_2/1k/pretrained_1000_0.5_features_w_predictions.csv'],
-                              'dseq_from_true',
-                              [
-                                    Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
-                                            correlation_direction=-1),
-                                    Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
-                                            correlation_direction=1),
-                                        ],
-                              '1000L1_0.5', False, 'Correlation with Distance from True',
-                              401, 0.75, continue_missing_code=True)
+# fig_s_7_1k = CorrelationAnalyzer(data_dir,
+#                               ['input/OrthoMaM/model_2/1k/pretrained_1000_0.5_features_w_predictions.csv'],
+#                               'dseq_from_true',
+#                               [
+#                                     Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                             correlation_direction=-1),
+#                                     Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
+#                                             correlation_direction=1),
+#                                         ],
+#                               '1000L1_0.5', False, 'Correlation with Distance from True',
+#                               401, 0.75, continue_missing_code=True)
+#
+# fig_s_7_5k = CorrelationAnalyzer(data_dir,
+#                               ['input/OrthoMaM/model_2/5k/pretrained_5000_0.5_features_w_predictions.csv'],
+#                               'dseq_from_true',
+#                               [
+#                                     Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
+#                                             correlation_direction=-1),
+#                                     Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
+#                                             correlation_direction=1),
+#                                         ],
+#                               '5000S1_0.5', False, 'Correlation with Distance from True',
+#                               401, 0.75, continue_missing_code=True)
+#
+#
+# pl_s_7 = PlotLayout(14, 6, 1, 2, output_path, 'FigS7')
+# pl_s_7.double_col_plot([fig_s_7_1k.get_example_rank_scatter(), fig_s_7_5k.get_example_rank_scatter()],
+#                      ['a', 'b'],
+#                      {})
 
-fig_s_7_5k = CorrelationAnalyzer(data_dir,
-                              ['input/OrthoMaM/model_2/5k/pretrained_5000_0.5_features_w_predictions.csv'],
-                              'dseq_from_true',
-                              [
-                                    Measure(key='sop', external_name='sp_BLOSUM62_GO_-10_GE_-0.5', presentation_name='SoP',
-                                            correlation_direction=-1),
-                                    Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
-                                            correlation_direction=1),
-                                        ],
-                              '5000S1_0.5', False, 'Correlation with Distance from True',
-                              401, 0.75, continue_missing_code=True)
+fig_s_8 = Sampling(data_dir,
+                   ['input/OrthoMaM/subsampling/features_w_predictions_20.csv',
+                    'input/OrthoMaM/subsampling/features_w_predictions_50.csv',
+                    'input/OrthoMaM/subsampling/features_w_predictions_100.csv',
+                    'input/OrthoMaM/subsampling/features_w_predictions_200.csv',
+                    'input/OrthoMaM/subsampling/features_w_predictions_400.csv',
+                    'input/OrthoMaM/subsampling/features_w_predictions_800.csv',
+                    'input/OrthoMaM/subsampling/features_w_predictions_1600.csv'],
+                   'dseq_from_true',
+                   [Measure(key='model2', external_name='predicted_score', presentation_name='Model2',
+                            correlation_direction=1)], "",
+                   ["20", '50\n Samples', '100\n Samples', '200\n Samples', '400\n Samples',
+                    '800\n Samples', '1600\n Samples'],
+                   ["Better than 20 Samples", "Same as 20 Samples", "Worse than 20 Samples"]
+                   )
 
-
-pl_s_7 = PlotLayout(14, 6, 1, 2, output_path, 'FigS7')
-pl_s_7.double_col_plot([fig_s_7_1k.get_example_rank_scatter(), fig_s_7_5k.get_example_rank_scatter()],
-                     ['a', 'b'],
-                     {})
+pl_s_8 = PlotLayout(12, 6, 1, 1, output_path, 'FigS8')
+pl_s_8.single_col_plot([fig_s_8.create_col_graph()], [''], ['Test'])

@@ -1,3 +1,4 @@
+
 def normalize(v: list[float]):
     list_min: float = min(v)
     list_max: float = max(v)

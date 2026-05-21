@@ -3,7 +3,6 @@ import csv
 from scipy.stats import spearmanr
 import numpy as np
 
-
 from results_analyzer.classes.alternative_labels import AlternativeLabelFile
 from results_analyzer.classes.col_plot import ColPlot
 from results_analyzer.classes.kdes_plot import KdesPlot
@@ -13,6 +12,7 @@ from results_analyzer.classes.col_graphs import DataGroupCorr, DataGroupMgr
 from results_analyzer.constants import NAMING, COLORS
 from results_analyzer.classes.data_set import DataSet, Point
 from results_analyzer.classes.measure import Measure
+from results_analyzer.file_reader import read_file
 from results_analyzer.utils import is_float
 
 
@@ -46,10 +46,10 @@ class CorrelationAnalyzer:
         feature_file_code_inx = alternative_label_file.feature_file_code_inx if alternative_label_file else 1
         feature_file_dataset_inx = alternative_label_file.feature_file_dataset_inx if alternative_label_file else 0
         for i, relative_file_path in enumerate(relative_file_paths):
-            datasets_list = self.read_file(f'{working_dir}/{relative_file_path}', label_name,
-                                           i if is_multi_file else -1,
-                                           dist_threshold, ext_labels_dict, feature_file_dataset_inx,
-                                           feature_file_code_inx, ignore_code)
+            datasets_list = read_file(self.measures, f'{working_dir}/{relative_file_path}', label_name,
+                                      i if is_multi_file else -1,
+                                      dist_threshold, ext_labels_dict, feature_file_dataset_inx,
+                                      feature_file_code_inx, ignore_code)
             data_from_files.append(datasets_list)
 
         if is_multi_file:
@@ -67,52 +67,6 @@ class CorrelationAnalyzer:
             if print_zoom:
                 self.print_zoom_in(example_case, points_count)
         self.accum_r = self.data_group_mgr.print_r([x.key for x in measures], multi_dataset_title)
-
-    def read_file(self, file_path: str, label_name: str, file_index: int, dist_threshold: float,
-                  ext_labels_dict: dict[dict:[str, float]] | None, feature_file_dataset_inx: int,
-                  feature_file_code_inx: int, ignore: str) -> list[DataSet]:
-        measures = self.measures if file_index == -1 else [self.measures[file_index]]
-        curr_code_set = DataSet('', measures)
-        datasets_list: list[DataSet] = []
-        with open(file_path, 'r') as file:
-            csv_reader = csv.reader(file)
-            header = next(csv_reader)
-            header_dict: dict[str, int] = {}
-            for i, key in enumerate(header):
-                header_dict[key] = i
-            print(f"Header: {header}")
-            label_col = header_dict[label_name]
-            for i, row in enumerate(csv_reader):
-                drop = False
-                dataset_code = row[feature_file_dataset_inx]
-                if dataset_code != curr_code_set.code:
-                    curr_code_set = DataSet(dataset_code, measures)
-                    datasets_list.append(curr_code_set)
-                code = row[feature_file_code_inx]
-                if code == ignore or code == dataset_code:
-                    drop = True
-                measures_data: list[str] = []
-                for measure in measures:
-                    if measure.external_name not in header_dict:
-                        drop = True
-                        continue
-                    measure_col = header_dict[measure.external_name]
-                    if row[measure_col] == '' or not is_float(row[label_col]):
-                        drop = True
-                    measures_data.append(row[measure_col])
-                if not drop and row[label_col] != '' and float(row[label_col]) <= dist_threshold:
-                    dist = row[label_col]
-                    if float(dist) == 0:
-                        debug = 2
-                    if ext_labels_dict:
-                        if dataset_code in ext_labels_dict and row[feature_file_code_inx] in ext_labels_dict[
-                            dataset_code]:
-                            dist = ext_labels_dict[dataset_code][row[feature_file_code_inx]]
-                        else:
-                            dist = None
-                    if dist:
-                        curr_code_set.append_sample(dist=dist, scores=measures_data)
-        return datasets_list
 
     def arrange_data(self, datasets_list: list[DataSet], continue_missing_code: bool):
         if continue_missing_code:
@@ -198,11 +152,13 @@ class CorrelationAnalyzer:
                 if series_name not in data:
                     data[series_name] = []
                 corr_direction = 1
-                if series_name in self.data_group_mgr.measures_directions and self.data_group_mgr.measures_directions[series_name] is False:
+                if series_name in self.data_group_mgr.measures_directions and self.data_group_mgr.measures_directions[
+                    series_name] is False:
                     corr_direction = -1
                 for v in series_values:
                     data[series_name].append(v.r_value * corr_direction)
-        return KdesPlot(values=list(data.values()), names=list(data.keys()), colors=[COLORS[key] for key in data.keys()])
+        return KdesPlot(values=list(data.values()), names=list(data.keys()),
+                        colors=[COLORS[key] for key in data.keys()])
 
     def get_example_rank_scatter(self) -> ScatterPlot:
         ds = DataSet(self.datasets_list[0].code, self.measures)
@@ -213,7 +169,6 @@ class CorrelationAnalyzer:
             ds.measurementsData[i].ordered_scores = md.ordered_scores
             ds.measurementsData[i].r_value = corr
         return ds.create_scatter(ds.measurementsData, True)
-
 
     @staticmethod
     def calc_external_labels_dict(potential_labels_path: str,
