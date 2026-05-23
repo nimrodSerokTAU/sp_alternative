@@ -19,7 +19,7 @@ from classes.sp_score import SPScore
 from classes.tree_stats import calc_parsimony, TreeStats
 from classes.unrooted_tree import create_a_tree_from_newick, UnrootedTree
 from classes.w_sop_stats import WSopStats
-from enums import SopCalcTypes, RootingMethods, WeightMethods, DistanceType
+from enums import SopCalcTypes, RootingMethods, WeightMethods, DistanceType, StatsOutput
 from multi_msa_service import multiple_msa_calc_features_and_labels
 from distance_calc import translate_profile_naming, get_column, get_place_h, compute_distance
 from ete3 import Tree, TreeNode
@@ -1374,3 +1374,33 @@ def test_col_score():
     entropy_stats = EntropyStats(msa_a.dataset_name, msa_a.get_taxa_num(), msa_a.get_msa_len())
     entropy_stats.calc_entropy(msa_seq_a)
     assert entropy_stats.constant_sites_pct == 0.4
+
+def test_calc_all_features():
+    configuration: Configuration = Configuration(
+        models_list=[
+            EvoModel(-10, -0.5, 'BLOSUM62'),
+            EvoModel(-6, -0.5, 'BLOSUM62'),
+            EvoModel(-10, -1, 'BLOSUM62'),
+            EvoModel(-6, -1, 'BLOSUM62'),
+            EvoModel(-10, -0.2, 'BLOSUM62'),
+            EvoModel(-6, -0.2, 'BLOSUM62'),
+            EvoModel(-10, -0.5, 'PAM250'),
+            EvoModel(-6, -0.5, 'PAM250'),
+            EvoModel(-10, -1, 'PAM250'),
+            EvoModel(-6, -1, 'PAM250'),
+            EvoModel(-10, -0.2, 'PAM250'),
+            EvoModel(-6, -0.2, 'PAM250'),
+        ],
+        sop_clac_type=SopCalcTypes.EFFICIENT,
+        input_files_dir_name='example_data/alternative_msas',
+        additional_weights={
+            WeightMethods.HENIKOFF_WG,
+            WeightMethods.HENIKOFF_WOG,
+            WeightMethods.CLUSTAL_MID_ROOT,
+            WeightMethods.CLUSTAL_DIFFERENTIAL_SUM
+        },
+        k_values=[5, 10, 20],
+        stats_output={StatsOutput.ALL}
+    )
+
+    multiple_msa_calc_features_and_labels(configuration)
