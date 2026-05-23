@@ -2,8 +2,6 @@ import sys
 from pathlib import Path
 from classes.msa import MSA
 
-DIR = "/groups/pupko/kseniap/"
-
 def create_multiple_msa_alt(msa_file_path: Path, msa_name: str, output_dir_path: Path):
     msa = MSA(msa_name)
     msa.read_me_from_fasta(msa_file_path)
