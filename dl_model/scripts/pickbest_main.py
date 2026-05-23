@@ -2,12 +2,12 @@ from dl_model.evaluation.pick_best import PickBest
 from dl_model.config.config import PickBestConfig
 
 pickbest_cfg = PickBestConfig(
-    features_file="../balibase_features_w_aligner_090426.csv", #replace with your features file
+    features_file="../input/xxx.csv", #replace with your features file
     true_score_name="dseq_from_true",
-    prediction_file=f"../prediction_DL_0_mode1_dseq_from_true.csv", #replace with your prediction file
+    prediction_file=f"./../example_data/predictions/xxx.csv", #replace with your prediction file
     error=0.0,
     subset=None,
-    out_dir="../out/", #replace with your output folder path
+    out_dir="../../example_data/predictions", #replace with your output folder path
     num_trials=1
 )
 
