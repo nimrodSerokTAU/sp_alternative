@@ -254,6 +254,10 @@ data_cfg = DataConfig(
     test_size=0.2,
     deduplicated=False,
     empirical=False,
+    min_rows_per_code_after_dedup=1,
+    number_of_msas_threshold_simulated=1,
+    number_of_msas_threshold_empirical=1,
+    random_state=12345
 )
 
 feat_cfg = FeatureConfig(
@@ -307,14 +311,18 @@ explain_cfg = ShapExplainConfig(
     `features_file`: Path to the input features file (.csv format) for training.
     `true_score_name`: Name of the column in the features file representing the true MSA quality score (label) to predict.
     `empirical`: Whether to use empirical data for training (155 features) or simulated data (153 features).
+    `min_rows_per_code_after_dedup`: What should be the minimum number of MSAs remaining in the MSA-batch after deduplication for it to remain in the training (default = 1).
+    `number_of_msas_threshold_simulated`: What should be the minimum number of MSAs in the simulated MSA-batch for it to remain in the training (default = 1).
+    `number_of_msas_threshold_empirical`: What should be the minimum number of MSAs in the empirical MSA-batch for it to remain in the training (default = 1).
+    `random_state`: Seed used for training/test split, fix the seed for reproducibility.
 2. `feat_cfg` (FeatureConfig):
     `mode`: Feature processing mode (1 uses all features, 2 uses short list of features).
     `remove_correlated_features`: Whether to remove highly correlated features.
-    `scaler_type_features`: Type of scaling for features ('rank', 'standard', 'zscore').
-    `scaler_type_labels`: Type of scaling for labels ('rank', 'standard', 'zscore').
+    `scaler_type_features`: Type of scaling for features ('rank', 'standard', 'zscore'). Use 'rank' for Model2 and 'standard' for Model1.
+    `scaler_type_labels`: Type of scaling for labels ('rank', 'standard', 'zscore'). Use 'rank' for Model2 and 'standard' for Model1.
 3. `train_cfg` (TrainConfig):
     `loss_fn`: Loss function to use ('mse', 'custom_mse', 'ranknet_loss', 'hybrid_mse_ranknet_loss', 'kendall_loss', etc.).
-    `batch_generation`: Method for generating training batches ('standard', 'custom'). Custom uses a specialized batch generation strategy where all samples in the same mini-batch come from the same MSA-batch.
+    `batch_generation`: Method for generating training batches ('standard', 'custom'). Custom uses a specialized batch generation strategy where all samples in the same mini-batch come from the same MSA-batch. Use 'custom' for Model2 and 'standard' for Model1.
     `regularizer_name`: Type of regularization to apply ('l1', 'l2', 'l1_l2').
 4.  `out_cfg` (OutputConfig):
     `out_dir`: Directory to save output files.
