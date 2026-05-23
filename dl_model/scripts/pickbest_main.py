@@ -4,7 +4,7 @@ from dl_model.config.config import PickBestConfig
 pickbest_cfg = PickBestConfig(
     features_file="../input/xxx.csv", #replace with your features file
     true_score_name="dseq_from_true",
-    prediction_file=f"./../example_data/predictions/xxx.csv", #replace with your prediction file
+    prediction_file=f"../../example_data/predictions/xxx.csv", #replace with your prediction file
     error=0.0,
     subset=None,
     out_dir="../../example_data/predictions", #replace with your output folder path

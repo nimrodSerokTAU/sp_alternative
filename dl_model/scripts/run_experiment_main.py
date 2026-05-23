@@ -6,7 +6,7 @@ from dl_model.pipeline.experiment import RegressionExperiment
 logging.basicConfig(level=logging.INFO)
 
 data_cfg = DataConfig(
-    features_file="/Users/kpolonsky/Documents/sp_alternative/dl_model/out/clean_data/orthomam_NEW_features_080426.csv", #replace with your features file
+    features_file="../input/xxx.csv", #replace with your features file
     true_score_name="dseq_from_true",
     test_size=0.2,
     deduplicated=False,

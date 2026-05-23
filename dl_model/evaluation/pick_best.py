@@ -22,7 +22,6 @@ class PickBest:
         self.error: float = error
         self.predicted_score: str = PREDICTED_SCORE_NAME
         self.predicted_class: str = PREDICTED_CLASS_PROB
-        # self.sum_of_pairs_score: str = SOP_SCORE_NAME
         self.sum_of_pairs_score = sum_of_pairs_score
         self.pickme_df: Optional[pd.DataFrame] = None
         self.pickme_sop_df: Optional[pd.DataFrame] = None
