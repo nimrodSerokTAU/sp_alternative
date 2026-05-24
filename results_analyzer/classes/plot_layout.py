@@ -47,7 +47,7 @@ class PlotLayout:
                     bottom=list(stacked_col_data.bottom),
                     label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
             self.add_comp_labels(ax0, single_data.labels_list[i]['x'], single_data.labels_list[i]['bottom'],
-                                 single_data.labels_list[i]['val'])
+                                 single_data.labels_list[i]['val'], i == len(single_data.data) - 1)
             ax0.set_ylabel(single_data.ylabel, fontsize=12)
             ax0.set_xticks(stacked_col_data.x, single_data.categories, fontsize=12)
             ax0.grid(False)
@@ -70,7 +70,7 @@ class PlotLayout:
                        bottom=list(stacked_col_data.bottom),
                        label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
                 self.add_comp_labels(ax, plot_data.labels_list[i]['x'], plot_data.labels_list[i]['bottom'],
-                                     plot_data.labels_list[i]['val'])
+                                     plot_data.labels_list[i]['val'], i == len(plot_data.data) - 1)
                 ax.set_title(titles[j], fontsize=12)
                 ax.set_ylabel(plot_data.ylabel, fontsize=12)
                 ax.set_xticks(stacked_col_data.x, plot_data.categories, fontsize=12)
@@ -248,7 +248,7 @@ class PlotLayout:
                             bottom=list(stacked_col_data.bottom),
                             label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
                     self.add_comp_labels(ax, data.labels_list[i]['x'], data.labels_list[i]['bottom'],
-                                         data.labels_list[i]['val'])
+                                         data.labels_list[i]['val'], i == len(data.data) - 1)
 
                     ax.set_ylabel(data.ylabel, fontsize=12)
                     ax.set_xticks(stacked_col_data.x, data.categories, fontsize=12)
@@ -351,13 +351,12 @@ class PlotLayout:
                             bottom=list(stacked_col_data.bottom),
                             label=label, color=stacked_col_data.color, hatch=stacked_col_data.hatch)
                     self.add_comp_labels(ax, data.labels_list[i]['x'], data.labels_list[i]['bottom'],
-                                         data.labels_list[i]['val'])
+                                         data.labels_list[i]['val'], i == len(data.data) - 1)
                     ax.set_ylabel(data.ylabel, fontsize=12)
                     ax.set_xticks(stacked_col_data.x, data.categories, fontsize=12)
                     ax.grid(False)
                 ax.text(-title_nudge, 0.98 + title_nudge, titles[0], transform=ax.transAxes, fontsize=14,
-                         fontweight='bold',
-                         va='top')
+                         fontweight='bold', va='top')
                 h, l = ax.get_legend_handles_labels()
                 handles_m.extend(h)
                 labels_m.extend(l)
@@ -380,8 +379,10 @@ class PlotLayout:
         plt.close()
 
     @staticmethod
-    def add_comp_labels(fig, x, h: list[float], values: list[float]):
+    def add_comp_labels(fig, x, h: list[float], values: list[float], is_last: bool):
         for i in range(len(x)):
-            this_h = h[i] + values[i] * 0.75 if values[i] > 2 else h[i] + 4
+            this_h = h[i] + values[i] * 0.75
+            if values[i] <= 2:
+                this_h = h[i] + 4 if not is_last else h[i] + values[i]
             value = f'{values[i]:.1f}%' if values[i] > 0 else ''
             fig.text(i, this_h, value, ha='center', va='top', fontsize=12)
