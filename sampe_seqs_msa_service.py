@@ -68,4 +68,4 @@ def sample_seqs_and_clean_msas(input_files_dir_name: str, k: int):
     print(f"Done")
 
 
-sample_seqs_and_clean_msas('D:/PhDB/papers/first/large_trees/1000L1_0.5', 60)
+sample_seqs_and_clean_msas('<use your path here>', 60)

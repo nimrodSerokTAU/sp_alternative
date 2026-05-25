@@ -1352,23 +1352,6 @@ def test_col_score():
     assert entropy_stats.constant_sites_pct == 0.4
 
 
-def test_eff_dseq():
-    true_profile_path: str = "D:/code/sp_alternative/sp_alternative_cpp/UnitTest1/test_data/true_msa.fas"
-    profile_a_path: str = "D:/code/sp_alternative/sp_alternative_cpp/UnitTest1/test_data/test_msa.fas"
-
-    true_msa = MSA("trueMSA")
-    true_msa.read_me_from_fasta(Path(true_profile_path))
-
-    test_msa = MSA("testMSA")
-    test_msa.read_me_from_fasta(Path(profile_a_path))
-
-    ef_res_t_1: float = compute_eff_d_seq(true_msa.sequences, test_msa.sequences)
-    assert round(ef_res_t_1, 3) == 0.044
-
-    res_t_1: float = compute_distance(true_msa.sequences, test_msa.sequences, DistanceType.D_SEQ)
-    assert round(res_t_1, 3) == 0.044
-
-
 def test_calc_all_features():
     configuration: Configuration = Configuration(
         models_list=[

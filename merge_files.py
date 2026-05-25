@@ -26,8 +26,5 @@ def merge_large_csv_files(input_folder: str, output_file: str) -> None:
 
         first = False
 
-
-# merge_large_csv_files(input_folder='D:/PhDB/papers/first/nuc_simulations/resultsUni',
-#                       output_file='D:/PhDB/papers/first/nuc_simulations/resultsUni/res.csv')
-merge_large_csv_files(input_folder='D:/PhDB/papers/first/nuc_simulations/MAFFT_DFT_results2',
-                      output_file='D:/PhDB/papers/first/nuc_simulations/MAFFT_DFT_results2/res2.csv')
+merge_large_csv_files(input_folder='<use your path here>',
+                      output_file='<use your path here>')
