@@ -85,14 +85,15 @@ class WSopStats(BasicStats):
             print(f"Elapsed time HENIKOFF_WG: {elapsed_time:.4f} seconds")
             start_time = time.time()
         if WeightMethods.CLUSTAL_MID_ROOT in additional_weights:
-            self.seq_weights_options.append(self.get_weight_list(tree, RootingMethods.LONGEST_PATH_MID, seq_names))
+            seq_w = self.get_weight_list(tree, RootingMethods.LONGEST_PATH_MID, seq_names)
+            self.seq_weights_options.append([x / sum(seq_w) for x in seq_w])
             self.weight_names.append(WeightMethods.CLUSTAL_MID_ROOT.value)
             end_time = time.time()
             elapsed_time = end_time - start_time
             print(f"Elapsed time CLUSTAL_MID_ROOT: {elapsed_time:.4f} seconds")
         if WeightMethods.CLUSTAL_DIFFERENTIAL_SUM in additional_weights:
-            self.seq_weights_options.append(
-            self.get_weight_list(tree, RootingMethods.MIN_DIFFERENTIAL_SUM, seq_names))
+            seq_w = self.get_weight_list(tree, RootingMethods.MIN_DIFFERENTIAL_SUM, seq_names)
+            self.seq_weights_options.append([x / sum(seq_w) for x in seq_w])
             self.weight_names.append(WeightMethods.CLUSTAL_DIFFERENTIAL_SUM.value)
             end_time = time.time()
             elapsed_time = end_time - start_time

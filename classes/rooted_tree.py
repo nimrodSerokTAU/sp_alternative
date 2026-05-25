@@ -27,6 +27,11 @@ class RootedTree:
         else:
             rooting_points = calc_min_differential_sum(unrooted, all_nodes)
             rooting_point = find_shallowest_tree(all_nodes, rooting_points)
+        anchor_copy = copy.copy(unrooted.anchor)
+        anchor_copy.children = [all_nodes[x.id] for x in unrooted.anchor.children]
+        for child in anchor_copy.children:
+            child.father = anchor_copy
+        all_nodes.append(anchor_copy)
         new_root, all_nodes = create_root(all_nodes, rooting_point)
         return cls(root=new_root, all_nodes=all_nodes, keys=keys)
 
@@ -142,18 +147,18 @@ def calc_potential_root_on_branch(b: dict, min_bl: float) -> dict:
 
 
 def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[Node]]:
-    start: Node = all_nodes[rooting_point['start_id']]
-    end: Node = all_nodes[rooting_point['end_id']]
-
     new_root = Node(node_id=len(all_nodes), keys=set(), children=[], children_bl_sum=0, branch_length=0)
     all_nodes.append(new_root)
+
+    start: Node = all_nodes[rooting_point['start_id']]
+    end: Node = all_nodes[rooting_point['end_id']]
 
     lower_node = start
     higher_node = end
     lower_node_bl = rooting_point['dist_from_start']
     higher_node_bl = rooting_point['dist_from_end']
 
-    if end in start.children:
+    if end.id in [x.id for x in start.children]:
         lower_node = end
         higher_node = start
         lower_node_bl = rooting_point['dist_from_end']
@@ -161,7 +166,7 @@ def create_root(all_nodes: list[Node], rooting_point: dict) -> tuple[Node, list[
 
     lower_node.father = new_root
     lower_node.branch_length = lower_node_bl
-    higher_node.children.remove(lower_node)
+    higher_node.children = [item for item in higher_node.children if item.id != lower_node.id]
     prev_father = higher_node.father
     prev_dist_to_father = higher_node.branch_length
     if higher_node.father is not None:
