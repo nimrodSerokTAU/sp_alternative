@@ -1,3 +1,0 @@
-code,constant_sites_pct,n_unique_sites,entropy_mean,entropy_25_pct,entropy_75_pct,entropy_sum,entropy_max
-'MSA.MAFFT.aln.With_Names', 0.601, 521, 0.23, 0.0, 0.324, 142.844, 2.054
-'AATF', 0.751, 532, 0.153, 0.0, 0.0, 105.278, 2.071

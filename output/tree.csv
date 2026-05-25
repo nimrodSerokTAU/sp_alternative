@@ -1,3 +1,0 @@
-code,bl_sum,bl_mean,bl_25_pct,bl_75_pct,bl_max,bl_min,parsimony_mean,parsimony_sum,parsimony_max,parsimony_min,parsimony_25_pct,parsimony_75_pct
-'MSA.MAFFT.aln.With_Names', 2.339, 0.03, 0.003, 0.045, 0.198, 0.001, 2.36, 1468.0, 23, 0, 1.0, 2.0
-'AATF', 2.036, 0.026, 0.002, 0.04, 0.141, 0.001, 2.076, 1424.0, 23, 0, 1.0, 2.0
