@@ -30,10 +30,11 @@ class DataConfig:
 
     deduplicated: bool = False
     empirical: bool = False
+    predict_mode: bool = False  # when True, skips taxa balancing (use for inference, not training)
 
-    min_rows_per_code_after_dedup: int = 1100
-    number_of_msas_threshold_simulated: int = 1600
-    number_of_msas_threshold_empirical: int = 1600
+    min_rows_per_code_after_dedup: int = 1
+    number_of_msas_threshold_simulated: int = 1
+    number_of_msas_threshold_empirical: int = 1
 
 
 @dataclass(frozen=True)

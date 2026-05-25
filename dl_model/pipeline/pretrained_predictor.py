@@ -81,6 +81,7 @@ class PretrainedPredictor:
             features_file=cfg.features_file,
             true_score_name=cfg.true_score_name,
             test_size=0.0,
+            predict_mode=True,
         )
 
         self.feat_cfg = FeatureConfig(

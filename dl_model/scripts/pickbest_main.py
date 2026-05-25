@@ -7,7 +7,7 @@ pickbest_cfg = PickBestConfig(
     prediction_file=f"../../example_data/predictions/xxx.csv", #replace with your prediction file
     error=0.0,
     subset=None,
-    out_dir="../../example_data/predictions",
+    out_dir="../../example_data/predictions", #replace with your output folder path
     num_trials=1
 )
 
@@ -18,6 +18,7 @@ if __name__ == '__main__':
         pickme = PickBest(features_file=pickbest_cfg.features_file,
                             prediction_file=pickbest_cfg.prediction_file,
                             true_score_name=pickbest_cfg.true_score_name,
+                            # sum_of_pairs_score="sp_NucleotidesPAM250_GO_-1.5_GE_0", #TODO - add for nucleotides
                             error=pickbest_cfg.error,
                             subset=pickbest_cfg.subset,
                             output_dir=pickbest_cfg.out_dir)

@@ -40,7 +40,7 @@ class DatasetPreprocessor:
 
         df = self._handle_duplicates(df)
 
-        if self.configuration.true_score_name != "RF_phangorn_norm":
+        if self.configuration.true_score_name != "RF_phangorn_norm" and not self.configuration.predict_mode:
             df = self._balance(df)
 
         df = df.dropna()
@@ -48,6 +48,8 @@ class DatasetPreprocessor:
         return df
 
     def _handle_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
+        if self.configuration.predict_mode:
+            return df  # no filtering during inference — keep every row as-is
         if self.configuration.deduplicated:
             return df.drop_duplicates(subset=[c for c in df.columns if c != CODE_COL])
 

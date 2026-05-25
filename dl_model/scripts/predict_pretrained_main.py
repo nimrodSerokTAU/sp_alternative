@@ -7,7 +7,6 @@ import platform, sys
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-import time
 
 # add project root
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -43,8 +42,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
-    t0 = time.perf_counter()
-
     args = build_parser().parse_args(argv)
 
     cfg = PretrainedPredictConfig(
@@ -65,10 +62,6 @@ def main(argv=None) -> int:
 
     out = PretrainedPredictor(cfg).run(custom_objects=None)
     print(json.dumps(out, indent=2))
-
-    t1 = time.perf_counter()
-    total_time = t1 - t0
-    print(f"\nTOTAL runtime (config + predict): {total_time:.3f} s")
 
     return 0
 
